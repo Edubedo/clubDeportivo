@@ -204,11 +204,32 @@ los mismos datos de ejemplo que antes vivían hardcodeados en `FakeAreaRepositor
 `FakeTorneoRepository`, la primera vez que la app los necesita y encuentra la colección vacía —
 no hace falta cargar nada a mano.
 
-**Lo que todavía no se puede hacer desde la app** (falta pantalla para eso, no es un límite de
-Firebase): contratar una membresía. Para probar la pantalla "Mi membresía" con datos hay que
-crear a mano, desde la consola de Firebase (Firestore Database → Iniciar colección), un
-documento en la colección `membresias` con al menos los campos `usuarioId` (el uid de una cuenta
-ya registrada), `tipo`, `precio`, `estado`, `fechaInicio` y `fechaVencimiento`.
+**Lo que todavía no se puede hacer desde la app** (faltan pantallas para eso, no es un límite de
+Firebase): contratar una membresía, ni dar de alta áreas/torneos/empleados nuevos (no hay un panel
+de administración todavía). Esas colecciones se llenan desde `FirebaseSeeder.kt` o a mano en la
+consola (Firestore Database → Iniciar colección → agregar documento).
+
+### Datos de ejemplo ya cargados
+
+Además de `areas` y `torneos` (que se auto-cargan solos, ver arriba), el 2026-09-08 se sembraron
+a mano — una única vez, con `FirebaseSeeder.asegurarHerramientas`,
+`FirebaseSeeder.asegurarRestriccionesHorario` y `FirebaseSeeder.sembrarDatosDeCuentasDemo` — datos
+de ejemplo para el resto de las colecciones del modelo (ver
+[`modelo-de-datos.md`](modelo-de-datos.md)), usando los uids reales de las 6 cuentas de prueba
+(ver [`usuarios-y-guia.md`](usuarios-y-guia.md#usuarios-de-prueba)):
+
+- `herramientas` — las 4 que se prestan automáticamente al reservar.
+- `restriccionesHorario` — un documento por área (dato informativo; la app en realidad calcula
+  esto mismo con `FakeRestriccionHorarioRepository`, no lee esta colección — ver más abajo).
+- `empleados` — administrador y ayudante de área asignados a "Cancha de fútbol 1".
+- `membresias` + `integrantesFamiliares` + `pagos` — la membresía familiar activa del socio de
+  prueba, con sus 2 integrantes y el pago del mes.
+- `reservas` (3 en total, distintos estados) + `materialAsignado` + `checkins` +
+  `inscripcionesTorneo` — para poder ver "Mis reservas" y el torneo con datos reales sin tener
+  que crear todo a mano desde la app.
+
+El código de `FirebaseSeeder.kt` queda como referencia de qué se cargó y con qué forma — no hace
+falta (ni conviene) volver a correrlo.
 
 ### Repo público y `google-services.json`
 

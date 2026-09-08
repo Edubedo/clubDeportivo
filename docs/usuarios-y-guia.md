@@ -33,16 +33,29 @@ proyecto.
 
 ## Usuarios de prueba
 
-No hay usuarios de prueba precargados — Firestore empieza vacío de cuentas. Para probar la app:
+Ya existen 6 cuentas reales, una por rol (creadas el 2026-09-08 desde la propia pantalla
+"Registrate", igual que haría cualquiera). Todas usan la contraseña **`123456`**:
 
-1. Abrí la app → pantalla de login → **"¿No tenés cuenta? Registrate"**.
-2. Completá nombre, correo, contraseña (6+ caracteres) y elegí un **rol** de la lista (así se
-   puede seguir probando cada pantalla según el rol, igual que antes).
-3. Repetí el registro con otro correo para cada rol que quieras probar — por ejemplo
-   `socio@prueba.com` con rol Socio, `admin@prueba.com` con rol Administrador, etc.
+| Correo | Rol |
+|---|---|
+| `superadmin@clubdeportivo.com` | Superadministrador |
+| `admin@clubdeportivo.com` | Administrador |
+| `areadmin@clubdeportivo.com` | Administrador de área |
+| `ayudante@clubdeportivo.com` | Ayudante de área |
+| `socio@prueba.com` | Socio |
+| `externo@clubdeportivo.com` | Visitante externo |
 
-Cada cuenta creada así queda guardada de verdad en Firebase (Authentication tiene el
-correo/contraseña; Firestore, en la colección `usuarios`, tiene el nombre y el rol elegido).
+La cuenta **Socio** (`socio@prueba.com`) es la más completa para probar: tiene una membresía
+familiar activa (con 2 integrantes), 3 reservas en distintos estados (confirmada, pendiente de
+aprobación y finalizada con check-in), y una inscripción a un torneo — ver
+[`arquitectura.md`](arquitectura.md#datos-de-ejemplo-ya-cargados) para el detalle completo de qué
+se cargó y cómo.
+
+Si necesitás una cuenta nueva (para otro nombre, u otro rol de prueba), se crea igual: pantalla de
+login → **"¿No tenés cuenta? Registrate"** → nombre, correo, contraseña de 6+ caracteres, y el rol
+de la lista. Queda guardada de verdad en Firebase (Authentication tiene el correo/contraseña;
+Firestore, en la colección `usuarios`, tiene el nombre y el rol elegido) — pero arranca sin
+reservas ni membresía, esas hay que crearlas usando la app o a mano en la consola.
 
 ## Cómo trabajar en este proyecto
 
