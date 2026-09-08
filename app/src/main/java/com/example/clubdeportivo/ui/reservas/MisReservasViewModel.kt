@@ -6,9 +6,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
+import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import kotlinx.coroutines.launch
+
+data class ReservaConNombreArea(
+    val reservaId: Int,
+    val nombreArea: String,
+    val fecha: String,
+    val horaInicio: String,
+    val horaFin: String,
+    val estado: EstadoReserva
+)
 
 class MisReservasViewModel(
     private val reservaRepository: ReservaRepository = AppContainer.reservaRepository,

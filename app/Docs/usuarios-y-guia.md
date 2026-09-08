@@ -45,7 +45,7 @@ entrar:
 | `areadmin@clubdeportivo.com` | Administrador de área | 3 |
 | `ayudante@clubdeportivo.com` | Ayudante de área | 4 |
 | `externo@clubdeportivo.com` | Visitante externo | 6 |
-| Cualquier otro correo | Socio | 5 |
+|  `socio@clubdeportivo.com` | Socio | 5 |
 
 Ejemplo para entrar como Socio: `socio@prueba.com` / `123456`.
 
