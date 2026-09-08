@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_mis_reservas"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".ui.reservas.MisReservasFragment"
+        tools:listitem="@layout/item_reserva" />
+
+    <ProgressBar
+        android:id="@+id/progress_mis_reservas"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/text_mis_reservas_vacio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:padding="24dp"
+        android:text="Todavía no tienes reservas."
+        android:visibility="gone" />
+
+</FrameLayout>

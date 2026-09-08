@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/loginFragment">
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.example.clubdeportivo.ui.login.LoginFragment"
+        android:label="@string/login_title"
+        tools:layout="@layout/fragment_login">
+
+        <action
+            android:id="@+id/action_loginFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.clubdeportivo.ui.home.HomeFragment"
+        android:label="@string/home_title"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/areasFragment"
+        android:name="com.example.clubdeportivo.ui.areas.AreasFragment"
+        android:label="@string/areas_title"
+        tools:layout="@layout/fragment_areas">
+
+        <action
+            android:id="@+id/action_areasFragment_to_reservarFragment"
+            app:destination="@id/reservarFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/reservarFragment"
+        android:name="com.example.clubdeportivo.ui.reservar.ReservarFragment"
+        android:label="@string/reservar_title"
+        tools:layout="@layout/fragment_reservar">
+
+        <argument
+            android:name="areaId"
+            app:argType="integer" />
+        <argument
+            android:name="areaNombre"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/misReservasFragment"
+        android:name="com.example.clubdeportivo.ui.reservas.MisReservasFragment"
+        android:label="@string/reservas_title"
+        tools:layout="@layout/fragment_mis_reservas" />
+
+    <fragment
+        android:id="@+id/membresiaFragment"
+        android:name="com.example.clubdeportivo.ui.membresia.MembresiaFragment"
+        android:label="@string/membresia_title"
+        tools:layout="@layout/fragment_membresia" />
+
+    <fragment
+        android:id="@+id/torneosFragment"
+        android:name="com.example.clubdeportivo.ui.torneos.TorneosFragment"
+        android:label="@string/torneos_title"
+        tools:layout="@layout/fragment_torneos" />
+
+    <fragment
+        android:id="@+id/perfilFragment"
+        android:name="com.example.clubdeportivo.ui.perfil.PerfilFragment"
+        android:label="@string/perfil_title"
+        tools:layout="@layout/fragment_perfil">
+
+        <action
+            android:id="@+id/action_perfilFragment_to_membresiaFragment"
+            app:destination="@id/membresiaFragment" />
+        <action
+            android:id="@+id/action_perfilFragment_to_loginFragment"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+</navigation>
