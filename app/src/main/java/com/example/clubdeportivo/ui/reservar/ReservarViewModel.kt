@@ -51,7 +51,7 @@ class ReservarViewModel(
     private val _errorReserva = MutableLiveData<String?>()
     val errorReserva: LiveData<String?> = _errorReserva
 
-    fun cargarArea(areaId: Int) {
+    fun cargarArea(areaId: String) {
         viewModelScope.launch {
             val areaCargada = areaRepository.obtenerAreaPorId(areaId) ?: return@launch
             area = areaCargada

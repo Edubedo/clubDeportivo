@@ -1,11 +1,11 @@
 package com.example.clubdeportivo.data.model
 
 data class Torneo(
-    val id: Int,
+    val id: String,
     val nombre: String,
     val disciplina: String,
     /** Área que el torneo bloquea por completo durante su horario: no se permiten reservas individuales ahí. */
-    val areaId: Int,
+    val areaId: String,
     val fechaInicio: String,
     val fechaFin: String,
     val cupoMaximo: Int,
@@ -13,8 +13,8 @@ data class Torneo(
 )
 
 data class InscripcionTorneo(
-    val id: Int,
-    val torneoId: Int,
-    val usuarioId: Int,
+    val id: String,
+    val torneoId: String,
+    val usuarioId: String,
     val fechaInscripcion: String
 )

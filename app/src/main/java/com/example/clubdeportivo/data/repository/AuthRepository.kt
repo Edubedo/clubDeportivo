@@ -7,6 +7,7 @@ import kotlinx.coroutines.delay
 
 interface AuthRepository {
     suspend fun login(correo: String, password: String): Resultado<Usuario>
+    suspend fun registrar(nombre: String, correo: String, password: String, rol: Rol): Resultado<Usuario>
 }
 
 /**
@@ -22,19 +23,19 @@ interface AuthRepository {
  *   externo@clubdeportivo.com    -> VISITANTE_EXTERNO (id 6)
  *   cualquier otro correo        -> SOCIO            (id 5)
  *
- * Cuando el backend esté listo, se reemplaza el cuerpo de login() por:
- *   RetrofitClient.apiService.login(LoginRequest(correo, password))
+ * Ya no se usa (ver FirebaseAuthRepository), pero se deja como referencia simple del
+ * patrón repositorio + `Resultado<T>`.
  */
 class FakeAuthRepository : AuthRepository {
 
-    private data class PerfilDemo(val id: Int, val nombre: String, val rol: Rol)
+    private data class PerfilDemo(val id: String, val nombre: String, val rol: Rol)
 
     private val perfiles = mapOf(
-        "superadmin@clubdeportivo.com" to PerfilDemo(1, "Superadmin", Rol.SUPERADMIN),
-        "admin@clubdeportivo.com" to PerfilDemo(2, "Admin", Rol.ADMIN),
-        "areadmin@clubdeportivo.com" to PerfilDemo(3, "Admin de área", Rol.ADMIN_AREA),
-        "ayudante@clubdeportivo.com" to PerfilDemo(4, "Ayudante", Rol.AYUDANTE_AREA),
-        "externo@clubdeportivo.com" to PerfilDemo(6, "Visitante", Rol.VISITANTE_EXTERNO)
+        "superadmin@clubdeportivo.com" to PerfilDemo("1", "Superadmin", Rol.SUPERADMIN),
+        "admin@clubdeportivo.com" to PerfilDemo("2", "Admin", Rol.ADMIN),
+        "areadmin@clubdeportivo.com" to PerfilDemo("3", "Admin de área", Rol.ADMIN_AREA),
+        "ayudante@clubdeportivo.com" to PerfilDemo("4", "Ayudante", Rol.AYUDANTE_AREA),
+        "externo@clubdeportivo.com" to PerfilDemo("6", "Visitante", Rol.VISITANTE_EXTERNO)
     )
 
     override suspend fun login(correo: String, password: String): Resultado<Usuario> {
@@ -42,7 +43,7 @@ class FakeAuthRepository : AuthRepository {
 
         val correoNormalizado = correo.trim().lowercase()
         val perfil = perfiles[correoNormalizado]
-            ?: PerfilDemo(5, correo.substringBefore("@").replaceFirstChar { it.uppercase() }, Rol.SOCIO)
+            ?: PerfilDemo("5", correo.substringBefore("@").replaceFirstChar { it.uppercase() }, Rol.SOCIO)
 
         val usuario = Usuario(
             id = perfil.id,
@@ -52,5 +53,10 @@ class FakeAuthRepository : AuthRepository {
         )
 
         return Resultado.Exito(usuario)
+    }
+
+    override suspend fun registrar(nombre: String, correo: String, password: String, rol: Rol): Resultado<Usuario> {
+        delay(400)
+        return Resultado.Exito(Usuario(id = correo, nombre = nombre, correo = correo, rol = rol))
     }
 }

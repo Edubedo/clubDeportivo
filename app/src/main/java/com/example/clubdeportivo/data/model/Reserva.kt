@@ -3,9 +3,9 @@ package com.example.clubdeportivo.data.model
 enum class EstadoReserva { CONFIRMADA, PENDIENTE_APROBACION, CANCELADA, FINALIZADA }
 
 data class Reserva(
-    val id: Int,
-    val usuarioId: Int,
-    val areaId: Int,
+    val id: String,
+    val usuarioId: String,
+    val areaId: String,
     val fecha: String,
     val horaInicio: String,
     val horaFin: String,
@@ -14,14 +14,14 @@ data class Reserva(
 )
 
 data class MaterialAsignado(
-    val id: Int,
-    val reservaId: Int,
-    val herramientaId: Int,
+    val id: String,
+    val reservaId: String,
+    val herramientaId: String,
     val cantidad: Int
 )
 
 data class Checkin(
-    val id: Int,
-    val reservaId: Int,
+    val id: String,
+    val reservaId: String,
     val horaLlegada: String
 )

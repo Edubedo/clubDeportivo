@@ -28,6 +28,7 @@ import com.example.clubdeportivo.ui.navigation.Destinations
 import com.example.clubdeportivo.ui.navigation.bottomNavItems
 import com.example.clubdeportivo.ui.navigation.tituloPantalla
 import com.example.clubdeportivo.ui.perfil.PerfilScreen
+import com.example.clubdeportivo.ui.registro.RegistroScreen
 import com.example.clubdeportivo.ui.reservar.ReservarScreen
 import com.example.clubdeportivo.ui.reservas.MisReservasScreen
 import com.example.clubdeportivo.ui.torneos.TorneosScreen
@@ -38,7 +39,9 @@ fun ClubDeportivoApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val enPantallaDeLogin = currentRoute == null || currentRoute == Destinations.LOGIN
+    val enPantallaDeLogin = currentRoute == null ||
+        currentRoute == Destinations.LOGIN ||
+        currentRoute == Destinations.REGISTRO
 
     Scaffold(
         topBar = {
@@ -84,7 +87,18 @@ fun ClubDeportivoApp() {
                         navController.navigate(Destinations.HOME) {
                             popUpTo(Destinations.LOGIN) { inclusive = true }
                         }
-                    }
+                    },
+                    onIrRegistro = { navController.navigate(Destinations.REGISTRO) }
+                )
+            }
+            composable(Destinations.REGISTRO) {
+                RegistroScreen(
+                    onRegistroExitoso = {
+                        navController.navigate(Destinations.HOME) {
+                            popUpTo(Destinations.LOGIN) { inclusive = true }
+                        }
+                    },
+                    onVolverALogin = { navController.popBackStack() }
                 )
             }
             composable(Destinations.HOME) {
@@ -105,11 +119,11 @@ fun ClubDeportivoApp() {
             composable(
                 route = Destinations.RESERVAR,
                 arguments = listOf(
-                    navArgument("areaId") { type = NavType.IntType },
+                    navArgument("areaId") { type = NavType.StringType },
                     navArgument("areaNombre") { type = NavType.StringType }
                 )
             ) { entry ->
-                val areaId = entry.arguments?.getInt("areaId") ?: 0
+                val areaId = Uri.decode(entry.arguments?.getString("areaId").orEmpty())
                 val areaNombre = Uri.decode(entry.arguments?.getString("areaNombre").orEmpty())
                 ReservarScreen(areaId = areaId, areaNombre = areaNombre)
             }

@@ -27,8 +27,9 @@ fun Rol.nombreLegible(): String = when (this) {
     Rol.VISITANTE_EXTERNO -> "Visitante externo"
 }
 
+/** [id] es el mismo uid que genera Firebase Authentication al iniciar sesión. */
 data class Usuario(
-    val id: Int,
+    val id: String,
     val nombre: String,
     val correo: String,
     val rol: Rol,
@@ -36,8 +37,8 @@ data class Usuario(
 )
 
 data class Empleado(
-    val id: Int,
-    val usuarioId: Int,
+    val id: String,
+    val usuarioId: String,
     val puesto: String,
-    val areaAsignadaId: Int? = null
+    val areaAsignadaId: String? = null
 )

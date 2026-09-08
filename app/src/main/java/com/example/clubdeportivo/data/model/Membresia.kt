@@ -16,10 +16,11 @@ data class PaqueteFamiliar(
 )
 
 data class Membresia(
-    val id: Int,
-    val usuarioId: Int,
+    val id: String,
+    val usuarioId: String,
     val tipo: TipoMembresia,
     val plan: PlanIndividual? = null,
+    /** Referencia a Catalogos.paquetesFamiliares (dato fijo local, no vive en la base de datos). */
     val paqueteFamiliarId: Int? = null,
     val precio: Double,
     val estado: EstadoMembresia,
@@ -28,8 +29,8 @@ data class Membresia(
 )
 
 data class IntegranteFamiliar(
-    val id: Int,
-    val membresiaId: Int,
+    val id: String,
+    val membresiaId: String,
     val nombre: String,
     val parentesco: String
 )

@@ -32,7 +32,7 @@ class FakeRestriccionHorarioRepository : RestriccionHorarioRepository {
         delay(150)
         val (inicio, fin) = horarioPorTipo[area.tipo] ?: ("08:00" to "20:00")
         return RestriccionHorario(
-            id = area.id,
+            id = "rh-${area.id}",
             areaId = area.id,
             diaSemana = "TODOS",
             horaInicio = inicio,

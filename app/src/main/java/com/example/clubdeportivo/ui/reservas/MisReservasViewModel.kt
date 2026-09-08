@@ -12,7 +12,7 @@ import com.example.clubdeportivo.data.repository.ReservaRepository
 import kotlinx.coroutines.launch
 
 data class ReservaConNombreArea(
-    val reservaId: Int,
+    val reservaId: String,
     val nombreArea: String,
     val fecha: String,
     val horaInicio: String,

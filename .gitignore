@@ -15,3 +15,7 @@ app/build/
 .externalNativeBuild
 .cxx
 local.properties
+
+# Config de Firebase: cada quien usa la suya (se descarga desde la consola de Firebase),
+# no se comparte por git. Ver docs/usuarios-y-guia.md.
+app/google-services.json

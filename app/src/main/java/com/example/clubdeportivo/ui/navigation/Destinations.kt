@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 /** Rutas equivalentes a los ids de res/navigation/nav_graph.xml. */
 object Destinations {
     const val LOGIN = "login"
+    const val REGISTRO = "registro"
     const val HOME = "home"
     const val AREAS = "areas"
     const val RESERVAR = "reservar/{areaId}/{areaNombre}"
@@ -25,7 +26,7 @@ object Destinations {
     const val TORNEOS = "torneos"
     const val PERFIL = "perfil"
 
-    fun reservar(areaId: Int, areaNombre: String) = "reservar/$areaId/${Uri.encode(areaNombre)}"
+    fun reservar(areaId: String, areaNombre: String) = "reservar/${Uri.encode(areaId)}/${Uri.encode(areaNombre)}"
 }
 
 data class BottomNavItem(

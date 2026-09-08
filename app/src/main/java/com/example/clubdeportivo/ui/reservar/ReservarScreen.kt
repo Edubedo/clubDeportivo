@@ -36,7 +36,7 @@ import com.example.clubdeportivo.util.Fechas
 
 @Composable
 fun ReservarScreen(
-    areaId: Int,
+    areaId: String,
     areaNombre: String,
     viewModel: ReservarViewModel = viewModel()
 ) {
