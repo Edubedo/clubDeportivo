@@ -1,4 +1,6 @@
-package com.example.clubdeportivo.ui.home
+package com.example.clubdeportivo.ui.admin.home
+
+
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun HomeScreen(
+fun AdminHomeScreen(
     onIrPersonal: () -> Unit,
     onIrCanchas: () -> Unit,
     onIrInventario: () -> Unit
