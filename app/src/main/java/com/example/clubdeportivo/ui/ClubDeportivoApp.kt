@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.clubdeportivo.ui.areas.AreasScreen
 import com.example.clubdeportivo.ui.home.HomeScreen
+import com.example.clubdeportivo.ui.admin.home.AdminHomeScreen
 import com.example.clubdeportivo.ui.login.LoginScreen
 import com.example.clubdeportivo.ui.membresia.MembresiaScreen
 import com.example.clubdeportivo.ui.navigation.Destinations
@@ -102,11 +103,10 @@ fun ClubDeportivoApp() {
                 )
             }
             composable(Destinations.HOME) {
-                HomeScreen(
-                    onIrAreas = { navController.navigate(Destinations.AREAS) },
-                    onIrReservas = { navController.navigate(Destinations.MIS_RESERVAS) },
-                    onIrTorneos = { navController.navigate(Destinations.TORNEOS) },
-                    onIrMembresia = { navController.navigate(Destinations.MEMBRESIA) }
+                AdminHomeScreen(
+                    onIrPersonal = { },
+                    onIrCanchas = { },
+                    onIrInventario = { }
                 )
             }
             composable(Destinations.AREAS) {
