@@ -1,9 +1,9 @@
 package com.example.clubdeportivo.ui.admin.home
 
-
-
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,21 +17,89 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.clubdeportivo.ui.inventario.InventarioScreen
 
 @Composable
 fun AdminHomeScreen(
-    onIrPersonal: () -> Unit,
-    onIrCanchas: () -> Unit,
-    onIrInventario: () -> Unit
+    viewModel: AdminHomeViewModel = viewModel()
 ) {
+    val tabActiva by viewModel.tabActiva.observeAsState("Dashboard")
 
+    Scaffold(
+        bottomBar = {
+            AdminBottomNavBar(
+                tabActiva = tabActiva,
+                onSeleccionarTab = { viewModel.seleccionarTab(it) }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when (tabActiva) {
+                "Dashboard" -> DashboardContent()
+                "Personal" -> PersonalContent()
+                "Canchas" -> ChanasContent()
+                "Inventario" -> InventarioScreen()
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminBottomNavBar(
+    tabActiva: String,
+    onSeleccionarTab: (String) -> Unit
+) {
+    val tabs = listOf("Dashboard", "Personal", "Canchas", "Inventario")
+    val iconos = listOf("📊", "👥", "🏟️", "📦")
+
+    NavigationBar(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp),
+        containerColor = Color.White,
+        contentColor = Color(0xFF10B981)
+    ) {
+        tabs.forEachIndexed { index, tab ->
+            NavigationBarItem(
+                selected = tabActiva == tab,
+                onClick = { onSeleccionarTab(tab) },
+                icon = {
+                    Text(
+                        text = iconos[index],
+                        fontSize = 24.sp
+                    )
+                },
+                label = {
+                    Text(
+                        text = tab,
+                        fontSize = 12.sp
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun DashboardContent() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -165,6 +233,66 @@ fun AdminHomeScreen(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun PersonalContent() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFD))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "👥",
+            fontSize = 64.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Text(
+            text = "Sección Personal",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF111827)
+        )
+        Text(
+            text = "Gestiona el personal del club",
+            fontSize = 14.sp,
+            color = Color(0xFF94A3B8),
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
+}
+
+@Composable
+fun ChanasContent() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFD))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "🏟️",
+            fontSize = 64.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Text(
+            text = "Sección Canchas",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF111827)
+        )
+        Text(
+            text = "Gestiona las canchas disponibles",
+            fontSize = 14.sp,
+            color = Color(0xFF94A3B8),
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
 

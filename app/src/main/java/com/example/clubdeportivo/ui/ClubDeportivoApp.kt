@@ -103,14 +103,14 @@ fun ClubDeportivoApp() {
                 )
             }
             composable(Destinations.HOME) {
-                AdminHomeScreen(
-                    onIrPersonal = { },
-                    onIrCanchas = { },
-                    onIrInventario = { }
-                )
+                AdminHomeScreen()
             }
             composable(Destinations.AREAS) {
-                AreasScreen()
+                AreasScreen(
+                    onAreaClick = { area ->
+                        navController.navigate(Destinations.reservar(area.id, area.nombre))
+                    }
+                )
             }
             composable(
                 route = Destinations.RESERVAR,
