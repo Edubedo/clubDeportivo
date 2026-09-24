@@ -20,7 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.clubdeportivo.ui.areas.AreasScreen
+import com.example.clubdeportivo.ui.areas.AreasDetailScreen
 import com.example.clubdeportivo.ui.home.HomeScreen
 import com.example.clubdeportivo.ui.admin.home.AdminHomeScreen
 import com.example.clubdeportivo.ui.login.LoginScreen
@@ -29,10 +29,10 @@ import com.example.clubdeportivo.ui.navigation.Destinations
 import com.example.clubdeportivo.ui.navigation.bottomNavItems
 import com.example.clubdeportivo.ui.navigation.tituloPantalla
 import com.example.clubdeportivo.ui.perfil.PerfilScreen
+import com.example.clubdeportivo.ui.personal.PersonalScreen
 import com.example.clubdeportivo.ui.registro.RegistroScreen
 import com.example.clubdeportivo.ui.reservar.ReservarScreen
 import com.example.clubdeportivo.ui.reservas.MisReservasScreen
-import com.example.clubdeportivo.ui.torneos.TorneosScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,8 +105,11 @@ fun ClubDeportivoApp() {
             composable(Destinations.HOME) {
                 AdminHomeScreen()
             }
+            composable(Destinations.PERSONAL) {
+                PersonalScreen()
+            }
             composable(Destinations.AREAS) {
-                AreasScreen(
+                AreasDetailScreen(
                     onAreaClick = { area ->
                         navController.navigate(Destinations.reservar(area.id, area.nombre))
                     }
@@ -125,7 +128,6 @@ fun ClubDeportivoApp() {
             }
             composable(Destinations.MIS_RESERVAS) { MisReservasScreen() }
             composable(Destinations.MEMBRESIA) { MembresiaScreen() }
-            composable(Destinations.TORNEOS) { TorneosScreen() }
             composable(Destinations.PERFIL) {
                 PerfilScreen(
                     onVerMembresia = { navController.navigate(Destinations.MEMBRESIA) },
