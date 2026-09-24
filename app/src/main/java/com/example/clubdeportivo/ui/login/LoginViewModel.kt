@@ -37,8 +37,9 @@ class LoginViewModel(
 
     fun login(email: String, password: String) {
         var esValido = true
+        val emailLimpio = email.trim()
 
-        if (email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+        if (emailLimpio.isBlank() || !isValidEmail(emailLimpio)) {
             _emailError.value = "Ingresá un correo electrónico válido"
             esValido = false
         } else {
@@ -56,7 +57,7 @@ class LoginViewModel(
 
         viewModelScope.launch {
             _cargando.value = true
-            when (val resultado = authRepository.login(email, password)) {
+            when (val resultado = authRepository.login(emailLimpio, password)) {
                 is Resultado.Exito -> {
                     SesionManager.iniciarSesion(resultado.datos)
                     _errorGeneral.value = null
@@ -68,6 +69,10 @@ class LoginViewModel(
             }
             _cargando.value = false
         }
+    }
+
+    private fun isValidEmail(email: String): Boolean {
+        return email.contains("@") && email.contains(".") && email.length >= 5
     }
 
     fun onNavegacionCompletada() {
