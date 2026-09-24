@@ -1,4 +1,4 @@
-package com.example.clubdeportivo.ui.home
+package com.example.clubdeportivo.ui.admin.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +17,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -24,12 +25,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun HomeScreen(
-    onIrPersonal: () -> Unit,
-    onIrCanchas: () -> Unit,
-    onIrInventario: () -> Unit
-) {
+fun AdminHomeScreen() {
+    DashboardContent()
+}
 
+
+@Composable
+fun DashboardContent() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -165,6 +167,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
+
 
 
 /*
