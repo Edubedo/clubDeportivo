@@ -29,7 +29,7 @@ import com.example.clubdeportivo.ui.navigation.Destinations
 import com.example.clubdeportivo.ui.navigation.bottomNavItems
 import com.example.clubdeportivo.ui.navigation.tituloPantalla
 import com.example.clubdeportivo.ui.perfil.PerfilScreen
-import com.example.clubdeportivo.ui.personal.PersonalScreen
+import com.example.clubdeportivo.ui.areas.PersonalScreen
 import com.example.clubdeportivo.ui.registro.RegistroScreen
 import com.example.clubdeportivo.ui.reservar.ReservarScreen
 import com.example.clubdeportivo.ui.reservas.MisReservasScreen
