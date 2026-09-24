@@ -110,11 +110,7 @@ fun ClubDeportivoApp() {
                 )
             }
             composable(Destinations.AREAS) {
-                AreasScreen(
-                    onAreaClick = { area ->
-                        navController.navigate(Destinations.reservar(area.id, area.nombre))
-                    }
-                )
+                AreasScreen()
             }
             composable(
                 route = Destinations.RESERVAR,
