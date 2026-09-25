@@ -57,16 +57,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.clubdeportivo.ui.theme.ClubDeportivoTheme
 
-/**
- * Vista "Gestión de Canchas" (ver mockup de Miro).
- * SOLO VISUAL: usa datos de ejemplo en memoria (mutableStateListOf), sin
- * ViewModel ni repositorio. El nombre de la función y el paquete se
- * mantienen igual (MisReservasScreen) para no romper la navegación
- * existente; cuando quieras conectarla a datos reales, reemplaza el
- * `remember { mutableStateListOf(...) }` por lo que venga de tu
- * ViewModel/repositorio.
- */
-
 private data class CanchaItem(
     val id: String,
     val deporte: String,
