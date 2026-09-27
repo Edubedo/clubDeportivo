@@ -9,7 +9,10 @@ data class Torneo(
     val fechaInicio: String,
     val fechaFin: String,
     val cupoMaximo: Int,
-    val inscritos: Int
+    val inscritos: Int,
+    /** "HH:mm". Vacío en torneos creados antes de que existiera este campo. */
+    val horaInicio: String = "",
+    val horaFin: String = ""
 )
 
 data class InscripcionTorneo(

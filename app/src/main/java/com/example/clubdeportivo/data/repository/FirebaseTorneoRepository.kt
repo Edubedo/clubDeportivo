@@ -33,7 +33,10 @@ class FirebaseTorneoRepository(
             fechaInicio = getString("fechaInicio") ?: "",
             fechaFin = getString("fechaFin") ?: "",
             cupoMaximo = (getLong("cupoMaximo") ?: 0).toInt(),
-            inscritos = inscritos.toInt()
+            inscritos = inscritos.toInt(),
+            // getString() devuelve null en torneos guardados antes de que existiera este campo.
+            horaInicio = getString("horaInicio") ?: "",
+            horaFin = getString("horaFin") ?: ""
         )
     }
 
@@ -59,5 +62,55 @@ class FirebaseTorneoRepository(
             val fin = doc.getString("fechaFin") ?: return@any false
             fecha in inicio..fin
         }
+    }
+
+    override suspend fun crearTorneo(
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
+    ): Torneo {
+        val datos = mapOf(
+            "nombre" to nombre,
+            "disciplina" to disciplina,
+            "areaId" to areaId,
+            "fechaInicio" to fechaInicio,
+            "fechaFin" to fechaFin,
+            "cupoMaximo" to cupoMaximo.toLong(),
+            "horaInicio" to horaInicio,
+            "horaFin" to horaFin
+        )
+        val documento = torneos.add(datos).await()
+        return Torneo(documento.id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, inscritos = 0, horaInicio = horaInicio, horaFin = horaFin)
+    }
+
+    override suspend fun actualizarTorneo(
+        id: String,
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
+    ): Torneo {
+        val datos = mapOf(
+            "nombre" to nombre,
+            "disciplina" to disciplina,
+            "areaId" to areaId,
+            "fechaInicio" to fechaInicio,
+            "fechaFin" to fechaFin,
+            "cupoMaximo" to cupoMaximo.toLong(),
+            "horaInicio" to horaInicio,
+            "horaFin" to horaFin
+        )
+        torneos.document(id).set(datos).await()
+        val inscritos = inscripciones.whereEqualTo("torneoId", id).count().get(AggregateSource.SERVER).await().count
+        return Torneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, inscritos.toInt(), horaInicio, horaFin)
     }
 }

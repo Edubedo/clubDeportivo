@@ -9,6 +9,27 @@ interface TorneoRepository {
     suspend fun inscribirse(torneoId: String, usuarioId: String): InscripcionTorneo
     /** true si algún torneo bloquea esa área en esa fecha (los torneos ocupan el área completa). */
     suspend fun hayTorneoQueBloqueaArea(areaId: String, fecha: String): Boolean
+    suspend fun crearTorneo(
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
+    ): Torneo
+    suspend fun actualizarTorneo(
+        id: String,
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
+    ): Torneo
 }
 
 class FakeTorneoRepository : TorneoRepository {
@@ -40,5 +61,62 @@ class FakeTorneoRepository : TorneoRepository {
 
     override suspend fun hayTorneoQueBloqueaArea(areaId: String, fecha: String): Boolean {
         return torneos.any { it.areaId == areaId && fecha in it.fechaInicio..it.fechaFin }
+    }
+
+    override suspend fun crearTorneo(
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
+    ): Torneo {
+        delay(300)
+        val torneo = Torneo(
+            id = (torneos.size + 1).toString(),
+            nombre = nombre,
+            disciplina = disciplina,
+            areaId = areaId,
+            fechaInicio = fechaInicio,
+            fechaFin = fechaFin,
+            cupoMaximo = cupoMaximo,
+            inscritos = 0,
+            horaInicio = horaInicio,
+            horaFin = horaFin
+        )
+        torneos.add(torneo)
+        return torneo
+    }
+
+    override suspend fun actualizarTorneo(
+        id: String,
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
+    ): Torneo {
+        delay(300)
+        val indice = torneos.indexOfFirst { it.id == id }
+        val actualizado = (
+            torneos.getOrNull(indice)
+                ?: Torneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, 0)
+            ).copy(
+                nombre = nombre,
+                disciplina = disciplina,
+                areaId = areaId,
+                fechaInicio = fechaInicio,
+                fechaFin = fechaFin,
+                cupoMaximo = cupoMaximo,
+                horaInicio = horaInicio,
+                horaFin = horaFin
+            )
+        if (indice != -1) torneos[indice] = actualizado
+        return actualizado
     }
 }
