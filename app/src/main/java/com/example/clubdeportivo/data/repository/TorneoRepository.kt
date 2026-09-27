@@ -17,6 +17,15 @@ interface TorneoRepository {
         fechaFin: String,
         cupoMaximo: Int
     ): Torneo
+    suspend fun actualizarTorneo(
+        id: String,
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int
+    ): Torneo
 }
 
 class FakeTorneoRepository : TorneoRepository {
@@ -71,5 +80,29 @@ class FakeTorneoRepository : TorneoRepository {
         )
         torneos.add(torneo)
         return torneo
+    }
+
+    override suspend fun actualizarTorneo(
+        id: String,
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int
+    ): Torneo {
+        delay(300)
+        val indice = torneos.indexOfFirst { it.id == id }
+        val actualizado = (torneos.getOrNull(indice) ?: Torneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, 0))
+            .copy(
+                nombre = nombre,
+                disciplina = disciplina,
+                areaId = areaId,
+                fechaInicio = fechaInicio,
+                fechaFin = fechaFin,
+                cupoMaximo = cupoMaximo
+            )
+        if (indice != -1) torneos[indice] = actualizado
+        return actualizado
     }
 }
