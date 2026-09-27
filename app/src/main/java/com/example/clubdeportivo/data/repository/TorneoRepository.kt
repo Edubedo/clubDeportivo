@@ -15,7 +15,9 @@ interface TorneoRepository {
         areaId: String,
         fechaInicio: String,
         fechaFin: String,
-        cupoMaximo: Int
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
     ): Torneo
     suspend fun actualizarTorneo(
         id: String,
@@ -24,7 +26,9 @@ interface TorneoRepository {
         areaId: String,
         fechaInicio: String,
         fechaFin: String,
-        cupoMaximo: Int
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
     ): Torneo
 }
 
@@ -65,7 +69,9 @@ class FakeTorneoRepository : TorneoRepository {
         areaId: String,
         fechaInicio: String,
         fechaFin: String,
-        cupoMaximo: Int
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
     ): Torneo {
         delay(300)
         val torneo = Torneo(
@@ -76,7 +82,9 @@ class FakeTorneoRepository : TorneoRepository {
             fechaInicio = fechaInicio,
             fechaFin = fechaFin,
             cupoMaximo = cupoMaximo,
-            inscritos = 0
+            inscritos = 0,
+            horaInicio = horaInicio,
+            horaFin = horaFin
         )
         torneos.add(torneo)
         return torneo
@@ -89,18 +97,24 @@ class FakeTorneoRepository : TorneoRepository {
         areaId: String,
         fechaInicio: String,
         fechaFin: String,
-        cupoMaximo: Int
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
     ): Torneo {
         delay(300)
         val indice = torneos.indexOfFirst { it.id == id }
-        val actualizado = (torneos.getOrNull(indice) ?: Torneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, 0))
-            .copy(
+        val actualizado = (
+            torneos.getOrNull(indice)
+                ?: Torneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, 0)
+            ).copy(
                 nombre = nombre,
                 disciplina = disciplina,
                 areaId = areaId,
                 fechaInicio = fechaInicio,
                 fechaFin = fechaFin,
-                cupoMaximo = cupoMaximo
+                cupoMaximo = cupoMaximo,
+                horaInicio = horaInicio,
+                horaFin = horaFin
             )
         if (indice != -1) torneos[indice] = actualizado
         return actualizado

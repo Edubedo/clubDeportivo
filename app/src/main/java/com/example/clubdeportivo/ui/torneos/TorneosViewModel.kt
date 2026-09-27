@@ -72,13 +72,23 @@ class TorneosViewModel(
         _torneoEnEdicion.value = null
     }
 
-    fun guardarTorneo(id: String?, nombre: String, disciplina: String, areaId: String, fechaInicio: String, fechaFin: String, cupoMaximo: Int) {
+    fun guardarTorneo(
+        id: String?,
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int,
+        horaInicio: String,
+        horaFin: String
+    ) {
         viewModelScope.launch {
             if (id == null) {
-                torneoRepository.crearTorneo(nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo)
+                torneoRepository.crearTorneo(nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, horaInicio, horaFin)
                 _mensaje.value = "Torneo creado: $nombre"
             } else {
-                torneoRepository.actualizarTorneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo)
+                torneoRepository.actualizarTorneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, horaInicio, horaFin)
                 _mensaje.value = "Torneo actualizado: $nombre"
             }
             _mostrarModalCrear.value = false
