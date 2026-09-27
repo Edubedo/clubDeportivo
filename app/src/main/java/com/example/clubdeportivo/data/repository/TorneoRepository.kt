@@ -9,6 +9,14 @@ interface TorneoRepository {
     suspend fun inscribirse(torneoId: String, usuarioId: String): InscripcionTorneo
     /** true si algún torneo bloquea esa área en esa fecha (los torneos ocupan el área completa). */
     suspend fun hayTorneoQueBloqueaArea(areaId: String, fecha: String): Boolean
+    suspend fun crearTorneo(
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int
+    ): Torneo
 }
 
 class FakeTorneoRepository : TorneoRepository {
@@ -40,5 +48,28 @@ class FakeTorneoRepository : TorneoRepository {
 
     override suspend fun hayTorneoQueBloqueaArea(areaId: String, fecha: String): Boolean {
         return torneos.any { it.areaId == areaId && fecha in it.fechaInicio..it.fechaFin }
+    }
+
+    override suspend fun crearTorneo(
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int
+    ): Torneo {
+        delay(300)
+        val torneo = Torneo(
+            id = (torneos.size + 1).toString(),
+            nombre = nombre,
+            disciplina = disciplina,
+            areaId = areaId,
+            fechaInicio = fechaInicio,
+            fechaFin = fechaFin,
+            cupoMaximo = cupoMaximo,
+            inscritos = 0
+        )
+        torneos.add(torneo)
+        return torneo
     }
 }

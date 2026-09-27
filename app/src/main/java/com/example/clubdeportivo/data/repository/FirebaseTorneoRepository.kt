@@ -60,4 +60,24 @@ class FirebaseTorneoRepository(
             fecha in inicio..fin
         }
     }
+
+    override suspend fun crearTorneo(
+        nombre: String,
+        disciplina: String,
+        areaId: String,
+        fechaInicio: String,
+        fechaFin: String,
+        cupoMaximo: Int
+    ): Torneo {
+        val datos = mapOf(
+            "nombre" to nombre,
+            "disciplina" to disciplina,
+            "areaId" to areaId,
+            "fechaInicio" to fechaInicio,
+            "fechaFin" to fechaFin,
+            "cupoMaximo" to cupoMaximo.toLong()
+        )
+        val documento = torneos.add(datos).await()
+        return Torneo(documento.id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, inscritos = 0)
+    }
 }
