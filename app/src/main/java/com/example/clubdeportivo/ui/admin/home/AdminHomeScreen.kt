@@ -23,15 +23,46 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil3.compose.AsyncImage
+import com.example.clubdeportivo.data.SesionManager
+import com.example.clubdeportivo.ui.components.InitialsAvatar
+import com.example.clubdeportivo.util.FotoPerfilManager
 
 @Composable
-fun AdminHomeScreen() {
-    DashboardContent()
+fun AdminHomeScreen(
+    onIrPerfil: () -> Unit
+) {
+    DashboardContent(
+        onIrPerfil = onIrPerfil
+    )
 }
 
 
 @Composable
-fun DashboardContent() {
+fun DashboardContent(
+    onIrPerfil: () -> Unit
+) {
+    val context = LocalContext.current
+    val usuario = SesionManager.usuarioActual
+
+    // Al cambiar la foto, este valor cambia y Compose
+    // vuelve a dibujar el encabezado.
+    val versionFoto = SesionManager.versionFotoPerfil
+
+    val fotoPerfil = usuario?.id?.let { usuarioId ->
+        FotoPerfilManager.obtenerFoto(
+            context = context,
+            usuarioId = usuarioId
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -41,131 +72,172 @@ fun DashboardContent() {
     ) {
 
         // Encabezado
-        Text(
-            text = "Club Deportivo",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
-        )
-
-        Text(
-            text = "Admin",
-            fontSize = 14.sp,
-            color = Color(0xFF94A3B8)
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Título del dashboard
-        Text(
-            text = "Dashboard",
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Primera fila
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
 
-            DashboardCard(
-                emoji = "🏟️",
-                cantidad = "9",
-                titulo = "Canchas",
-                backgroundColor = Color(0xFFEFF6FF),
-                modifier = Modifier.weight(1f)
-            )
+            Column {
+                Text(
+                    text = "Club Deportivo",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF111827)
+                )
 
-            DashboardCard(
-                emoji = "👥",
-                cantidad = "3",
-                titulo = "Personal",
-                backgroundColor = Color(0xFFFAF5FF),
-                modifier = Modifier.weight(1f)
-            )
+                Text(
+                    text = "Admin",
+                    fontSize = 14.sp,
+                    color = Color(0xFF94A3B8)
+                )
+            }
+
+            // Foto / avatar del administrador
+
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clickable {
+                        onIrPerfil()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+
+                if (fotoPerfil != null) {
+
+                    AsyncImage(
+                        model = fotoPerfil,
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+
+                } else {
+
+                    InitialsAvatar(
+                        nombre = usuario?.nombre ?: "Admin",
+                        size = 46.dp
+                    )
+                }
+            }
+
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-        // Segunda fila
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-
-            DashboardCard(
-                emoji = "👤",
-                cantidad = "3",
-                titulo = "Miembros",
-                backgroundColor = Color(0xFFFFFBEB),
-                modifier = Modifier.weight(1f)
+            // Título del dashboard
+            Text(
+                text = "Dashboard",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF111827)
             )
 
-            DashboardCard(
-                emoji = "🗓️",
-                cantidad = "2",
-                titulo = "Reservas hoy",
-                backgroundColor = Color(0xFFECFDF5),
-                modifier = Modifier.weight(1f)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Primera fila
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                DashboardCard(
+                    emoji = "🏟️",
+                    cantidad = "9",
+                    titulo = "Canchas",
+                    backgroundColor = Color(0xFFEFF6FF),
+                    modifier = Modifier.weight(1f)
+                )
+
+                DashboardCard(
+                    emoji = "👥",
+                    cantidad = "3",
+                    titulo = "Personal",
+                    backgroundColor = Color(0xFFFAF5FF),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Segunda fila
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                DashboardCard(
+                    emoji = "👤",
+                    cantidad = "3",
+                    titulo = "Miembros",
+                    backgroundColor = Color(0xFFFFFBEB),
+                    modifier = Modifier.weight(1f)
+                )
+
+                DashboardCard(
+                    emoji = "🗓️",
+                    cantidad = "2",
+                    titulo = "Reservas hoy",
+                    backgroundColor = Color(0xFFECFDF5),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Reservas recientes
+            Text(
+                text = "Reservas recientes",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF111827)
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ReservaCard(
+                emoji = "🎾",
+                nombre = "Ana García",
+                detalle = "Tenis · 09:00–11:00",
+                estado = "Confirmada",
+                confirmada = true
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            ReservaCard(
+                emoji = "🎾",
+                nombre = "Luis Pérez",
+                detalle = "Tenis · 11:00–12:00",
+                estado = "Confirmada",
+                confirmada = true
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            ReservaCard(
+                emoji = "🏊",
+                nombre = "Luis Pérez",
+                detalle = "Natación · 08:00–09:00",
+                estado = "Confirmada",
+                confirmada = true
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            ReservaCard(
+                emoji = "🏀",
+                nombre = "Ana García",
+                detalle = "Baloncesto · 14:00–16:00",
+                estado = "Pendiente",
+                confirmada = false
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Reservas recientes
-        Text(
-            text = "Reservas recientes",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ReservaCard(
-            emoji = "🎾",
-            nombre = "Ana García",
-            detalle = "Tenis · 09:00–11:00",
-            estado = "Confirmada",
-            confirmada = true
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ReservaCard(
-            emoji = "🎾",
-            nombre = "Luis Pérez",
-            detalle = "Tenis · 11:00–12:00",
-            estado = "Confirmada",
-            confirmada = true
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ReservaCard(
-            emoji = "🏊",
-            nombre = "Luis Pérez",
-            detalle = "Natación · 08:00–09:00",
-            estado = "Confirmada",
-            confirmada = true
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ReservaCard(
-            emoji = "🏀",
-            nombre = "Ana García",
-            detalle = "Baloncesto · 14:00–16:00",
-            estado = "Pendiente",
-            confirmada = false
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-    }
 }
 
 
