@@ -1,5 +1,8 @@
 package com.example.clubdeportivo.data
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import com.example.clubdeportivo.data.model.Usuario
 
 /**
@@ -14,6 +17,9 @@ object SesionManager {
     var usuarioActual: Usuario? = null
         private set
 
+    var versionFotoPerfil by mutableIntStateOf(0)
+        private set
+
     fun iniciarSesion(usuario: Usuario) {
         usuarioActual = usuario
     }
@@ -21,6 +27,10 @@ object SesionManager {
     fun cerrarSesion() {
         usuarioActual = null
     }
+    fun notificarCambioFoto() {
+        versionFotoPerfil++
+    }
+
 
     fun haySesionActiva(): Boolean = usuarioActual != null
 }

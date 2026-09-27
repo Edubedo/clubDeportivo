@@ -40,6 +40,20 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.ui.components.InitialsAvatar
+import androidx.compose.material3.TextButton
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil3.compose.AsyncImage
+import com.example.clubdeportivo.util.FotoPerfilManager
+import com.example.clubdeportivo.data.SesionManager
 
 @Composable
 fun PerfilScreen(
@@ -49,6 +63,36 @@ fun PerfilScreen(
 ) {
 
     val usuario by viewModel.usuario.observeAsState()
+
+    val context = LocalContext.current
+
+    var fotoPerfil by remember(usuario?.id) {
+        mutableStateOf(
+            usuario?.id?.let { id ->
+                FotoPerfilManager.obtenerFoto(context, id)
+            }
+        )
+    }
+
+    val selectorFoto = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+
+        if (uri != null && usuario != null) {
+
+            val nuevaFoto = FotoPerfilManager.guardarFoto(
+                context = context,
+                uri = uri,
+                usuarioId = usuario!!.id
+            )
+
+            fotoPerfil = nuevaFoto
+
+            SesionManager.notificarCambioFoto()
+        }
+    }
+
+
 
     var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
@@ -69,10 +113,74 @@ fun PerfilScreen(
     ) {
 
         // Avatar
-        InitialsAvatar(
-            nombre = usuario?.nombre ?: "?",
-            size = 96.dp
-        )
+        Box(
+            contentAlignment = Alignment.Center
+        ) {
+
+            if (fotoPerfil != null) {
+
+                AsyncImage(
+                    model = fotoPerfil,
+                    contentDescription = "Foto de perfil",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            selectorFoto.launch("image/*")
+                        },
+                    contentScale = ContentScale.Crop
+                )
+
+            } else {
+
+                Box(
+                    modifier = Modifier.clickable {
+                        selectorFoto.launch("image/*")
+                    }
+                ) {
+                    InitialsAvatar(
+                        nombre = usuario?.nombre ?: "?",
+                        size = 100.dp
+                    )
+                }
+            }
+        }
+        TextButton(
+            onClick = {
+                selectorFoto.launch("image/*")
+            }
+        ) {
+            Text(
+                if (fotoPerfil == null)
+                    "Agregar foto"
+                else
+                    "Cambiar foto"
+            )
+        }
+        if (fotoPerfil != null) {
+
+            TextButton(
+                onClick = {
+
+                    usuario?.let { usuarioActual ->
+
+                        FotoPerfilManager.eliminarFoto(
+                            context = context,
+                            usuarioId = usuarioActual.id
+                        )
+
+                        fotoPerfil = null
+
+                        SesionManager.notificarCambioFoto()
+                    }
+                }
+            ) {
+                Text(
+                    text = "Quitar foto",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 
