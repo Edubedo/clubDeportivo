@@ -12,6 +12,8 @@ import com.example.clubdeportivo.data.repository.MembresiaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import com.example.clubdeportivo.data.repository.RestriccionHorarioRepository
 import com.example.clubdeportivo.data.repository.TorneoRepository
+import com.example.clubdeportivo.data.repository.FirebaseUsuarioRepository
+import com.example.clubdeportivo.data.repository.UsuarioRepository
 
 /**
  * Punto único donde viven los repositorios mientras el proyecto no tiene
@@ -31,4 +33,6 @@ object AppContainer {
     val reservaRepository: ReservaRepository = FirebaseReservaRepository()
     val membresiaRepository: MembresiaRepository = FirebaseMembresiaRepository()
     val torneoRepository: TorneoRepository = FirebaseTorneoRepository()
+
+    val usuarioRepository: UsuarioRepository = FirebaseUsuarioRepository()
 }

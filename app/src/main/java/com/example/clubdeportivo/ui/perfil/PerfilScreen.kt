@@ -219,8 +219,7 @@ fun PerfilScreen(
                 Button(
                     onClick = {
                         viewModel.actualizarPerfil(
-                            nombre = nombre,
-                            correo = correo
+                            nombre = nombre
                         )
                     },
                     modifier = Modifier
