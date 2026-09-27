@@ -103,7 +103,11 @@ fun ClubDeportivoApp() {
                 )
             }
             composable(Destinations.HOME) {
-                AdminHomeScreen()
+                AdminHomeScreen(
+                    onIrPerfil = {
+                        navController.navigate(Destinations.PERFIL)
+                    }
+                )
             }
             composable(Destinations.PERSONAL) {
                 PersonalScreen()

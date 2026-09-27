@@ -38,11 +38,11 @@ data class BottomNavItem(
 
 /** Pestañas del menú inferior; el mismo set que idsMenuInferior en el MainActivity anterior. */
 val bottomNavItems = listOf(
-    BottomNavItem(Destinations.HOME, "Inicio", Icons.Filled.Home, Icons.Outlined.Home),
+    BottomNavItem(Destinations.HOME, "Dashboard", Icons.Filled.Home, Icons.Outlined.Home),
     BottomNavItem(Destinations.PERSONAL, "Personal", Icons.Filled.Person, Icons.Outlined.Person),
-    BottomNavItem(Destinations.AREAS, "Áreas", Icons.Filled.Place, Icons.Outlined.Place),
-    BottomNavItem(Destinations.MIS_RESERVAS, "Reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.PERFIL, "Perfil", Icons.Filled.Person, Icons.Outlined.Person),
+    BottomNavItem(Destinations.AREAS, "Inventario", Icons.Filled.Place, Icons.Outlined.Place),
+    BottomNavItem(Destinations.MIS_RESERVAS, "Areas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
+
 )
 
 fun tituloPantalla(route: String?): String = when {
