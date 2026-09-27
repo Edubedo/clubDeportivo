@@ -32,6 +32,9 @@ class TorneosViewModel(
     private val _mostrarModalCrear = MutableLiveData(false)
     val mostrarModalCrear: LiveData<Boolean> = _mostrarModalCrear
 
+    private val _torneoEnEdicion = MutableLiveData<Torneo?>(null)
+    val torneoEnEdicion: LiveData<Torneo?> = _torneoEnEdicion
+
     init {
         cargarTorneos()
         viewModelScope.launch { _areas.value = areaRepository.obtenerAreas() }
@@ -55,18 +58,31 @@ class TorneosViewModel(
     }
 
     fun abrirModalCrear() {
+        _torneoEnEdicion.value = null
+        _mostrarModalCrear.value = true
+    }
+
+    fun abrirModalEditar(torneo: Torneo) {
+        _torneoEnEdicion.value = torneo
         _mostrarModalCrear.value = true
     }
 
     fun cerrarModalCrear() {
         _mostrarModalCrear.value = false
+        _torneoEnEdicion.value = null
     }
 
-    fun crearTorneo(nombre: String, disciplina: String, areaId: String, fechaInicio: String, fechaFin: String, cupoMaximo: Int) {
+    fun guardarTorneo(id: String?, nombre: String, disciplina: String, areaId: String, fechaInicio: String, fechaFin: String, cupoMaximo: Int) {
         viewModelScope.launch {
-            torneoRepository.crearTorneo(nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo)
-            _mensaje.value = "Torneo creado: $nombre"
+            if (id == null) {
+                torneoRepository.crearTorneo(nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo)
+                _mensaje.value = "Torneo creado: $nombre"
+            } else {
+                torneoRepository.actualizarTorneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo)
+                _mensaje.value = "Torneo actualizado: $nombre"
+            }
             _mostrarModalCrear.value = false
+            _torneoEnEdicion.value = null
             cargarTorneos()
         }
     }

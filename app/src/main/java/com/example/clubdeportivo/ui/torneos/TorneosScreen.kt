@@ -10,28 +10,41 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +70,9 @@ import com.example.clubdeportivo.data.model.Torneo
 import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.FullScreenLoading
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 private val fondoPantalla = Color(0xFFF8FAFD)
 private val colorVerde = Color(0xFF10B981)
@@ -69,6 +85,7 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
     val cargando by viewModel.cargando.observeAsState(false)
     val mensaje by viewModel.mensaje.observeAsState()
     val mostrarModalCrear by viewModel.mostrarModalCrear.observeAsState(false)
+    val torneoEnEdicion by viewModel.torneoEnEdicion.observeAsState()
 
     val esAdministrador = SesionManager.usuarioActual?.rol in rolesDeAdministracion
 
@@ -109,7 +126,11 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
                 mensaje = "No hay torneos disponibles.",
                 modifier = Modifier.padding(innerPadding)
             )
-            esAdministrador -> TorneosAdminContent(torneos = torneos, modifier = Modifier.padding(innerPadding))
+            esAdministrador -> TorneosAdminContent(
+                torneos = torneos,
+                modifier = Modifier.padding(innerPadding),
+                onEditar = { viewModel.abrirModalEditar(it) }
+            )
             else -> TorneosSocioContent(
                 torneos = torneos,
                 modifier = Modifier.padding(innerPadding),
@@ -119,10 +140,11 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
     }
 
     if (mostrarModalCrear) {
-        ModalNuevoTorneo(
+        ModalTorneo(
             areas = areas,
-            onCrear = { nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo ->
-                viewModel.crearTorneo(nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo)
+            torneoExistente = torneoEnEdicion,
+            onGuardar = { id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo ->
+                viewModel.guardarTorneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo)
             },
             onCerrar = { viewModel.cerrarModalCrear() }
         )
@@ -131,7 +153,7 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
 
 /** Vista de administración: encabezado de marca + tarjetas con cupo y avance, sin botón de inscripción. */
 @Composable
-private fun TorneosAdminContent(torneos: List<Torneo>, modifier: Modifier = Modifier) {
+private fun TorneosAdminContent(torneos: List<Torneo>, modifier: Modifier = Modifier, onEditar: (Torneo) -> Unit) {
     Column(modifier = modifier.fillMaxSize()) {
         Text(
             text = "Torneos",
@@ -149,14 +171,16 @@ private fun TorneosAdminContent(torneos: List<Torneo>, modifier: Modifier = Modi
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(torneos, key = { it.id }) { torneo -> TorneoCardAdmin(torneo) }
+                items(torneos, key = { it.id }) { torneo ->
+                    TorneoCardAdmin(torneo = torneo, onEditar = { onEditar(torneo) })
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TorneoCardAdmin(torneo: Torneo) {
+private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
     val estilo = estiloDisciplina(torneo.disciplina)
     val libres = (torneo.cupoMaximo - torneo.inscritos).coerceAtLeast(0)
     val progreso = if (torneo.cupoMaximo > 0) torneo.inscritos.toFloat() / torneo.cupoMaximo.toFloat() else 0f
@@ -182,6 +206,17 @@ private fun TorneoCardAdmin(torneo: Torneo) {
                         .padding(end = 8.dp)
                 )
                 EtiquetaDisciplina(estilo = estilo, disciplina = torneo.disciplina)
+                IconButton(
+                    onClick = onEditar,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Editar torneo",
+                        tint = Color(0xFF94A3B8),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -314,22 +349,50 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
 
 private val disciplinasDisponibles = listOf("Fútbol", "Básquetbol", "Tenis", "Natación", "Voleibol")
 
+/** Colores de campo con texto oscuro y legible tanto escribiendo como ya lleno. */
 @Composable
-private fun ModalNuevoTorneo(
+private fun coloresDeCampo() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = Color(0xFF111827),
+    unfocusedTextColor = Color(0xFF111827),
+    disabledTextColor = Color(0xFF111827),
+    focusedBorderColor = colorVerde,
+    cursorColor = colorVerde
+)
+
+private fun manianaEnMillis(): Long =
+    LocalDate.now().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun fechaAMillis(fecha: String): Long? = try {
+    LocalDate.parse(fecha).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+} catch (e: Exception) {
+    null
+}
+
+private fun millisAFecha(millis: Long): String =
+    Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString()
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ModalTorneo(
     areas: List<Area>,
-    onCrear: (nombre: String, disciplina: String, areaId: String, fechaInicio: String, fechaFin: String, cupoMaximo: Int) -> Unit,
+    torneoExistente: Torneo?,
+    onGuardar: (id: String?, nombre: String, disciplina: String, areaId: String, fechaInicio: String, fechaFin: String, cupoMaximo: Int) -> Unit,
     onCerrar: () -> Unit
 ) {
-    var nombre by remember { mutableStateOf("") }
-    var disciplina by remember { mutableStateOf(disciplinasDisponibles.first()) }
-    var area by remember { mutableStateOf(areas.firstOrNull()) }
-    var fechaInicio by remember { mutableStateOf("") }
-    var fechaFin by remember { mutableStateOf("") }
-    var cupoMaximo by remember { mutableStateOf("16") }
+    val esEdicion = torneoExistente != null
+
+    var nombre by remember { mutableStateOf(torneoExistente?.nombre ?: "") }
+    var disciplina by remember { mutableStateOf(torneoExistente?.disciplina ?: disciplinasDisponibles.first()) }
+    var area by remember {
+        mutableStateOf(areas.find { it.id == torneoExistente?.areaId } ?: areas.firstOrNull())
+    }
+    var fechaInicio by remember { mutableStateOf(torneoExistente?.fechaInicio ?: "") }
+    var fechaFin by remember { mutableStateOf(torneoExistente?.fechaFin ?: "") }
+    var cupoMaximo by remember { mutableStateOf((torneoExistente?.cupoMaximo ?: 16).toString()) }
     var mostrarDropdownDisciplina by remember { mutableStateOf(false) }
     var mostrarDropdownArea by remember { mutableStateOf(false) }
 
-    val puedeCrear = nombre.isNotBlank() && area != null && fechaInicio.isNotBlank() && fechaFin.isNotBlank() &&
+    val puedeGuardar = nombre.isNotBlank() && area != null && fechaInicio.isNotBlank() && fechaFin.isNotBlank() &&
         (cupoMaximo.toIntOrNull() ?: 0) > 0
 
     Dialog(
@@ -337,17 +400,28 @@ private fun ModalNuevoTorneo(
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.92f),
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .heightIn(max = 640.dp),
             shape = RoundedCornerShape(20.dp),
             color = Color.White
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp)
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = "+ Nuevo torneo", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+                    Text(
+                        text = if (esEdicion) "Editar torneo" else "+ Nuevo torneo",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF111827)
+                    )
                     IconButton(onClick = onCerrar) {
                         Icon(imageVector = Icons.Filled.Close, contentDescription = "Cerrar", tint = Color(0xFF94A3B8))
                     }
@@ -361,7 +435,8 @@ private fun ModalNuevoTorneo(
                     onValueChange = { nombre = it },
                     placeholder = { Text("Ej: Copa Otoño de Fútbol") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = coloresDeCampo()
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -410,23 +485,11 @@ private fun ModalNuevoTorneo(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         EtiquetaCampo("FECHA INICIO")
-                        OutlinedTextField(
-                            value = fechaInicio,
-                            onValueChange = { fechaInicio = it },
-                            placeholder = { Text("AAAA-MM-DD") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
+                        CampoFecha(fecha = fechaInicio, onFechaSeleccionada = { fechaInicio = it })
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         EtiquetaCampo("FECHA FIN")
-                        OutlinedTextField(
-                            value = fechaFin,
-                            onValueChange = { fechaFin = it },
-                            placeholder = { Text("AAAA-MM-DD") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
+                        CampoFecha(fecha = fechaFin, onFechaSeleccionada = { fechaFin = it })
                     }
                 }
 
@@ -437,7 +500,8 @@ private fun ModalNuevoTorneo(
                     value = cupoMaximo,
                     onValueChange = { cupoMaximo = it.filter { c -> c.isDigit() } },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = coloresDeCampo()
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -445,18 +509,88 @@ private fun ModalNuevoTorneo(
                 Button(
                     onClick = {
                         val areaSeleccionada = area ?: return@Button
-                        onCrear(nombre, disciplina, areaSeleccionada.id, fechaInicio, fechaFin, cupoMaximo.toIntOrNull() ?: 0)
+                        onGuardar(
+                            torneoExistente?.id,
+                            nombre,
+                            disciplina,
+                            areaSeleccionada.id,
+                            fechaInicio,
+                            fechaFin,
+                            cupoMaximo.toIntOrNull() ?: 0
+                        )
                     },
-                    enabled = puedeCrear,
+                    enabled = puedeGuardar,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(26.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colorVerde)
                 ) {
-                    Text(text = "Crear torneo", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        text = if (esEdicion) "Guardar cambios" else "Crear torneo",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
             }
+        }
+    }
+}
+
+/** Campo de fecha de solo lectura que abre un calendario; no permite elegir hoy ni fechas pasadas. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
+    var mostrarCalendario by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = fecha,
+            onValueChange = {},
+            readOnly = true,
+            placeholder = { Text("Elegir") },
+            trailingIcon = {
+                Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = "Elegir fecha", tint = Color(0xFF94A3B8))
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = coloresDeCampo()
+        )
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clickable { mostrarCalendario = true },
+            color = Color.Transparent
+        ) {}
+    }
+
+    if (mostrarCalendario) {
+        val estadoFecha = rememberDatePickerState(
+            initialSelectedDateMillis = fechaAMillis(fecha) ?: manianaEnMillis(),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis >= manianaEnMillis()
+            }
+        )
+        DatePickerDialog(
+            onDismissRequest = { mostrarCalendario = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    estadoFecha.selectedDateMillis?.let { onFechaSeleccionada(millisAFecha(it)) }
+                    mostrarCalendario = false
+                }) {
+                    Text("Aceptar", color = colorVerde, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarCalendario = false }) {
+                    Text("Cancelar", color = Color(0xFF94A3B8))
+                }
+            }
+        ) {
+            DatePicker(state = estadoFecha)
         }
     }
 }
@@ -486,7 +620,8 @@ private fun DropdownSeleccionable(
             readOnly = true,
             trailingIcon = { Text("▼") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = coloresDeCampo()
         )
 
         Surface(
