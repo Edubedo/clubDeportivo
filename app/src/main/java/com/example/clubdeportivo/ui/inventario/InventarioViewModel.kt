@@ -13,13 +13,21 @@ data class ArticuloInventario(
     val stockMinimo: Int
 )
 
+data class ActividadInventario(
+    val id: String,
+    val descripcion: String,
+    val timestamp: Long
+)
+
+/** Cuántas entradas de [ActividadInventario] se conservan como máximo en el historial. */
+private const val MAX_ACTIVIDADES = 50
+
 class InventarioViewModel : ViewModel() {
 
     private val _articulos = MutableLiveData<List<ArticuloInventario>>(
         listOf(
             ArticuloInventario("1", "Raquetas de Tenis", "Tenis", 12, "🎾", 5),
             ArticuloInventario("2", "Pelotas de Tenis", "Tenis", 48, "🎾", 20),
-            ArticuloInventario("3", "Balones de Baloncesto", "Baloncesto", 8, "🏀", 3),
             ArticuloInventario("4", "Balones de Voleibol", "Voleibol", 6, "🏐", 4),
             ArticuloInventario("5", "Balones de Fútbol", "Fútbol", 10, "⚽", 5),
             ArticuloInventario("6", "Gorros de Natación", "Natación", 20, "🏊", 10),
@@ -35,7 +43,14 @@ class InventarioViewModel : ViewModel() {
     private val _mostrarModal = MutableLiveData(false)
     val mostrarModal: LiveData<Boolean> = _mostrarModal
 
-    private val _deportes = listOf("Todos", "Baloncesto", "Voleibol", "Tenis", "Fútbol", "Natación")
+    /** Artículo que se está editando en el modal, o null si el modal está en modo "agregar". */
+    private val _articuloEnEdicion = MutableLiveData<ArticuloInventario?>(null)
+    val articuloEnEdicion: LiveData<ArticuloInventario?> = _articuloEnEdicion
+
+    private val _historial = MutableLiveData<List<ActividadInventario>>(emptyList())
+    val historial: LiveData<List<ActividadInventario>> = _historial
+
+    private val _deportes = listOf("Todos", "Voleibol", "Tenis", "Fútbol", "Natación")
 
     fun obtenerDeportes(): List<String> = _deportes
 
@@ -53,11 +68,18 @@ class InventarioViewModel : ViewModel() {
     }
 
     fun abrirModalAgregar() {
+        _articuloEnEdicion.value = null
+        _mostrarModal.value = true
+    }
+
+    fun abrirModalEditar(articulo: ArticuloInventario) {
+        _articuloEnEdicion.value = articulo
         _mostrarModal.value = true
     }
 
     fun cerrarModalAgregar() {
         _mostrarModal.value = false
+        _articuloEnEdicion.value = null
     }
 
     fun agregarArticulo(nombre: String, deporte: String, cantidadInicial: Int, stockMinimo: Int) {
@@ -73,7 +95,41 @@ class InventarioViewModel : ViewModel() {
         val listaActual = _articulos.value?.toMutableList() ?: mutableListOf()
         listaActual.add(nuevoArticulo)
         _articulos.value = listaActual
+        registrarActividad("Se agregó \"$nombre\" ($cantidadInicial uds.)")
         _mostrarModal.value = false
+        _articuloEnEdicion.value = null
+    }
+
+    /**
+     * Actualiza nombre, deporte, cantidad y stock mínimo de un artículo existente.
+     * A diferencia de [incrementarCantidad]/[decrementarCantidad] (que solo tocan la
+     * cantidad de a 1 en 1 desde la tarjeta), esto permite corregir cualquier campo desde
+     * el modal de edición.
+     */
+    fun editarArticulo(id: String, nombre: String, deporte: String, cantidad: Int, stockMinimo: Int) {
+        val listaActual = _articulos.value?.toMutableList() ?: return
+        val indice = listaActual.indexOfFirst { it.id == id }
+        if (indice != -1) {
+            listaActual[indice] = listaActual[indice].copy(
+                nombre = nombre,
+                deporte = deporte,
+                cantidad = cantidad,
+                icono = mapearIconoDeporte(deporte),
+                stockMinimo = stockMinimo
+            )
+            _articulos.value = listaActual
+            registrarActividad("Se editó \"$nombre\"")
+        }
+        _mostrarModal.value = false
+        _articuloEnEdicion.value = null
+    }
+
+    fun eliminarArticulo(articulo: ArticuloInventario) {
+        val listaActual = _articulos.value?.toMutableList() ?: return
+        if (listaActual.removeAll { it.id == articulo.id }) {
+            _articulos.value = listaActual
+            registrarActividad("Se eliminó \"${articulo.nombre}\" del inventario")
+        }
     }
 
     fun incrementarCantidad(articulo: ArticuloInventario) {
@@ -92,12 +148,23 @@ class InventarioViewModel : ViewModel() {
         if (indice != -1) {
             listaActual[indice] = articulo.copy(cantidad = nuevaCantidad)
             _articulos.value = listaActual
+            val signo = if (nuevaCantidad > articulo.cantidad) "+1" else "-1"
+            registrarActividad("${articulo.nombre}: $signo (ahora $nuevaCantidad uds.)")
         }
+    }
+
+    private fun registrarActividad(descripcion: String) {
+        val actual = _historial.value ?: emptyList()
+        val nueva = ActividadInventario(
+            id = "${System.currentTimeMillis()}-${actual.size}",
+            descripcion = descripcion,
+            timestamp = System.currentTimeMillis()
+        )
+        _historial.value = (listOf(nueva) + actual).take(MAX_ACTIVIDADES)
     }
 
     private fun mapearIconoDeporte(deporte: String): String = when (deporte) {
         "Tenis" -> "🎾"
-        "Baloncesto" -> "🏀"
         "Fútbol" -> "⚽"
         "Voleibol" -> "🏐"
         "Natación" -> "🏊"
