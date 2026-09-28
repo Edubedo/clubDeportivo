@@ -20,6 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -40,6 +44,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -99,12 +104,15 @@ fun MisReservasScreen() {
         )
     }
 
-    var mostrarDialogo by remember { mutableStateOf(false) }
+    // null = modal cerrado. Un CanchaItem = editando esa cancha. Un "nuevo" marcador = agregando.
+    var canchaEnEdicion by remember { mutableStateOf<CanchaItem?>(null) }
+    var mostrarDialogoAgregar by remember { mutableStateOf(false) }
+    var canchaAEliminar by remember { mutableStateOf<CanchaItem?>(null) }
 
     Scaffold(
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { mostrarDialogo = true },
+                onClick = { mostrarDialogoAgregar = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Agregar Cancha") },
                 containerColor = Color(0xFF22C55E),
@@ -130,37 +138,100 @@ fun MisReservasScreen() {
             ) {
                 items(canchas, key = { it.id }) { cancha ->
                     val indice = deportesDisponibles.indexOfFirst { it.first == cancha.deporte }.coerceAtLeast(0)
-                    CanchaRow(cancha = cancha, indiceColor = indice)
+                    CanchaRow(
+                        cancha = cancha,
+                        indiceColor = indice,
+                        onEditar = { canchaEnEdicion = cancha },
+                        onEliminar = { canchaAEliminar = cancha }
+                    )
                 }
                 item { Spacer(modifier = Modifier.height(72.dp)) }
             }
         }
     }
 
-    if (mostrarDialogo) {
-        AgregarCanchaDialog(
+    // Modal de "Agregar Cancha" (nueva)
+    if (mostrarDialogoAgregar) {
+        CanchaFormDialog(
+            titulo = "+ Agregar Cancha",
+            textoBoton = "Agregar cancha",
             deportesExistentes = canchas.map { it.deporte to it.emoji }.distinct(),
-            onDismiss = { mostrarDialogo = false },
-            onAgregar = { deporte, emoji, nombreCancha, _ ->
+            deporteInicial = null,
+            nombreCanchaInicial = "",
+            onDismiss = { mostrarDialogoAgregar = false },
+            onGuardar = { deporte, emoji, nombreCancha ->
                 canchas.add(
                     CanchaItem(
-                        id = "${canchas.size + 1}",
+                        id = "${System.currentTimeMillis()}",
                         deporte = deporte,
                         emoji = emoji,
                         nombreCancha = nombreCancha,
                         reservasHoy = 0
                     )
                 )
-                mostrarDialogo = false
+                mostrarDialogoAgregar = false
+            }
+        )
+    }
+
+    // Modal de "Editar Cancha" (reutiliza el mismo formulario, precargado)
+    canchaEnEdicion?.let { cancha ->
+        CanchaFormDialog(
+            titulo = "Editar Cancha",
+            textoBoton = "Guardar cambios",
+            deportesExistentes = canchas.map { it.deporte to it.emoji }.distinct(),
+            deporteInicial = cancha.deporte to cancha.emoji,
+            nombreCanchaInicial = cancha.nombreCancha,
+            onDismiss = { canchaEnEdicion = null },
+            onGuardar = { deporte, emoji, nombreCancha ->
+                val index = canchas.indexOfFirst { it.id == cancha.id }
+                if (index != -1) {
+                    canchas[index] = cancha.copy(
+                        deporte = deporte,
+                        emoji = emoji,
+                        nombreCancha = nombreCancha
+                    )
+                }
+                canchaEnEdicion = null
+            }
+        )
+    }
+
+    // Confirmación de eliminar
+    canchaAEliminar?.let { cancha ->
+        AlertDialog(
+            onDismissRequest = { canchaAEliminar = null },
+            title = { Text("Eliminar cancha") },
+            text = { Text("¿Seguro que quieres eliminar \"${cancha.deporte} — ${cancha.nombreCancha}\"? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        canchas.removeAll { it.id == cancha.id }
+                        canchaAEliminar = null
+                    }
+                ) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { canchaAEliminar = null }) {
+                    Text("Cancelar")
+                }
             }
         )
     }
 }
 
 @Composable
-private fun CanchaRow(cancha: CanchaItem, indiceColor: Int) {
+private fun CanchaRow(
+    cancha: CanchaItem,
+    indiceColor: Int,
+    onEditar: () -> Unit,
+    onEliminar: () -> Unit
+) {
     val fondo = colorParaIndice(indiceColor)
     val titulo = "${cancha.deporte} — ${cancha.nombreCancha}"
+    var menuAbierto by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -183,7 +254,7 @@ private fun CanchaRow(cancha: CanchaItem, indiceColor: Int) {
                 Text(text = cancha.emoji, fontSize = 20.sp)
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(text = titulo, fontWeight = FontWeight.Bold)
                 Text(
                     text = "${cancha.reservasHoy} reservas hoy",
@@ -204,25 +275,58 @@ private fun CanchaRow(cancha: CanchaItem, indiceColor: Int) {
                     )
                 }
             }
+
+            Box {
+                IconButton(onClick = { menuAbierto = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Más opciones")
+                }
+                DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Editar") },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                        onClick = {
+                            menuAbierto = false
+                            onEditar()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Eliminar") },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                        onClick = {
+                            menuAbierto = false
+                            onEliminar()
+                        }
+                    )
+                }
+            }
         }
     }
 }
 
 private enum class ModoDeporte { EXISTENTE, NUEVO }
 
+/**
+ * Formulario de cancha, reutilizado tanto para "Agregar" como para "Editar".
+ * Si [deporteInicial] y [nombreCanchaInicial] vienen cargados, el formulario
+ * arranca precargado (modo edición); si no, arranca vacío (modo alta).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AgregarCanchaDialog(
+private fun CanchaFormDialog(
+    titulo: String,
+    textoBoton: String,
     deportesExistentes: List<Pair<String, String>>, // nombre a emoji
+    deporteInicial: Pair<String, String>?,
+    nombreCanchaInicial: String,
     onDismiss: () -> Unit,
-    onAgregar: (deporte: String, emoji: String, nombreCancha: String, esNuevoDeporte: Boolean) -> Unit
+    onGuardar: (deporte: String, emoji: String, nombreCancha: String) -> Unit
 ) {
     var modo by remember { mutableStateOf(ModoDeporte.EXISTENTE) }
-    var deporteSeleccionado by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var deporteSeleccionado by remember { mutableStateOf(deporteInicial) }
     var dropdownAbierto by remember { mutableStateOf(false) }
     var nombreDeporteNuevo by remember { mutableStateOf("") }
     var emojiNuevo by remember { mutableStateOf("") }
-    var nombreCancha by remember { mutableStateOf("") }
+    var nombreCancha by remember { mutableStateOf(nombreCanchaInicial) }
 
     val puedeGuardar = when (modo) {
         ModoDeporte.EXISTENTE -> deporteSeleccionado != null && nombreCancha.isNotBlank()
@@ -241,7 +345,7 @@ private fun AgregarCanchaDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "+ Agregar Cancha",
+                        text = titulo,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -346,9 +450,9 @@ private fun AgregarCanchaDialog(
                     onClick = {
                         when (modo) {
                             ModoDeporte.EXISTENTE -> deporteSeleccionado?.let {
-                                onAgregar(it.first, it.second, nombreCancha, false)
+                                onGuardar(it.first, it.second, nombreCancha)
                             }
-                            ModoDeporte.NUEVO -> onAgregar(nombreDeporteNuevo, emojiNuevo, nombreCancha, true)
+                            ModoDeporte.NUEVO -> onGuardar(nombreDeporteNuevo, emojiNuevo, nombreCancha)
                         }
                     },
                     enabled = puedeGuardar,
@@ -357,7 +461,7 @@ private fun AgregarCanchaDialog(
                         .height(48.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Agregar cancha")
+                    Text(textoBoton)
                 }
             }
         }
