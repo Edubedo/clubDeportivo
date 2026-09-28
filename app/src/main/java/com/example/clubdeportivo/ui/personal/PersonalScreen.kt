@@ -1,7 +1,8 @@
-package com.example.clubdeportivo.ui.areas
+package com.example.clubdeportivo.ui.personal
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,94 +11,203 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
+import com.example.clubdeportivo.util.FotoPerfilManager
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
-// --- MODELOS DE DATOS FAKE SOLO ES ESCRITO) ---
+// =====================================================================
+// 1. MODELOS REALES
+// =====================================================================
+
+enum class DisponibilidadArea { DISPONIBLE, OCUPADA, MANTENIMIENTO }
+
+data class Usuario(
+    var id: String = "",
+    val nombre: String = "",
+    val correo: String = "",
+    val telefono: String = "",
+    val estado: String = "ACTIVO",
+    val fotoUrl: String? = null
+)
+
 data class Empleado(
-    val id: String,
-    val inicial: String,
+    var id: String = "",
+    val usuarioId: String = "",
+    val puesto: String = "",
+    val turno: String = "",
+    val areaAsignadaId: String? = null
+)
+
+data class Area(
+    var id: String = "",
+    val nombre: String = "",
+    val tipo: String = "",
+    val capacidad: Int = 0,
+    val disponibilidad: DisponibilidadArea = DisponibilidadArea.DISPONIBLE,
+    val permiteExternos: Boolean = false
+)
+
+data class EmpleadoUI(
+    val empleadoId: String,
+    val usuarioId: String,
     val nombre: String,
-    val rol: String,
+    val correo: String,
+    val telefono: String,
+    val estado: String,
+    val puesto: String,
     val turno: String,
-    val colorAvatarFondo: Color,
-    val colorAvatarTexto: Color,
-    val areasAsignadas: List<AreaAsignada>
+    val areaAsignadaId: String?,
+    val areaNombre: String,
+    val fotoUrl: String?
 )
 
-data class AreaAsignada(
-    val icono: String,
-    val nombre: String,
-    val colorFondo: Color,
-    val colorTexto: Color
-)
+// =====================================================================
+// 2. REPOSITORIO
+// =====================================================================
 
-data class CanchaMock(
-    val id: String,
-    val icono: String,
-    val nombre: String
-)
+class PersonalRepository {
+    private val db = FirebaseFirestore.getInstance()
 
-// ---  DATOS FAKES ---
-class PersonalViewModel : ViewModel() {
-    private val _empleados = MutableLiveData<List<Empleado>>()
-    val empleados: LiveData<List<Empleado>> = _empleados
-
-    init {
-        cargarPersonalMock()
+    suspend fun obtenerAreas(): List<Area> {
+        return db.collection("areas").get().await().documents.mapNotNull {
+            it.toObject(Area::class.java)?.apply { id = it.id }
+        }
     }
 
-    private fun cargarPersonalMock() {
-        _empleados.value = listOf(
-            Empleado(
-                id = "1", inicial = "C", nombre = "Carlos Mendez", rol = "Instructor de Tenis", turno = "5:00 am a 1:30 pm",
-                colorAvatarFondo = Color(0xFFE8F5E9), colorAvatarTexto = Color(0xFF4CAF50),
-                areasAsignadas = listOf(
-                    AreaAsignada("🎾", "Cancha A", Color(0xFFFFF9C4), Color(0xFFFBC02D)),
-                    AreaAsignada("🎾", "Cancha B", Color(0xFFFFF9C4), Color(0xFFFBC02D))
-                )
-            ),
-            Empleado(
-                id = "2", inicial = "M", nombre = "Miguel Torres", rol = "Instructor de Fútbol", turno = "1:30 pm a 10:00 pm",
-                colorAvatarFondo = Color(0xFFE8F5E9), colorAvatarTexto = Color(0xFF4CAF50),
-                areasAsignadas = listOf(
-                    AreaAsignada("⚽", "Cancha A", Color(0xFFE0F2F1), Color(0xFF26A69A)),
-                    AreaAsignada("⚽", "Cancha B", Color(0xFFE0F2F1), Color(0xFF26A69A))
-                )
-            ),
-            Empleado(
-                id = "3", inicial = "S", nombre = "Sofía Ramírez", rol = "Salvavidas", turno = "5:00 am a 1:30 pm",
-                colorAvatarFondo = Color(0xFFE8F5E9), colorAvatarTexto = Color(0xFF4CAF50),
-                areasAsignadas = listOf(
-                    AreaAsignada("🏊", "Piscina Principal", Color(0xFFE3F2FD), Color(0xFF2196F3))
-                )
+    suspend fun obtenerEmpleadosConUsuarios(areas: List<Area>): List<EmpleadoUI> {
+        val empleadosDb = db.collection("empleados").get().await().documents.mapNotNull {
+            it.toObject(Empleado::class.java)?.apply { id = it.id }
+        }
+        val usuariosDb = db.collection("usuarios").get().await().documents.mapNotNull {
+            it.toObject(Usuario::class.java)?.apply { id = it.id }
+        }
+
+        return empleadosDb.mapNotNull { emp ->
+            val usuario = usuariosDb.find { it.id == emp.usuarioId } ?: return@mapNotNull null
+            val area = areas.find { it.id == emp.areaAsignadaId }
+
+            EmpleadoUI(
+                empleadoId = emp.id,
+                usuarioId = usuario.id,
+                nombre = usuario.nombre,
+                correo = usuario.correo,
+                telefono = usuario.telefono,
+                estado = usuario.estado,
+                puesto = emp.puesto,
+                turno = emp.turno,
+                areaAsignadaId = emp.areaAsignadaId,
+                areaNombre = area?.nombre ?: "Sin área asignada",
+                fotoUrl = usuario.fotoUrl
             )
+        }
+    }
+
+    suspend fun guardarPersonal(
+        empleadoId: String?, usuarioId: String?,
+        nombre: String, correo: String, telefono: String, estado: String,
+        puesto: String, turno: String, areaId: String?, contrasena: String, fotoUrl: String?
+    ) {
+        val finalUserId = if (usuarioId.isNullOrEmpty()) db.collection("usuarios").document().id else usuarioId
+        val userRef = db.collection("usuarios").document(finalUserId)
+
+        val usuario = Usuario(
+            id = finalUserId,
+            nombre = nombre,
+            correo = correo,
+            telefono = telefono,
+            estado = estado,
+            fotoUrl = fotoUrl
         )
+        userRef.set(usuario).await()
+
+        val finalEmpId = if (empleadoId.isNullOrEmpty()) db.collection("empleados").document().id else empleadoId
+        val empRef = db.collection("empleados").document(finalEmpId)
+
+        val empleado = Empleado(
+            id = finalEmpId,
+            usuarioId = finalUserId,
+            puesto = puesto,
+            turno = turno,
+            areaAsignadaId = areaId
+        )
+        empRef.set(empleado).await()
     }
 }
 
-// --- VISTA PRINCIPAL ---
+// =====================================================================
+// 3. VIEWMODEL
+// =====================================================================
+
+class PersonalViewModel : ViewModel() {
+    private val repository = PersonalRepository()
+
+    private val _empleadosUI = MutableLiveData<List<EmpleadoUI>>()
+    val empleadosUI: LiveData<List<EmpleadoUI>> = _empleadosUI
+
+    private val _areasDisponibles = MutableLiveData<List<Area>>()
+    val areasDisponibles: LiveData<List<Area>> = _areasDisponibles
+
+    init {
+        cargarDatos()
+    }
+
+    fun cargarDatos() {
+        viewModelScope.launch {
+            try {
+                val areas = repository.obtenerAreas()
+                _areasDisponibles.value = areas
+                _empleadosUI.value = repository.obtenerEmpleadosConUsuarios(areas)
+            } catch (_: Exception) { }
+        }
+    }
+
+    fun guardarPersonal(
+        empleadoId: String?, usuarioId: String?,
+        nombre: String, correo: String, telefono: String, estado: String,
+        puesto: String, turno: String, areaId: String?, contrasena: String, fotoUrl: String?
+    ) {
+        viewModelScope.launch {
+            repository.guardarPersonal(empleadoId, usuarioId, nombre, correo, telefono, estado, puesto, turno, areaId, contrasena, fotoUrl)
+            cargarDatos()
+        }
+    }
+}
+
+// =====================================================================
+// 4. VISTA PRINCIPAL (UI)
+// =====================================================================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PersonalScreen(
-    viewModel: PersonalViewModel = viewModel()
-) {
-    val empleados by viewModel.empleados.observeAsState(emptyList())
+fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
+    val empleados by viewModel.empleadosUI.observeAsState(emptyList())
+    val areas by viewModel.areasDisponibles.observeAsState(emptyList())
+
     var mostrarBottomSheet by remember { mutableStateOf(false) }
-    var empleadoEnEdicion by remember { mutableStateOf<Empleado?>(null) }
+    var empleadoEnEdicion by remember { mutableStateOf<EmpleadoUI?>(null) }
 
     Scaffold(
         containerColor = Color(0xFFF9F9F9),
@@ -108,9 +218,7 @@ fun PersonalScreen(
                     mostrarBottomSheet = true
                 },
                 containerColor = Color(0xFF00D15B),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
+                contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar Personal")
                 Spacer(modifier = Modifier.width(8.dp))
@@ -118,27 +226,12 @@ fun PersonalScreen(
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)) {
             Spacer(modifier = Modifier.height(16.dp))
+            Text("Personal", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B), modifier = Modifier.padding(bottom = 16.dp))
 
-            Text(
-                text = "Personal",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF1E293B),
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                items(empleados, key = { it.id }) { empleado ->
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
+                items(empleados, key = { it.empleadoId }) { empleado ->
                     EmpleadoCard(
                         empleado = empleado,
                         onEditClick = {
@@ -152,287 +245,326 @@ fun PersonalScreen(
     }
 
     if (mostrarBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { mostrarBottomSheet = false },
-            containerColor = Color.White,
-            dragHandle = { BottomSheetDefaults.DragHandle() }
-        ) {
+        ModalBottomSheet(onDismissRequest = { mostrarBottomSheet = false }, containerColor = Color.White) {
             FormularioPersonalContent(
-                empleado = empleadoEnEdicion,
-                onDismiss = { mostrarBottomSheet = false }
+                areas = areas,
+                empleadoAEditar = empleadoEnEdicion,
+                onGuardar = { nombre, correo, telefono, estado, puesto, turno, areaId, contrasena, fotoUrl ->
+                    viewModel.guardarPersonal(
+                        empleadoId = empleadoEnEdicion?.empleadoId,
+                        usuarioId = empleadoEnEdicion?.usuarioId,
+                        nombre = nombre,
+                        correo = correo,
+                        telefono = telefono,
+                        estado = estado,
+                        puesto = puesto,
+                        turno = turno,
+                        areaId = areaId,
+                        contrasena = contrasena,
+                        fotoUrl = fotoUrl
+                    )
+                    mostrarBottomSheet = false
+                },
+                onCancelar = {
+                    mostrarBottomSheet = false
+                }
             )
         }
     }
 }
 
-// --- FORMULARIO BOTTOM SHEET ---
+// =====================================================================
+// 5. FORMULARIO Y COMPONENTES
+// =====================================================================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormularioPersonalContent(
-    empleado: Empleado?,
-    onDismiss: () -> Unit
+    areas: List<Area>,
+    empleadoAEditar: EmpleadoUI?,
+    onGuardar: (String, String, String, String, String, String, String?, String, String?) -> Unit,
+    onCancelar: () -> Unit
 ) {
-    val esModoEdicion = empleado != null
-    val tituloFormulario = if (esModoEdicion) "Editar Personal" else "+ Agregar Personal"
-    val textoBoton = if (esModoEdicion) "Guardar Cambios" else "+ Agregar Personal"
+    val context = LocalContext.current
 
-    val roles = listOf(
-        "Instructor de Tenis", "Instructor de Baloncesto", "Instructor de Voleibol",
-        "Instructor de Fútbol", "Salvavidas", "Administrador de área"
-    )
-
-    val turnos = listOf(
-        "5:00 am a 1:30 pm",
-        "1:30 pm a 10:00 pm"
-    )
-
-    var nombre by remember(empleado) { mutableStateOf(empleado?.nombre ?: "") }
-    var correo by remember(empleado) { mutableStateOf("") }
+    var nombre by remember { mutableStateOf(empleadoAEditar?.nombre ?: "") }
+    var telefono by remember { mutableStateOf(empleadoAEditar?.telefono ?: "") }
+    var correo by remember { mutableStateOf(empleadoAEditar?.correo ?: "") }
+    var estadoSeleccionado by remember { mutableStateOf(empleadoAEditar?.estado ?: "ACTIVO") }
     var contrasena by remember { mutableStateOf("") }
+    var confirmarContrasena by remember { mutableStateOf("") }
+    var mensajeError by remember { mutableStateOf<String?>(null) }
 
-    var rolExpandido by remember { mutableStateOf(false) }
-    var rolSeleccionado by remember(empleado) {
-        mutableStateOf(roles.find { it == empleado?.rol } ?: roles[0])
+    val tempUserId = remember { empleadoAEditar?.usuarioId ?: java.util.UUID.randomUUID().toString() }
+
+    var fotoPerfilPath by remember {
+        mutableStateOf<String?>(
+            if (empleadoAEditar != null) {
+                FotoPerfilManager.obtenerFoto(context, empleadoAEditar.usuarioId)?.absolutePath ?: empleadoAEditar.fotoUrl
+            } else {
+                null
+            }
+        )
     }
+
+    val selectorFoto = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            val archivoFoto = FotoPerfilManager.guardarFoto(
+                context = context,
+                uri = uri,
+                usuarioId = tempUserId
+            )
+            fotoPerfilPath = archivoFoto?.absolutePath
+        }
+    }
+
+    val tiposPersonal = listOf("Instructor", "Limpieza")
+    val turnos = listOf("Matutino", "Vespertino")
+    val estados = listOf("ACTIVO", "INACTIVO")
+
+    var areaExpandida by remember { mutableStateOf(false) }
+    var areaSeleccionada by remember {
+        mutableStateOf(areas.find { it.id == empleadoAEditar?.areaAsignadaId } ?: areas.firstOrNull())
+    }
+
+    val tipoInicial = tiposPersonal.find { empleadoAEditar?.puesto?.startsWith(it) == true } ?: tiposPersonal[0]
+    var tipoExpandido by remember { mutableStateOf(false) }
+    var tipoSeleccionado by remember { mutableStateOf(tipoInicial) }
 
     var turnoExpandido by remember { mutableStateOf(false) }
-    var turnoSeleccionado by remember(empleado) {
-        mutableStateOf(turnos.find { it == empleado?.turno } ?: turnos[0])
-    }
+    var turnoSeleccionado by remember { mutableStateOf(empleadoAEditar?.turno?.ifEmpty { turnos[0] } ?: turnos[0]) }
 
-    val canchasMock = listOf(
-        CanchaMock("1", "🏀", "Baloncesto — Cancha A"),
-        CanchaMock("2", "🏀", "Baloncesto — Cancha B"),
-        CanchaMock("3", "🏐", "Voleibol — Cancha A")
-    )
-    val canchasSeleccionadas = remember { mutableStateListOf("1") }
+    var estadoExpandido by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 32.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = tituloFormulario,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF1E293B)
-            )
-            IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color(0xFF94A3B8))
-            }
-        }
+    val nombreArea = areaSeleccionada?.nombre ?: "Sin Área"
+    val puestoGenerado = "$tipoSeleccionado de $nombreArea"
 
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
+        Text(
+            text = if (empleadoAEditar == null) "Agregar Personal" else "Editar Personal",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF1E293B)
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.weight(1f, fill = false)
-        ) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f, fill = false)) {
             item {
-                InputLabel("NOMBRE COMPLETO")
-                CustomTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    placeholder = "Nombre"
-                )
-            }
-
-            item {
-                InputLabel("TIPO DE PERSONAL")
-                ExposedDropdownMenuBox(
-                    expanded = rolExpandido,
-                    onExpandedChange = { rolExpandido = !rolExpandido }
-                ) {
-                    CustomTextField(
-                        value = rolSeleccionado,
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        trailingIcon = {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Desplegar", tint = Color(0xFF94A3B8))
-                        }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = rolExpandido,
-                        onDismissRequest = { rolExpandido = false },
-                        modifier = Modifier.background(Color.White)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE2E8F0))
+                            .clickable { selectorFoto.launch("image/*") },
+                        contentAlignment = Alignment.Center
                     ) {
-                        roles.forEach { seleccion ->
-                            DropdownMenuItem(
-                                text = { Text(seleccion, color = Color(0xFF333333)) },
-                                onClick = {
-                                    rolSeleccionado = seleccion
-                                    rolExpandido = false
-                                }
+                        if (fotoPerfilPath != null) {
+                            AsyncImage(
+                                model = fotoPerfilPath,
+                                contentDescription = "Foto de perfil",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
                             )
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = "Foto", tint = Color(0xFF94A3B8))
                         }
                     }
-                }
-            }
-
-            item {
-                InputLabel("TURNO")
-                ExposedDropdownMenuBox(
-                    expanded = turnoExpandido,
-                    onExpandedChange = { turnoExpandido = !turnoExpandido }
-                ) {
-                    CustomTextField(
-                        value = turnoSeleccionado,
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        trailingIcon = {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Desplegar", tint = Color(0xFF94A3B8))
-                        }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = turnoExpandido,
-                        onDismissRequest = { turnoExpandido = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        turnos.forEach { seleccion ->
-                            DropdownMenuItem(
-                                text = { Text(seleccion, color = Color(0xFF333333)) },
-                                onClick = {
-                                    turnoSeleccionado = seleccion
-                                    turnoExpandido = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                InputLabel("CORREO ELECTRÓNICO")
-                CustomTextField(
-                    value = correo,
-                    onValueChange = { correo = it },
-                    placeholder = "email@club.com"
-                )
-            }
-
-            item {
-                InputLabel("CONTRASEÑA DE ACCESO")
-                CustomTextField(
-                    value = contrasena,
-                    onValueChange = { contrasena = it },
-                    placeholder = "Contraseña"
-                )
-            }
-
-            item {
-                InputLabel("CANCHAS ASIGNADAS")
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    canchasMock.forEach { cancha ->
-                        CanchaCheckboxItem(
-                            cancha = cancha,
-                            seleccionada = canchasSeleccionadas.contains(cancha.id),
-                            onCheckedChange = { isChecked ->
-                                if (isChecked) canchasSeleccionadas.add(cancha.id)
-                                else canchasSeleccionadas.remove(cancha.id)
-                            }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    TextButton(onClick = { selectorFoto.launch("image/*") }) {
+                        Text(
+                            text = if (fotoPerfilPath == null) "Subir foto de perfil" else "Cambiar foto",
+                            color = Color(0xFF1E88E5),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
                         )
                     }
                 }
             }
-        }
+            item {
+                InputLabel("NOMBRE COMPLETO")
+                CustomTextField(value = nombre, onValueChange = { nombre = it }, placeholder = "Juan Pérez")
+            }
+            item {
+                InputLabel("TELÉFONO")
+                CustomTextField(value = telefono, onValueChange = { telefono = it }, placeholder = "312 000 0000")
+            }
+            item {
+                InputLabel("GMAIL / CORREO")
+                CustomTextField(value = correo, onValueChange = { correo = it }, placeholder = "correo@gmail.com")
+            }
+            item {
+                InputLabel("ESTADO")
+                ExposedDropdownMenuBox(expanded = estadoExpandido, onExpandedChange = { estadoExpandido = !estadoExpandido }) {
+                    CustomTextField(
+                        value = estadoSeleccionado, onValueChange = {}, readOnly = true,
+                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
+                    )
+                    ExposedDropdownMenu(expanded = estadoExpandido, onDismissRequest = { estadoExpandido = false }) {
+                        estados.forEach { est ->
+                            DropdownMenuItem(
+                                text = { Text(est) },
+                                onClick = { estadoSeleccionado = est; estadoExpandido = false }
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                InputLabel("CONTRASEÑA (Dejar en blanco si no se cambia)")
+                CustomTextField(value = contrasena, onValueChange = { contrasena = it }, placeholder = "Mín. 8 caracteres, 1 Mayús, 1 Núm", esContrasena = true)
+            }
+            item {
+                InputLabel("CONFIRMAR CONTRASEÑA")
+                CustomTextField(value = confirmarContrasena, onValueChange = { confirmarContrasena = it }, placeholder = "********", esContrasena = true)
+            }
 
+            if (mensajeError != null) {
+                item {
+                    Text(text = mensajeError!!, color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            item {
+                InputLabel("ÁREA DE TRABAJO")
+                ExposedDropdownMenuBox(expanded = areaExpandida, onExpandedChange = { areaExpandida = !areaExpandida }) {
+                    CustomTextField(
+                        value = areaSeleccionada?.nombre ?: "Sin áreas registradas", onValueChange = {}, readOnly = true,
+                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
+                    )
+                    ExposedDropdownMenu(expanded = areaExpandida, onDismissRequest = { areaExpandida = false }) {
+                        areas.forEach { area ->
+                            DropdownMenuItem(
+                                text = { Text(area.nombre) },
+                                onClick = { areaSeleccionada = area; areaExpandida = false }
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                InputLabel("TIPO DE PERSONAL")
+                ExposedDropdownMenuBox(expanded = tipoExpandido, onExpandedChange = { tipoExpandido = !tipoExpandido }) {
+                    CustomTextField(
+                        value = puestoGenerado, onValueChange = {}, readOnly = true,
+                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
+                    )
+                    ExposedDropdownMenu(expanded = tipoExpandido, onDismissRequest = { tipoExpandido = false }) {
+                        tiposPersonal.forEach { tipo ->
+                            DropdownMenuItem(
+                                text = { Text(tipo) },
+                                onClick = { tipoSeleccionado = tipo; tipoExpandido = false }
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                InputLabel("TURNO")
+                ExposedDropdownMenuBox(expanded = turnoExpandido, onExpandedChange = { turnoExpandido = !turnoExpandido }) {
+                    CustomTextField(
+                        value = turnoSeleccionado, onValueChange = {}, readOnly = true,
+                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
+                    )
+                    ExposedDropdownMenu(expanded = turnoExpandido, onDismissRequest = { turnoExpandido = false }) {
+                        turnos.forEach { turno ->
+                            DropdownMenuItem(
+                                text = { Text(turno) },
+                                onClick = { turnoSeleccionado = turno; turnoExpandido = false }
+                            )
+                        }
+                    }
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = { onDismiss() },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D15B)),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+        // Fila de botones: Cancelar y Guardar/Actualizar
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(textoBoton, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            OutlinedButton(
+                onClick = onCancelar,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancelar", fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+            }
+
+            Button(
+                onClick = {
+                    if (empleadoAEditar != null && contrasena.isEmpty()) {
+                        mensajeError = null
+                        onGuardar(nombre, correo, telefono, estadoSeleccionado, puestoGenerado, turnoSeleccionado, areaSeleccionada?.id, "", fotoPerfilPath)
+                    } else {
+                        val tieneMinimo8 = contrasena.length >= 8
+                        val tieneMayuscula = contrasena.any { it.isUpperCase() }
+                        val tieneNumero = contrasena.any { it.isDigit() }
+
+                        when {
+                            !tieneMinimo8 -> mensajeError = "La contraseña debe tener al menos 8 caracteres."
+                            !tieneMayuscula -> mensajeError = "La contraseña debe incluir al menos una letra mayúscula."
+                            !tieneNumero -> mensajeError = "La contraseña debe incluir al menos un número."
+                            contrasena != confirmarContrasena -> mensajeError = "Las contraseñas no coinciden."
+                            else -> {
+                                mensajeError = null
+                                onGuardar(nombre, correo, telefono, estadoSeleccionado, puestoGenerado, turnoSeleccionado, areaSeleccionada?.id, contrasena, fotoPerfilPath)
+                            }
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D15B)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
+            ) {
+                Text(if (empleadoAEditar == null) "Guardar" else "Actualizar", color = Color.White, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
 
-// --- COMPONENTES AUXILIARES UI ---
 @Composable
 fun InputLabel(text: String) {
-    Text(
-        text = text,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color(0xFF94A3B8),
-        modifier = Modifier.padding(bottom = 6.dp)
-    )
+    Text(text = text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), modifier = Modifier.padding(bottom = 6.dp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    placeholder: String = "",
-    readOnly: Boolean = false,
+    value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier,
+    placeholder: String = "", readOnly: Boolean = false, esContrasena: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text(placeholder, color = Color(0xFF94A3B8)) },
-        readOnly = readOnly,
-        trailingIcon = trailingIcon,
-        shape = RoundedCornerShape(12.dp),
+        value = value, onValueChange = onValueChange, placeholder = { Text(placeholder, color = Color(0xFF94A3B8)) },
+        readOnly = readOnly, trailingIcon = trailingIcon, shape = RoundedCornerShape(12.dp),
+        visualTransformation = if (esContrasena) PasswordVisualTransformation() else VisualTransformation.None,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFF1F5F9),
-            unfocusedContainerColor = Color(0xFFF1F5F9),
-            focusedBorderColor = Color.Transparent,
-            unfocusedBorderColor = Color.Transparent,
-            focusedTextColor = Color(0xFF333333),
-            unfocusedTextColor = Color(0xFF333333)
+            focusedContainerColor = Color(0xFFF1F5F9), unfocusedContainerColor = Color(0xFFF1F5F9),
+            focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent
         ),
         modifier = modifier.fillMaxWidth()
     )
 }
 
 @Composable
-fun CanchaCheckboxItem(cancha: CanchaMock, seleccionada: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    val borderColor = if (seleccionada) Color(0xFF00D15B).copy(alpha = 0.5f) else Color(0xFFE2E8F0)
-    val bgColor = if (seleccionada) Color(0xFF00D15B).copy(alpha = 0.05f) else Color.White
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(bgColor, RoundedCornerShape(12.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-            .clickable { onCheckedChange(!seleccionada) }
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-    ) {
-        Checkbox(
-            checked = seleccionada,
-            onCheckedChange = null,
-            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF94A3B8), uncheckedColor = Color(0xFF94A3B8))
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = cancha.icono, fontSize = 16.sp)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = cancha.nombre,
-            fontSize = 14.sp,
-            color = Color(0xFF333333),
-            fontWeight = if (seleccionada) FontWeight.Medium else FontWeight.Normal
-        )
+private fun EmpleadoCard(empleado: EmpleadoUI, onEditClick: () -> Unit) {
+    val context = LocalContext.current
+    val fotoPerfil = remember(empleado.usuarioId) {
+        FotoPerfilManager.obtenerFoto(context, empleado.usuarioId)?.absolutePath ?: empleado.fotoUrl
     }
-}
 
-// --- COMPONENTES DE LA TARJETA ---
-@Composable
-private fun EmpleadoCard(empleado: Empleado, onEditClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -440,95 +572,67 @@ private fun EmpleadoCard(empleado: Empleado, onEditClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .background(empleado.colorAvatarFondo, CircleShape),
+                        .clip(CircleShape)
+                        .background(Color(0xFFE8F5E9)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = empleado.inicial,
-                        color = empleado.colorAvatarTexto,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = empleado.nombre,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Color(0xFF333333)
-                    )
-                    Text(
-                        text = empleado.rol,
-                        fontSize = 13.sp,
-                        color = Color(0xFF94A3B8)
-                    )
-                }
-
-                Surface(
-                    onClick = onEditClick,
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFF1F5F9),
-                    modifier = Modifier.height(32.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "−",
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF64748B),
-                            modifier = Modifier.padding(end = 4.dp)
+                    if (fotoPerfil != null) {
+                        AsyncImage(
+                            model = fotoPerfil,
+                            contentDescription = "Foto de empleado",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
-                        Text(
-                            text = "Editar",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF64748B)
-                        )
+                    } else {
+                        val letra = if (empleado.nombre.isNotEmpty()) empleado.nombre.take(1).uppercase() else "?"
+                        Text(text = letra, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 }
-            }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = empleado.nombre, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF333333))
+                    Text(text = "${empleado.puesto} • ${empleado.turno}", fontSize = 13.sp, color = Color(0xFF94A3B8))
+                }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                empleado.areasAsignadas.forEach { area ->
-                    AreaBadge(area = area)
+                val colorEstado = if (empleado.estado == "ACTIVO") Color(0xFF2E7D32) else Color(0xFFC62828)
+                val fondoEstado = if (empleado.estado == "ACTIVO") Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                Surface(shape = RoundedCornerShape(8.dp), color = fondoEstado) {
+                    Text(
+                        text = empleado.estado,
+                        color = colorEstado,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
             }
-        }
-    }
-}
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFE3F2FD)) {
+                    Text(
+                        text = "📍 ${empleado.areaNombre}",
+                        color = Color(0xFF1E88E5),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
 
-@Composable
-private fun AreaBadge(area: AreaAsignada) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = area.colorFondo
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = area.icono, fontSize = 12.sp)
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = area.nombre,
-                color = area.colorTexto,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
+                TextButton(
+                    onClick = onEditClick,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF1E88E5))
+                ) {
+                    Text(text = "Editar", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
         }
     }
 }
