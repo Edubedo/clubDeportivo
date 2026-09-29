@@ -205,9 +205,17 @@ los mismos datos de ejemplo que antes vivían hardcodeados en `FakeAreaRepositor
 no hace falta cargar nada a mano.
 
 **Lo que todavía no se puede hacer desde la app** (faltan pantallas para eso, no es un límite de
-Firebase): contratar una membresía, ni dar de alta áreas/torneos/empleados nuevos (no hay un panel
-de administración todavía). Esas colecciones se llenan desde `FirebaseSeeder.kt` o a mano en la
-consola (Firestore Database → Iniciar colección → agregar documento).
+Firebase): dar de alta áreas/empleados nuevos (no hay un panel de administración todavía para esas
+colecciones). Esas colecciones se llenan desde `FirebaseSeeder.kt` o a mano en la consola
+(Firestore Database → Iniciar colección → agregar documento).
+
+**Gestión de membresías y paquetes familiares.** `ui/membresia/MembresiaScreen.kt` +
+`MembresiaViewModel.kt` sí cubren esto: un SUPERADMIN o ADMIN que entra a "Membresía" ve un panel
+de administración (alta y edición de membresías individuales o familiares, cambio de estado, y
+alta/baja de integrantes de un paquete familiar), mientras que un SOCIO sigue viendo su propia
+membresía de solo lectura, como antes — la misma pantalla se bifurca por rol, igual que
+`TorneosScreen.kt`. Para asignar una membresía hace falta elegir un socio de la lista que devuelve
+`UsuarioRepository.obtenerSocios()` (usuarios con `rol == SOCIO`).
 
 ### Datos de ejemplo ya cargados
 

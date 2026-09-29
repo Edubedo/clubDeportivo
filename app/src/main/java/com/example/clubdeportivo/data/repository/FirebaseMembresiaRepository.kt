@@ -24,11 +24,26 @@ private fun DocumentSnapshot.toMembresia(): Membresia? {
     )
 }
 
-/**
- * Todavía no hay una pantalla en la app para "contratar" una membresía — por ahora, para
- * probar esta pantalla con datos, hay que crear a mano un documento en la colección
- * "membresias" desde la consola de Firebase (ver docs/arquitectura.md).
- */
+private fun datosMembresia(
+    usuarioId: String,
+    tipo: TipoMembresia,
+    plan: PlanIndividual?,
+    paqueteFamiliarId: Int?,
+    precio: Double,
+    estado: EstadoMembresia,
+    fechaInicio: String,
+    fechaVencimiento: String
+): Map<String, Any?> = mapOf(
+    "usuarioId" to usuarioId,
+    "tipo" to tipo.name,
+    "plan" to plan?.name,
+    "paqueteFamiliarId" to paqueteFamiliarId?.toLong(),
+    "precio" to precio,
+    "estado" to estado.name,
+    "fechaInicio" to fechaInicio,
+    "fechaVencimiento" to fechaVencimiento
+)
+
 class FirebaseMembresiaRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) : MembresiaRepository {
@@ -51,5 +66,67 @@ class FirebaseMembresiaRepository(
                     parentesco = doc.getString("parentesco") ?: ""
                 )
             }
+    }
+
+    override suspend fun obtenerMembresias(): List<Membresia> {
+        return membresias.get().await().documents.mapNotNull { it.toMembresia() }
+    }
+
+    override suspend fun crearMembresia(
+        usuarioId: String,
+        tipo: TipoMembresia,
+        plan: PlanIndividual?,
+        paqueteFamiliarId: Int?,
+        precio: Double,
+        fechaInicio: String,
+        fechaVencimiento: String
+    ): Membresia {
+        val datos = datosMembresia(
+            usuarioId, tipo, plan, paqueteFamiliarId, precio,
+            EstadoMembresia.ACTIVA, fechaInicio, fechaVencimiento
+        )
+        val documento = membresias.add(datos).await()
+        return Membresia(
+            id = documento.id,
+            usuarioId = usuarioId,
+            tipo = tipo,
+            plan = plan,
+            paqueteFamiliarId = paqueteFamiliarId,
+            precio = precio,
+            estado = EstadoMembresia.ACTIVA,
+            fechaInicio = fechaInicio,
+            fechaVencimiento = fechaVencimiento
+        )
+    }
+
+    override suspend fun actualizarMembresia(
+        id: String,
+        tipo: TipoMembresia,
+        plan: PlanIndividual?,
+        paqueteFamiliarId: Int?,
+        precio: Double,
+        estado: EstadoMembresia,
+        fechaInicio: String,
+        fechaVencimiento: String
+    ): Membresia {
+        val membresiaActual = membresias.document(id).get().await().toMembresia()
+        val usuarioId = membresiaActual?.usuarioId ?: ""
+        val datos = datosMembresia(usuarioId, tipo, plan, paqueteFamiliarId, precio, estado, fechaInicio, fechaVencimiento)
+        membresias.document(id).set(datos).await()
+        return Membresia(id, usuarioId, tipo, plan, paqueteFamiliarId, precio, estado, fechaInicio, fechaVencimiento)
+    }
+
+    override suspend fun agregarIntegrante(membresiaId: String, nombre: String, parentesco: String): IntegranteFamiliar {
+        val datos = mapOf(
+            "membresiaId" to membresiaId,
+            "nombre" to nombre,
+            "parentesco" to parentesco
+        )
+        val documento = integrantesFamiliares.add(datos).await()
+        return IntegranteFamiliar(documento.id, membresiaId, nombre, parentesco)
+    }
+
+    override suspend fun eliminarIntegrante(integranteId: String) {
+        integrantesFamiliares.document(integranteId).delete().await()
     }
 }
