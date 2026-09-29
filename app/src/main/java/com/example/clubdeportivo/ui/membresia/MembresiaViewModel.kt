@@ -45,8 +45,6 @@ class MembresiaViewModel(
         // El personal del club (todos los roles salvo socio y visitante) no
         // tiene membresía: trabaja ahí, no es cliente.
         if (usuario.rol != Rol.SOCIO && usuario.rol != Rol.VISITANTE_EXTERNO) {
-            _titulo.value = "No aplica"
-            _mensaje.value = "Este rol es personal del club y no tiene membresía de socio."
             return
         }
 

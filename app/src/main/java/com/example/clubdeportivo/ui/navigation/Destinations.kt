@@ -42,7 +42,7 @@ val bottomNavItems = listOf(
     BottomNavItem(Destinations.PERSONAL, "Personal", Icons.Filled.Person, Icons.Outlined.Person),
     BottomNavItem(Destinations.AREAS, "Inventario", Icons.Filled.Place, Icons.Outlined.Place),
     BottomNavItem(Destinations.MIS_RESERVAS, "Areas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-
+    BottomNavItem(Destinations.MEMBRESIA, "Membresía", Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents),
 )
 
 fun tituloPantalla(route: String?): String = when {
