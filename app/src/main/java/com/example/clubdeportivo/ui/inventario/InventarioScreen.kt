@@ -67,7 +67,11 @@ fun InventarioScreen(
     val mostrarModal by viewModel.mostrarModal.observeAsState(false)
     val articuloEnEdicion by viewModel.articuloEnEdicion.observeAsState()
     val historial by viewModel.historial.observeAsState(emptyList())
-    val articulosFiltrados = viewModel.obtenerArticulosFiltrados()
+    val articulosFiltrados = if (filtroDeporte == "Todos") {
+        articulos
+    } else {
+        articulos.filter { it.deporte == filtroDeporte }
+    }
 
     var articuloAEliminar by remember { mutableStateOf<ArticuloInventario?>(null) }
     var mostrarHistorial by remember { mutableStateOf(false) }
