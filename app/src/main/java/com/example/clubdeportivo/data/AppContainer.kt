@@ -5,7 +5,11 @@ import com.example.clubdeportivo.data.repository.AuthRepository
 import com.example.clubdeportivo.data.repository.FakeRestriccionHorarioRepository
 import com.example.clubdeportivo.data.repository.FirebaseAreaRepository
 import com.example.clubdeportivo.data.repository.FirebaseAuthRepository
+import com.example.clubdeportivo.data.repository.FirebaseGestionMembresiasRepository
 import com.example.clubdeportivo.data.repository.FirebaseMembresiaRepository
+import com.example.clubdeportivo.data.repository.FirebasePreciosRepository
+import com.example.clubdeportivo.data.repository.GestionMembresiasRepository
+import com.example.clubdeportivo.data.repository.PreciosRepository
 import com.example.clubdeportivo.data.repository.FirebaseReservaRepository
 import com.example.clubdeportivo.data.repository.FirebaseTorneoRepository
 import com.example.clubdeportivo.data.repository.MembresiaRepository
@@ -32,6 +36,8 @@ object AppContainer {
     val restriccionHorarioRepository: RestriccionHorarioRepository = FakeRestriccionHorarioRepository()
     val reservaRepository: ReservaRepository = FirebaseReservaRepository()
     val membresiaRepository: MembresiaRepository = FirebaseMembresiaRepository()
+    val gestionMembresiasRepository: GestionMembresiasRepository = FirebaseGestionMembresiasRepository()
+    val preciosRepository: PreciosRepository = FirebasePreciosRepository()
     val torneoRepository: TorneoRepository = FirebaseTorneoRepository()
 
     val usuarioRepository: UsuarioRepository = FirebaseUsuarioRepository()

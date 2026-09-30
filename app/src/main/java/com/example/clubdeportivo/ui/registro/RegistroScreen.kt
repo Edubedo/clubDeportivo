@@ -52,6 +52,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.CampoTexto
+import com.example.clubdeportivo.ui.components.EspacioCampos
+import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.model.Rol
@@ -165,136 +169,58 @@ fun RegistroScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.Top
             ) {
-                Text(
-                    text = "NOMBRE COMPLETO",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 0.5.sp
-                )
-
-                TextField(
+                EtiquetaCampo("NOMBRE COMPLETO")
+                CampoTexto(
                     value = nombre,
                     onValueChange = { nombre = it },
-                    placeholder = { Text("Tu nombre", color = Color(0xFFCBD5E1)) },
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF1F5F9),
-                        focusedContainerColor = Color(0xFFF1F5F9),
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedTextColor = Color(0xFF1E293B),
-                        focusedTextColor = Color(0xFF1E293B)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    placeholder = "Tu nombre"
                 )
 
-                Text(
-                    text = "CORREO ELECTRÓNICO",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 0.5.sp
-                )
+                EspacioCampos()
 
-                TextField(
+                EtiquetaCampo("CORREO ELECTRÓNICO")
+                CampoTexto(
                     value = email,
                     onValueChange = { email = it },
-                    placeholder = { Text("tu@correo.com", color = Color(0xFFCBD5E1)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF1F5F9),
-                        focusedContainerColor = Color(0xFFF1F5F9),
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedTextColor = Color(0xFF1E293B),
-                        focusedTextColor = Color(0xFF1E293B)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    placeholder = "tu@correo.com",
+                    tipoTeclado = KeyboardType.Email
                 )
 
-                Text(
-                    text = "CONTRASEÑA",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 0.5.sp
-                )
+                EspacioCampos()
 
-                TextField(
+                EtiquetaCampo("CONTRASEÑA")
+                CampoTexto(
                     value = password,
                     onValueChange = { password = it },
-                    placeholder = { Text("••••••••", color = Color(0xFFCBD5E1)) },
+                    placeholder = "••••••••",
+                    esContrasena = !passwordVisible,
                     trailingIcon = {
-                        IconButton(
-                            onClick = { passwordVisible = !passwordVisible },
-                            modifier = Modifier.size(24.dp)
-                        ) {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
                                 imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = null,
-                                tint = Color(0xFF94A3B8),
-                                modifier = Modifier.size(20.dp)
+                                contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                                tint = Color(0xFF94A3B8)
                             )
                         }
-                    },
-                    singleLine = true,
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF1F5F9),
-                        focusedContainerColor = Color(0xFFF1F5F9),
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedTextColor = Color(0xFF1E293B),
-                        focusedTextColor = Color(0xFF1E293B)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    }
                 )
 
-                Text(
-                    text = "ROL",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 0.5.sp
-                )
+                EspacioCampos()
 
+                EtiquetaCampo("ROL")
                 ExposedDropdownMenuBox(
                     expanded = menuRolAbierto,
                     onExpandedChange = { menuRolAbierto = it }
                 ) {
-                    TextField(
+                    CampoTexto(
                         value = rol.nombreLegible(),
                         onValueChange = {},
                         readOnly = true,
-                        placeholder = { Text("Selecciona un rol", color = Color(0xFFCBD5E1)) },
+                        placeholder = "Selecciona un rol",
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuRolAbierto) },
-                        colors = TextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF1F5F9),
-                            focusedContainerColor = Color(0xFFF1F5F9),
-                            unfocusedIndicatorColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedTextColor = Color(0xFF1E293B),
-                            focusedTextColor = Color(0xFF1E293B)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = menuRolAbierto,
@@ -312,35 +238,13 @@ fun RegistroScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
+                BotonPrimario(
+                    texto = "Crear cuenta",
                     onClick = { viewModel.registrar(nombre, email, password, rol) },
-                    enabled = !cargando,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF22C55E),
-                        disabledContainerColor = Color(0xFF22C55E).copy(alpha = 0.5f)
-                    )
-                ) {
-                    if (cargando) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.Black,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = "Crear Cuenta",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                    }
-                }
+                    cargando = cargando
+                )
 
                 Row(
                     modifier = Modifier

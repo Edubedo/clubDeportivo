@@ -49,6 +49,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.CampoTexto
+import com.example.clubdeportivo.ui.components.EspacioCampos
+import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -161,124 +165,61 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.Top
             ) {
-                Text(
-                    text = "CORREO ELECTRÓNICO",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 0.5.sp
-                )
+                // Con un código de miembro (sin "@") no hace falta contraseña.
+                val entraConCodigo = email.isNotBlank() && !email.contains("@")
 
-                TextField(
+                EtiquetaCampo("CORREO O CÓDIGO DE MIEMBRO")
+                CampoTexto(
                     value = email,
                     onValueChange = { email = it },
-                    placeholder = { Text("tu@correo.com", color = Color(0xFFCBD5E1)) },
+                    placeholder = "tu@correo.com o CLB-7K3M9Q",
                     leadingIcon = {
-                        Text(
-                            text = "@",
-                            modifier = Modifier
-                                .size(20.dp)
-                                .padding(4.dp),
-                            color = Color(0xFF94A3B8),
-                            fontSize = 14.sp
-                        )
+                        Text(text = if (entraConCodigo) "#" else "@", color = Color(0xFF94A3B8), fontSize = 14.sp)
                     },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF1F5F9),
-                        focusedContainerColor = Color(0xFFF1F5F9),
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedTextColor = Color(0xFF1E293B),
-                        focusedTextColor = Color(0xFF1E293B)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    isError = emailError != null,
+                    mensajeError = emailError
                 )
 
-                Text(
-                    text = "CONTRASEÑA",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 0.5.sp
-                )
-
-                TextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    placeholder = { Text("••••••••", color = Color(0xFFCBD5E1)) },
-                    leadingIcon = {
-                        Text(
-                            text = "🔒",
-                            modifier = Modifier.size(20.dp),
-                            fontSize = 14.sp
-                        )
-                    },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { passwordVisible = !passwordVisible },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = null,
-                                tint = Color(0xFF94A3B8),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
-                    singleLine = true,
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF1F5F9),
-                        focusedContainerColor = Color(0xFFF1F5F9),
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedTextColor = Color(0xFF1E293B),
-                        focusedTextColor = Color(0xFF1E293B)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                androidx.compose.material3.Button(
-                    onClick = { viewModel.login(email, password) },
-                    enabled = !cargando,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF22C55E),
-                        disabledContainerColor = Color(0xFF22C55E).copy(alpha = 0.5f)
+                if (entraConCodigo) {
+                    Text(
+                        text = "Entras con tu código, no necesitas contraseña.",
+                        fontSize = 13.sp,
+                        color = Color(0xFF64748B),
+                        modifier = Modifier.padding(top = 8.dp)
                     )
-                ) {
-                    if (cargando) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.Black,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = "Iniciar sesión",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                    }
+                } else {
+                    EspacioCampos()
+
+                    EtiquetaCampo("CONTRASEÑA")
+                    CampoTexto(
+                        value = password,
+                        onValueChange = { password = it },
+                        placeholder = "••••••••",
+                        esContrasena = !passwordVisible,
+                        leadingIcon = { Text(text = "🔒", fontSize = 14.sp) },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                                    tint = Color(0xFF94A3B8)
+                                )
+                            }
+                        },
+                        isError = passwordError != null,
+                        mensajeError = passwordError
+                    )
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                BotonPrimario(
+                    texto = "Iniciar sesión",
+                    onClick = { viewModel.login(email, password) },
+                    cargando = cargando
+                )
 
                 Row(
                     modifier = Modifier
@@ -288,7 +229,7 @@ fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "¿Eres nuevo miembro? ",
+                        text = "¿Personal del club sin cuenta? ",
                         fontSize = 14.sp,
                         color = Color(0xFF94A3B8)
                     )

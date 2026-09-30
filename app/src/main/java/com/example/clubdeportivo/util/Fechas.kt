@@ -22,6 +22,27 @@ object Fechas {
 
     fun hoy(): String = formatoFecha().format(Date())
 
+    /** [fecha] más [meses] meses (31 de enero + 1 mes = 28 o 29 de febrero). */
+    fun sumarMeses(fecha: String, meses: Int): String {
+        val base = runCatching { formatoFecha().parse(fecha) }.getOrNull() ?: return fecha
+        val cal = Calendar.getInstance().apply { time = base; add(Calendar.MONTH, meses) }
+        return formatoFecha().format(cal.time)
+    }
+
+    /** Todas las fechas "yyyy-MM-dd" de [inicio] a [fin], ambas incluidas. Vacío si el rango es inválido. */
+    fun diasEntre(inicio: String, fin: String): List<String> {
+        val formato = formatoFecha()
+        val desde = runCatching { formato.parse(inicio) }.getOrNull() ?: return emptyList()
+        val hasta = runCatching { formato.parse(fin) }.getOrNull() ?: return emptyList()
+        val cal = Calendar.getInstance().apply { time = desde }
+        val dias = mutableListOf<String>()
+        while (!cal.time.after(hasta) && dias.size < 400) {
+            dias.add(formato.format(cal.time))
+            cal.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return dias
+    }
+
     fun sumarDias(dias: Int): String {
         val cal = Calendar.getInstance()
         cal.add(Calendar.DAY_OF_YEAR, dias)

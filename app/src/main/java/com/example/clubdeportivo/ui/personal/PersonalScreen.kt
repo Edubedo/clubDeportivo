@@ -23,8 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LiveData
@@ -33,6 +32,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.CampoTexto
+import com.example.clubdeportivo.ui.components.DialogoFormulario
+import com.example.clubdeportivo.ui.components.EspacioCampos
+import com.example.clubdeportivo.ui.components.EtiquetaCampo
+import com.example.clubdeportivo.ui.components.PestanasPildora
+import com.example.clubdeportivo.ui.components.VerdeMarca
 import com.example.clubdeportivo.util.FotoPerfilManager
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
@@ -206,7 +212,7 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
     val empleados by viewModel.empleadosUI.observeAsState(emptyList())
     val areas by viewModel.areasDisponibles.observeAsState(emptyList())
 
-    var mostrarBottomSheet by remember { mutableStateOf(false) }
+    var mostrarFormulario by remember { mutableStateOf(false) }
     var empleadoEnEdicion by remember { mutableStateOf<EmpleadoUI?>(null) }
 
     Scaffold(
@@ -215,9 +221,9 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
             ExtendedFloatingActionButton(
                 onClick = {
                     empleadoEnEdicion = null
-                    mostrarBottomSheet = true
+                    mostrarFormulario = true
                 },
-                containerColor = Color(0xFF00D15B),
+                containerColor = VerdeMarca,
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar Personal")
@@ -236,7 +242,7 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
                         empleado = empleado,
                         onEditClick = {
                             empleadoEnEdicion = empleado
-                            mostrarBottomSheet = true
+                            mostrarFormulario = true
                         }
                     )
                 }
@@ -244,32 +250,28 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
         }
     }
 
-    if (mostrarBottomSheet) {
-        ModalBottomSheet(onDismissRequest = { mostrarBottomSheet = false }, containerColor = Color.White) {
-            FormularioPersonalContent(
-                areas = areas,
-                empleadoAEditar = empleadoEnEdicion,
-                onGuardar = { nombre, correo, telefono, estado, puesto, turno, areaId, contrasena, fotoUrl ->
-                    viewModel.guardarPersonal(
-                        empleadoId = empleadoEnEdicion?.empleadoId,
-                        usuarioId = empleadoEnEdicion?.usuarioId,
-                        nombre = nombre,
-                        correo = correo,
-                        telefono = telefono,
-                        estado = estado,
-                        puesto = puesto,
-                        turno = turno,
-                        areaId = areaId,
-                        contrasena = contrasena,
-                        fotoUrl = fotoUrl
-                    )
-                    mostrarBottomSheet = false
-                },
-                onCancelar = {
-                    mostrarBottomSheet = false
-                }
-            )
-        }
+    if (mostrarFormulario) {
+        FormularioPersonalDialog(
+            areas = areas,
+            empleadoAEditar = empleadoEnEdicion,
+            onGuardar = { nombre, correo, telefono, estado, puesto, turno, areaId, contrasena, fotoUrl ->
+                viewModel.guardarPersonal(
+                    empleadoId = empleadoEnEdicion?.empleadoId,
+                    usuarioId = empleadoEnEdicion?.usuarioId,
+                    nombre = nombre,
+                    correo = correo,
+                    telefono = telefono,
+                    estado = estado,
+                    puesto = puesto,
+                    turno = turno,
+                    areaId = areaId,
+                    contrasena = contrasena,
+                    fotoUrl = fotoUrl
+                )
+                mostrarFormulario = false
+            },
+            onCerrar = { mostrarFormulario = false }
+        )
     }
 }
 
@@ -277,15 +279,20 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
 // 5. FORMULARIO Y COMPONENTES
 // =====================================================================
 
+/**
+ * Formulario de alta/edición de personal. Misma estructura que el de áreas: diálogo con título y X
+ * fija, selectores en píldora, etiquetas en mayúsculas, campos estándar y un solo botón principal.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormularioPersonalContent(
+fun FormularioPersonalDialog(
     areas: List<Area>,
     empleadoAEditar: EmpleadoUI?,
     onGuardar: (String, String, String, String, String, String, String?, String, String?) -> Unit,
-    onCancelar: () -> Unit
+    onCerrar: () -> Unit
 ) {
     val context = LocalContext.current
+    val esEdicion = empleadoAEditar != null
 
     var nombre by remember { mutableStateOf(empleadoAEditar?.nombre ?: "") }
     var telefono by remember { mutableStateOf(empleadoAEditar?.telefono ?: "") }
@@ -311,11 +318,7 @@ fun FormularioPersonalContent(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            val archivoFoto = FotoPerfilManager.guardarFoto(
-                context = context,
-                uri = uri,
-                usuarioId = tempUserId
-            )
+            val archivoFoto = FotoPerfilManager.guardarFoto(context = context, uri = uri, usuarioId = tempUserId)
             fotoPerfilPath = archivoFoto?.absolutePath
         }
     }
@@ -328,234 +331,179 @@ fun FormularioPersonalContent(
     var areaSeleccionada by remember {
         mutableStateOf(areas.find { it.id == empleadoAEditar?.areaAsignadaId } ?: areas.firstOrNull())
     }
-
-    val tipoInicial = tiposPersonal.find { empleadoAEditar?.puesto?.startsWith(it) == true } ?: tiposPersonal[0]
-    var tipoExpandido by remember { mutableStateOf(false) }
-    var tipoSeleccionado by remember { mutableStateOf(tipoInicial) }
-
-    var turnoExpandido by remember { mutableStateOf(false) }
+    var tipoSeleccionado by remember {
+        mutableStateOf(tiposPersonal.find { empleadoAEditar?.puesto?.startsWith(it) == true } ?: tiposPersonal[0])
+    }
     var turnoSeleccionado by remember { mutableStateOf(empleadoAEditar?.turno?.ifEmpty { turnos[0] } ?: turnos[0]) }
 
-    var estadoExpandido by remember { mutableStateOf(false) }
+    val puestoGenerado = "$tipoSeleccionado de ${areaSeleccionada?.nombre ?: "Sin Área"}"
+    val puedeGuardar = nombre.isNotBlank() && correo.isNotBlank()
 
-    val nombreArea = areaSeleccionada?.nombre ?: "Sin Área"
-    val puestoGenerado = "$tipoSeleccionado de $nombreArea"
+    DialogoFormulario(
+        titulo = if (esEdicion) "Editar personal" else "Agregar personal",
+        onCerrar = onCerrar
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE2E8F0))
+                    .clickable { selectorFoto.launch("image/*") },
+                contentAlignment = Alignment.Center
+            ) {
+                if (fotoPerfilPath != null) {
+                    AsyncImage(
+                        model = fotoPerfilPath,
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(Icons.Default.Person, contentDescription = "Foto", tint = Color(0xFF94A3B8))
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            TextButton(onClick = { selectorFoto.launch("image/*") }) {
+                Text(
+                    text = if (fotoPerfilPath == null) "Subir foto de perfil" else "Cambiar foto",
+                    color = VerdeMarca,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
-        Text(
-            text = if (empleadoAEditar == null) "Agregar Personal" else "Editar Personal",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF1E293B)
+        EspacioCampos()
+
+        EtiquetaCampo("NOMBRE COMPLETO")
+        CampoTexto(value = nombre, onValueChange = { nombre = it }, placeholder = "Juan Pérez")
+
+        EspacioCampos()
+
+        EtiquetaCampo("TELÉFONO")
+        CampoTexto(
+            value = telefono,
+            onValueChange = { telefono = it.filter { c -> c.isDigit() || c == ' ' }.take(15) },
+            placeholder = "312 000 0000",
+            tipoTeclado = KeyboardType.Phone
         )
-        Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f, fill = false)) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE2E8F0))
-                            .clickable { selectorFoto.launch("image/*") },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (fotoPerfilPath != null) {
-                            AsyncImage(
-                                model = fotoPerfilPath,
-                                contentDescription = "Foto de perfil",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(Icons.Default.Person, contentDescription = "Foto", tint = Color(0xFF94A3B8))
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    TextButton(onClick = { selectorFoto.launch("image/*") }) {
-                        Text(
-                            text = if (fotoPerfilPath == null) "Subir foto de perfil" else "Cambiar foto",
-                            color = Color(0xFF1E88E5),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            }
-            item {
-                InputLabel("NOMBRE COMPLETO")
-                CustomTextField(value = nombre, onValueChange = { nombre = it }, placeholder = "Juan Pérez")
-            }
-            item {
-                InputLabel("TELÉFONO")
-                CustomTextField(value = telefono, onValueChange = { telefono = it }, placeholder = "312 000 0000")
-            }
-            item {
-                InputLabel("GMAIL / CORREO")
-                CustomTextField(value = correo, onValueChange = { correo = it }, placeholder = "correo@gmail.com")
-            }
-            item {
-                InputLabel("ESTADO")
-                ExposedDropdownMenuBox(expanded = estadoExpandido, onExpandedChange = { estadoExpandido = !estadoExpandido }) {
-                    CustomTextField(
-                        value = estadoSeleccionado, onValueChange = {}, readOnly = true,
-                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
-                    )
-                    ExposedDropdownMenu(expanded = estadoExpandido, onDismissRequest = { estadoExpandido = false }) {
-                        estados.forEach { est ->
-                            DropdownMenuItem(
-                                text = { Text(est) },
-                                onClick = { estadoSeleccionado = est; estadoExpandido = false }
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                InputLabel("CONTRASEÑA (Dejar en blanco si no se cambia)")
-                CustomTextField(value = contrasena, onValueChange = { contrasena = it }, placeholder = "Mín. 8 caracteres, 1 Mayús, 1 Núm", esContrasena = true)
-            }
-            item {
-                InputLabel("CONFIRMAR CONTRASEÑA")
-                CustomTextField(value = confirmarContrasena, onValueChange = { confirmarContrasena = it }, placeholder = "********", esContrasena = true)
-            }
+        EspacioCampos()
 
-            if (mensajeError != null) {
-                item {
-                    Text(text = mensajeError!!, color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
+        EtiquetaCampo("CORREO")
+        CampoTexto(
+            value = correo,
+            onValueChange = { correo = it },
+            placeholder = "correo@gmail.com",
+            tipoTeclado = KeyboardType.Email
+        )
 
-            item {
-                InputLabel("ÁREA DE TRABAJO")
-                ExposedDropdownMenuBox(expanded = areaExpandida, onExpandedChange = { areaExpandida = !areaExpandida }) {
-                    CustomTextField(
-                        value = areaSeleccionada?.nombre ?: "Sin áreas registradas", onValueChange = {}, readOnly = true,
-                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
+        EspacioCampos()
+
+        EtiquetaCampo("ESTADO")
+        PestanasPildora(
+            opciones = listOf("Activo", "Inactivo"),
+            seleccionada = estados.indexOf(estadoSeleccionado).coerceAtLeast(0),
+            onSeleccion = { estadoSeleccionado = estados[it] },
+            margenHorizontal = 0.dp
+        )
+
+        EspacioCampos()
+
+        EtiquetaCampo("TIPO DE PERSONAL")
+        PestanasPildora(
+            opciones = tiposPersonal,
+            seleccionada = tiposPersonal.indexOf(tipoSeleccionado).coerceAtLeast(0),
+            onSeleccion = { tipoSeleccionado = tiposPersonal[it] },
+            margenHorizontal = 0.dp
+        )
+
+        EspacioCampos()
+
+        EtiquetaCampo("TURNO")
+        PestanasPildora(
+            opciones = turnos,
+            seleccionada = turnos.indexOf(turnoSeleccionado).coerceAtLeast(0),
+            onSeleccion = { turnoSeleccionado = turnos[it] },
+            margenHorizontal = 0.dp
+        )
+
+        EspacioCampos()
+
+        EtiquetaCampo("ÁREA DE TRABAJO")
+        ExposedDropdownMenuBox(expanded = areaExpandida, onExpandedChange = { areaExpandida = it }) {
+            CampoTexto(
+                value = areaSeleccionada?.nombre ?: "Sin áreas registradas",
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier.menuAnchor(),
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = areaExpandida) }
+            )
+            DropdownMenu(expanded = areaExpandida, onDismissRequest = { areaExpandida = false }) {
+                areas.forEach { area ->
+                    DropdownMenuItem(
+                        text = { Text(area.nombre) },
+                        onClick = { areaSeleccionada = area; areaExpandida = false }
                     )
-                    ExposedDropdownMenu(expanded = areaExpandida, onDismissRequest = { areaExpandida = false }) {
-                        areas.forEach { area ->
-                            DropdownMenuItem(
-                                text = { Text(area.nombre) },
-                                onClick = { areaSeleccionada = area; areaExpandida = false }
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                InputLabel("TIPO DE PERSONAL")
-                ExposedDropdownMenuBox(expanded = tipoExpandido, onExpandedChange = { tipoExpandido = !tipoExpandido }) {
-                    CustomTextField(
-                        value = puestoGenerado, onValueChange = {}, readOnly = true,
-                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
-                    )
-                    ExposedDropdownMenu(expanded = tipoExpandido, onDismissRequest = { tipoExpandido = false }) {
-                        tiposPersonal.forEach { tipo ->
-                            DropdownMenuItem(
-                                text = { Text(tipo) },
-                                onClick = { tipoSeleccionado = tipo; tipoExpandido = false }
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                InputLabel("TURNO")
-                ExposedDropdownMenuBox(expanded = turnoExpandido, onExpandedChange = { turnoExpandido = !turnoExpandido }) {
-                    CustomTextField(
-                        value = turnoSeleccionado, onValueChange = {}, readOnly = true,
-                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
-                    )
-                    ExposedDropdownMenu(expanded = turnoExpandido, onDismissRequest = { turnoExpandido = false }) {
-                        turnos.forEach { turno ->
-                            DropdownMenuItem(
-                                text = { Text(turno) },
-                                onClick = { turnoSeleccionado = turno; turnoExpandido = false }
-                            )
-                        }
-                    }
                 }
             }
         }
+
+        EspacioCampos()
+
+        EtiquetaCampo(if (esEdicion) "CONTRASEÑA (DEJAR EN BLANCO SI NO SE CAMBIA)" else "CONTRASEÑA")
+        CampoTexto(
+            value = contrasena,
+            onValueChange = { contrasena = it },
+            placeholder = "Mín. 8 caracteres, 1 mayúscula, 1 número",
+            esContrasena = true
+        )
+
+        EspacioCampos()
+
+        EtiquetaCampo("CONFIRMAR CONTRASEÑA")
+        CampoTexto(
+            value = confirmarContrasena,
+            onValueChange = { confirmarContrasena = it },
+            placeholder = "********",
+            esContrasena = true
+        )
+
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Fila de botones: Cancelar y Guardar/Actualizar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedButton(
-                onClick = onCancelar,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Cancelar", fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
-            }
+        if (mensajeError != null) {
+            Text(
+                text = mensajeError.orEmpty(),
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+        }
 
-            Button(
-                onClick = {
-                    if (empleadoAEditar != null && contrasena.isEmpty()) {
-                        mensajeError = null
-                        onGuardar(nombre, correo, telefono, estadoSeleccionado, puestoGenerado, turnoSeleccionado, areaSeleccionada?.id, "", fotoPerfilPath)
-                    } else {
-                        val tieneMinimo8 = contrasena.length >= 8
-                        val tieneMayuscula = contrasena.any { it.isUpperCase() }
-                        val tieneNumero = contrasena.any { it.isDigit() }
-
-                        when {
-                            !tieneMinimo8 -> mensajeError = "La contraseña debe tener al menos 8 caracteres."
-                            !tieneMayuscula -> mensajeError = "La contraseña debe incluir al menos una letra mayúscula."
-                            !tieneNumero -> mensajeError = "La contraseña debe incluir al menos un número."
-                            contrasena != confirmarContrasena -> mensajeError = "Las contraseñas no coinciden."
-                            else -> {
-                                mensajeError = null
-                                onGuardar(nombre, correo, telefono, estadoSeleccionado, puestoGenerado, turnoSeleccionado, areaSeleccionada?.id, contrasena, fotoPerfilPath)
-                            }
+        BotonPrimario(
+            texto = if (esEdicion) "Guardar cambios" else "Agregar personal",
+            enabled = puedeGuardar,
+            onClick = {
+                if (esEdicion && contrasena.isEmpty()) {
+                    mensajeError = null
+                    onGuardar(nombre, correo, telefono, estadoSeleccionado, puestoGenerado, turnoSeleccionado, areaSeleccionada?.id, "", fotoPerfilPath)
+                } else {
+                    when {
+                        contrasena.length < 8 -> mensajeError = "La contraseña debe tener al menos 8 caracteres."
+                        contrasena.none { it.isUpperCase() } -> mensajeError = "La contraseña debe incluir al menos una letra mayúscula."
+                        contrasena.none { it.isDigit() } -> mensajeError = "La contraseña debe incluir al menos un número."
+                        contrasena != confirmarContrasena -> mensajeError = "Las contraseñas no coinciden."
+                        else -> {
+                            mensajeError = null
+                            onGuardar(nombre, correo, telefono, estadoSeleccionado, puestoGenerado, turnoSeleccionado, areaSeleccionada?.id, contrasena, fotoPerfilPath)
                         }
                     }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D15B)),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp)
-            ) {
-                Text(if (empleadoAEditar == null) "Guardar" else "Actualizar", color = Color.White, fontWeight = FontWeight.Bold)
+                }
             }
-        }
+        )
     }
-}
-
-@Composable
-fun InputLabel(text: String) {
-    Text(text = text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), modifier = Modifier.padding(bottom = 6.dp))
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CustomTextField(
-    value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier,
-    placeholder: String = "", readOnly: Boolean = false, esContrasena: Boolean = false,
-    trailingIcon: @Composable (() -> Unit)? = null
-) {
-    OutlinedTextField(
-        value = value, onValueChange = onValueChange, placeholder = { Text(placeholder, color = Color(0xFF94A3B8)) },
-        readOnly = readOnly, trailingIcon = trailingIcon, shape = RoundedCornerShape(12.dp),
-        visualTransformation = if (esContrasena) PasswordVisualTransformation() else VisualTransformation.None,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFF1F5F9), unfocusedContainerColor = Color(0xFFF1F5F9),
-            focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent
-        ),
-        modifier = modifier.fillMaxWidth()
-    )
 }
 
 @Composable

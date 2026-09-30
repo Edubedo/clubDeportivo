@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,6 +34,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,16 +68,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.Torneo
+import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.CampoTexto
+import com.example.clubdeportivo.ui.components.DialogoFormulario
 import com.example.clubdeportivo.ui.components.EmptyState
+import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.FullScreenLoading
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -94,6 +102,7 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
     val mensaje by viewModel.mensaje.observeAsState()
     val mostrarModalCrear by viewModel.mostrarModalCrear.observeAsState(false)
     val torneoEnEdicion by viewModel.torneoEnEdicion.observeAsState()
+    val errorFormulario by viewModel.errorFormulario.observeAsState()
 
     val esAdministrador = SesionManager.usuarioActual?.rol in rolesDeAdministracion
 
@@ -108,6 +117,7 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = if (esAdministrador) fondoPantalla else MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
@@ -151,6 +161,7 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
         ModalTorneo(
             areas = areas,
             torneoExistente = torneoEnEdicion,
+            error = errorFormulario,
             onGuardar = { id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, horaInicio, horaFin ->
                 viewModel.guardarTorneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, horaInicio, horaFin)
             },
@@ -245,10 +256,14 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
                     text = "${torneo.inscritos}/${torneo.cupoMaximo} participantes",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF374151)
+                    color = Color(0xFF374151),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
                 )
                 Text(
                     text = "$libres libres",
+                    maxLines = 1,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colorVerde
@@ -270,11 +285,14 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
     }
 }
 
-/** "2026-10-05 09:00 – 2026-10-20 18:00", o sin horas si el torneo no las tiene (creados antes de este campo). */
+/**
+ * "2026-10-05 – 2026-10-20 · 09:00–18:00": el torneo ocupa el área en ese horario CADA día del rango.
+ * Sin horas (torneos creados antes de este campo) se muestra solo el rango de fechas.
+ */
 private fun textoRangoFecha(torneo: Torneo): String {
-    val inicio = if (torneo.horaInicio.isNotBlank()) "${torneo.fechaInicio} ${torneo.horaInicio}" else torneo.fechaInicio
-    val fin = if (torneo.horaFin.isNotBlank()) "${torneo.fechaFin} ${torneo.horaFin}" else torneo.fechaFin
-    return "$inicio – $fin"
+    val fechas = if (torneo.fechaInicio == torneo.fechaFin) torneo.fechaInicio else "${torneo.fechaInicio} – ${torneo.fechaFin}"
+    val horas = if (torneo.horaInicio.isNotBlank() && torneo.horaFin.isNotBlank()) " · ${torneo.horaInicio}–${torneo.horaFin}" else ""
+    return fechas + horas
 }
 
 private data class EstiloDisciplina(val emoji: String, val fondo: Color, val texto: Color)
@@ -348,7 +366,8 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
                 )
                 Text(
                     text = "${torneo.inscritos} / ${torneo.cupoMaximo}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1
                 )
             }
             Button(
@@ -362,17 +381,7 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
     }
 }
 
-private val disciplinasDisponibles = listOf("Fútbol", "Básquetbol", "Tenis", "Natación", "Voleibol")
-
-/** Colores de campo con texto oscuro y legible tanto escribiendo como ya lleno. */
-@Composable
-private fun coloresDeCampo() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color(0xFF111827),
-    unfocusedTextColor = Color(0xFF111827),
-    disabledTextColor = Color(0xFF111827),
-    focusedBorderColor = colorVerde,
-    cursorColor = colorVerde
-)
+private val disciplinasDisponibles = Deportes.predefinidos
 
 private fun manianaEnMillis(): Long =
     LocalDate.now().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
@@ -386,21 +395,28 @@ private fun fechaAMillis(fecha: String): Long? = try {
 private fun millisAFecha(millis: Long): String =
     Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString()
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModalTorneo(
     areas: List<Area>,
     torneoExistente: Torneo?,
+    error: String?,
     onGuardar: (id: String?, nombre: String, disciplina: String, areaId: String, fechaInicio: String, fechaFin: String, cupoMaximo: Int, horaInicio: String, horaFin: String) -> Unit,
     onCerrar: () -> Unit
 ) {
     val esEdicion = torneoExistente != null
 
     var nombre by remember { mutableStateOf(torneoExistente?.nombre ?: "") }
-    var disciplina by remember { mutableStateOf(torneoExistente?.disciplina ?: disciplinasDisponibles.first()) }
-    var area by remember {
-        mutableStateOf(areas.find { it.id == torneoExistente?.areaId } ?: areas.firstOrNull())
+    // La disciplina y el área van ligadas: solo se ofrecen las áreas del deporte elegido.
+    val areaInicial = areas.find { it.id == torneoExistente?.areaId }
+    var disciplina by remember {
+        mutableStateOf(areaInicial?.tipo ?: torneoExistente?.disciplina ?: disciplinasDisponibles.first())
     }
+    var area by remember {
+        mutableStateOf(areaInicial ?: areas.firstOrNull { it.tipo == disciplina })
+    }
+    val areasDeLaDisciplina = areas.filter { it.tipo == disciplina }
     var fechaInicio by remember { mutableStateOf(torneoExistente?.fechaInicio ?: "") }
     var fechaFin by remember { mutableStateOf(torneoExistente?.fechaFin ?: "") }
     var horaInicio by remember { mutableStateOf(torneoExistente?.horaInicio?.ifBlank { "09:00" } ?: "09:00") }
@@ -412,48 +428,16 @@ private fun ModalTorneo(
     val puedeGuardar = nombre.isNotBlank() && area != null && fechaInicio.isNotBlank() && fechaFin.isNotBlank() &&
         horaInicio.isNotBlank() && horaFin.isNotBlank() && (cupoMaximo.toIntOrNull() ?: 0) > 0
 
-    Dialog(
-        onDismissRequest = onCerrar,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)
+    DialogoFormulario(
+        titulo = if (esEdicion) "Editar torneo" else "Nuevo torneo",
+        onCerrar = onCerrar
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .heightIn(max = 640.dp),
-            shape = RoundedCornerShape(20.dp),
-            color = Color.White
-        ) {
-            Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = if (esEdicion) "Editar torneo" else "+ Nuevo torneo",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF111827)
-                    )
-                    IconButton(onClick = onCerrar) {
-                        Icon(imageVector = Icons.Filled.Close, contentDescription = "Cerrar", tint = Color(0xFF94A3B8))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
+        Column {
                 EtiquetaCampo("NOMBRE DEL TORNEO")
-                OutlinedTextField(
+                CampoTexto(
                     value = nombre,
                     onValueChange = { nombre = it },
-                    placeholder = { Text("Ej: Copa Otoño de Fútbol") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = coloresDeCampo()
+                    placeholder = "Ej: Copa Otoño de Fútbol"
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -470,7 +454,10 @@ private fun ModalTorneo(
                             texto = "${estiloDisciplina(opcion).emoji} $opcion",
                             seleccionado = seleccionado,
                             onClick = {
-                                disciplina = opcion
+                                if (opcion != disciplina) {
+                                    disciplina = opcion
+                                    area = areas.firstOrNull { it.tipo == opcion }
+                                }
                                 mostrarDropdownDisciplina = false
                             }
                         )
@@ -481,11 +468,11 @@ private fun ModalTorneo(
 
                 EtiquetaCampo("ÁREA")
                 DropdownSeleccionable(
-                    textoMostrado = area?.nombre ?: "Sin áreas disponibles",
+                    textoMostrado = area?.nombre ?: "Sin áreas de este deporte",
                     expandido = mostrarDropdownArea,
                     onExpandirCambiado = { mostrarDropdownArea = it }
                 ) {
-                    areas.forEach { opcion ->
+                    areasDeLaDisciplina.forEach { opcion ->
                         OpcionDropdown(
                             texto = opcion.nombre,
                             seleccionado = area?.id == opcion.id,
@@ -526,19 +513,28 @@ private fun ModalTorneo(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 EtiquetaCampo("CUPO MÁXIMO")
-                OutlinedTextField(
+                CampoTexto(
                     value = cupoMaximo,
-                    onValueChange = { cupoMaximo = it.filter { c -> c.isDigit() } },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = coloresDeCampo()
+                    onValueChange = { cupoMaximo = it.filter { c -> c.isDigit() }.take(4) },
+                    tipoTeclado = KeyboardType.Number
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
+                if (error != null) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
+
+                BotonPrimario(
+                    texto = if (esEdicion) "Guardar cambios" else "Crear torneo",
                     onClick = {
-                        val areaSeleccionada = area ?: return@Button
+                        val areaSeleccionada = area ?: return@BotonPrimario
                         onGuardar(
                             torneoExistente?.id,
                             nombre,
@@ -551,21 +547,8 @@ private fun ModalTorneo(
                             horaFin
                         )
                     },
-                    enabled = puedeGuardar,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = colorVerde)
-                ) {
-                    Text(
-                        text = if (esEdicion) "Guardar cambios" else "Crear torneo",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-            }
+                    enabled = puedeGuardar
+                )
         }
     }
 }
@@ -577,17 +560,14 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
     var mostrarCalendario by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
+        CampoTexto(
             value = fecha,
             onValueChange = {},
             readOnly = true,
-            placeholder = { Text("Elegir") },
+            placeholder = "Elegir",
             trailingIcon = {
                 Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = "Elegir fecha", tint = Color(0xFF94A3B8))
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = coloresDeCampo()
+            }
         )
 
         Surface(
@@ -639,17 +619,14 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
     var mostrarSelector by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
+        CampoTexto(
             value = hora,
             onValueChange = {},
             readOnly = true,
-            placeholder = { Text("Elegir") },
+            placeholder = "Elegir",
             trailingIcon = {
                 Icon(imageVector = Icons.Filled.Schedule, contentDescription = "Elegir hora", tint = Color(0xFF94A3B8))
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = coloresDeCampo()
+            }
         )
 
         Surface(
@@ -798,17 +775,6 @@ private fun horaAPartes(hora: String): Pair<Int, Int> {
 private fun partesAHora(hora: Int, minuto: Int): String = "%02d:%02d".format(hora, minuto)
 
 @Composable
-private fun EtiquetaCampo(texto: String) {
-    Text(
-        text = texto,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = Color(0xFF94A3B8),
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
-}
-
-@Composable
 private fun DropdownSeleccionable(
     textoMostrado: String,
     expandido: Boolean,
@@ -816,14 +782,11 @@ private fun DropdownSeleccionable(
     opciones: @Composable () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
+        CampoTexto(
             value = textoMostrado,
             onValueChange = {},
             readOnly = true,
-            trailingIcon = { Text("▼") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = coloresDeCampo()
+            trailingIcon = { Text("▼") }
         )
 
         Surface(
@@ -834,17 +797,16 @@ private fun DropdownSeleccionable(
             color = Color.Transparent
         ) {}
 
-        if (expandido) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 60.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White,
-                shadowElevation = 8.dp
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) { opciones() }
-            }
+        // Menú emergente (no una lista dentro del diálogo): no se corta y hace scroll si hay muchas áreas.
+        DropdownMenu(
+            expanded = expandido,
+            onDismissRequest = { onExpandirCambiado(false) },
+            modifier = Modifier
+                .fillMaxWidth(0.75f)
+                .heightIn(max = 320.dp),
+            containerColor = Color.White
+        ) {
+            opciones()
         }
     }
 }

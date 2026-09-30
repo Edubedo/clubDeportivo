@@ -55,15 +55,6 @@ class FirebaseTorneoRepository(
         return InscripcionTorneo(documento.id, torneoId, usuarioId, datos["fechaInscripcion"] as String)
     }
 
-    override suspend fun hayTorneoQueBloqueaArea(areaId: String, fecha: String): Boolean {
-        val torneosDelArea = torneos.whereEqualTo("areaId", areaId).get().await()
-        return torneosDelArea.documents.any { doc ->
-            val inicio = doc.getString("fechaInicio") ?: return@any false
-            val fin = doc.getString("fechaFin") ?: return@any false
-            fecha in inicio..fin
-        }
-    }
-
     override suspend fun crearTorneo(
         nombre: String,
         disciplina: String,

@@ -25,9 +25,7 @@ object FirebaseSeeder {
             "5" to mapOf("nombre" to "Alberca 1", "tipo" to "Natación", "capacidad" to 40L, "disponibilidad" to "DISPONIBLE", "permiteExternos" to false),
             "6" to mapOf("nombre" to "Alberca 2", "tipo" to "Natación", "capacidad" to 40L, "disponibilidad" to "MANTENIMIENTO", "permiteExternos" to false),
             "7" to mapOf("nombre" to "Cancha de tenis 1", "tipo" to "Tenis", "capacidad" to 4L, "disponibilidad" to "OCUPADA", "permiteExternos" to true),
-            "8" to mapOf("nombre" to "Cancha de tenis 2", "tipo" to "Tenis", "capacidad" to 4L, "disponibilidad" to "DISPONIBLE", "permiteExternos" to true),
-            "9" to mapOf("nombre" to "Gimnasio", "tipo" to "Gimnasio", "capacidad" to 30L, "disponibilidad" to "DISPONIBLE", "permiteExternos" to false),
-            "10" to mapOf("nombre" to "Salón de usos múltiples", "tipo" to "Clases grupales", "capacidad" to 25L, "disponibilidad" to "DISPONIBLE", "permiteExternos" to false)
+            "8" to mapOf("nombre" to "Cancha de tenis 2", "tipo" to "Tenis", "capacidad" to 4L, "disponibilidad" to "DISPONIBLE", "permiteExternos" to true)
         )
         for ((id, datos) in areas) {
             coleccion.document(id).set(datos).await()
@@ -84,8 +82,7 @@ object FirebaseSeeder {
             "3" to ("06:00" to "22:00"), "4" to ("06:00" to "22:00"),
             "5" to ("06:00" to "21:00"), "6" to ("06:00" to "21:00"),
             "7" to ("06:00" to "22:00"), "8" to ("06:00" to "22:00"),
-            "9" to ("05:00" to "22:00"), "10" to ("07:00" to "21:00")
-        )
+                    )
         for ((areaId, horario) in horarioPorArea) {
             val (inicio, fin) = horario
             coleccion.document("rh-$areaId").set(
@@ -158,7 +155,7 @@ object FirebaseSeeder {
         // una reserva ya finalizada con check-in
         db.collection("reservas").document("reserva-demo-3").set(
             mapOf(
-                "usuarioId" to uidSocio, "areaId" to "9", "fecha" to "2026-09-01",
+                "usuarioId" to uidSocio, "areaId" to "5", "fecha" to "2026-09-01",
                 "horaInicio" to "18:00", "horaFin" to "19:00",
                 "estado" to "FINALIZADA", "esExterno" to false
             )

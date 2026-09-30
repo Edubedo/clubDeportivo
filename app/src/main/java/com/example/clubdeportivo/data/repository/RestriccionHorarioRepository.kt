@@ -14,8 +14,6 @@ interface RestriccionHorarioRepository {
  *
  *   Alberca: 6:00 a.m. - 9:00 p.m.
  *   Canchas (fútbol, básquet, tenis): 6:00 a.m. - 10:00 p.m.
- *   Gimnasio: 5:00 a.m. - 10:00 p.m.
- *   Salón de usos múltiples (clases grupales): 7:00 a.m. - 9:00 p.m.
  */
 class FakeRestriccionHorarioRepository : RestriccionHorarioRepository {
 
@@ -23,9 +21,7 @@ class FakeRestriccionHorarioRepository : RestriccionHorarioRepository {
         "Natación" to ("06:00" to "21:00"),
         "Fútbol" to ("06:00" to "22:00"),
         "Básquetbol" to ("06:00" to "22:00"),
-        "Tenis" to ("06:00" to "22:00"),
-        "Gimnasio" to ("05:00" to "22:00"),
-        "Clases grupales" to ("07:00" to "21:00")
+        "Tenis" to ("06:00" to "22:00")
     )
 
     override suspend fun obtenerHorarioDeArea(area: Area): RestriccionHorario {

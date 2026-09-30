@@ -10,7 +10,9 @@ data class Reserva(
     val horaInicio: String,
     val horaFin: String,
     val estado: EstadoReserva,
-    val esExterno: Boolean = false
+    val esExterno: Boolean = false,
+    /** Cuántos lugares del cupo del área ocupa esta reserva (un grupo cuenta como varias personas). */
+    val personas: Int = 1
 )
 
 data class MaterialAsignado(

@@ -16,7 +16,8 @@ private fun DocumentSnapshot.toArea(): Area? {
         tipo = getString("tipo") ?: "",
         capacidad = (getLong("capacidad") ?: 0).toInt(),
         disponibilidad = DisponibilidadArea.valueOf(getString("disponibilidad") ?: "DISPONIBLE"),
-        permiteExternos = getBoolean("permiteExternos") ?: false
+        permiteExternos = getBoolean("permiteExternos") ?: false,
+        emoji = getString("emoji") ?: ""
     )
 }
 
@@ -33,5 +34,35 @@ class FirebaseAreaRepository(
 
     override suspend fun obtenerAreaPorId(id: String): Area? {
         return coleccion.document(id).get().await().toArea()
+    }
+
+    override suspend fun crearArea(nombre: String, tipo: String, capacidad: Int, emoji: String): Area {
+        val datos = mapOf(
+            "nombre" to nombre,
+            "tipo" to tipo,
+            "capacidad" to capacidad.toLong(),
+            "disponibilidad" to DisponibilidadArea.DISPONIBLE.name,
+            "permiteExternos" to false,
+            "emoji" to emoji
+        )
+        val documento = coleccion.add(datos).await()
+        return Area(documento.id, nombre, tipo, capacidad, DisponibilidadArea.DISPONIBLE, false, emoji)
+    }
+
+    override suspend fun actualizarArea(area: Area): Area {
+        coleccion.document(area.id).update(
+            mapOf(
+                "nombre" to area.nombre,
+                "tipo" to area.tipo,
+                "capacidad" to area.capacidad.toLong(),
+                "disponibilidad" to area.disponibilidad.name,
+                "emoji" to area.emoji
+            )
+        ).await()
+        return area
+    }
+
+    override suspend fun eliminarArea(id: String) {
+        coleccion.document(id).delete().await()
     }
 }

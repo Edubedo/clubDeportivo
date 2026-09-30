@@ -5,6 +5,7 @@ import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.MaterialAsignado
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasReserva
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -19,7 +20,8 @@ private fun DocumentSnapshot.toReserva(): Reserva? {
         horaInicio = getString("horaInicio") ?: "",
         horaFin = getString("horaFin") ?: "",
         estado = EstadoReserva.valueOf(getString("estado") ?: "CONFIRMADA"),
-        esExterno = getBoolean("esExterno") ?: false
+        esExterno = getBoolean("esExterno") ?: false,
+        personas = (getLong("personas") ?: 1L).toInt().coerceAtLeast(1)
     )
 }
 
@@ -60,7 +62,8 @@ class FirebaseReservaRepository(
         fecha: String,
         horaInicio: String,
         horaFin: String,
-        esExterno: Boolean
+        esExterno: Boolean,
+        personas: Int
     ): Reserva {
         // Un visitante externo necesita aprobación de un administrador antes de que su
         // reserva sea válida; un socio queda confirmado de inmediato.
@@ -73,10 +76,11 @@ class FirebaseReservaRepository(
             "horaInicio" to horaInicio,
             "horaFin" to horaFin,
             "estado" to estadoInicial.name,
-            "esExterno" to esExterno
+            "esExterno" to esExterno,
+            "personas" to personas.toLong()
         )
         val documento = reservas.add(datos).await()
-        val nuevaReserva = Reserva(documento.id, usuarioId, areaId, fecha, horaInicio, horaFin, estadoInicial, esExterno)
+        val nuevaReserva = Reserva(documento.id, usuarioId, areaId, fecha, horaInicio, horaFin, estadoInicial, esExterno, personas)
 
         // El material solo se asigna si la reserva queda CONFIRMADA con al menos 1 hora de
         // anticipación (una PENDIENTE_APROBACION todavía no lo necesita: se asignará cuando
@@ -93,6 +97,17 @@ class FirebaseReservaRepository(
         }
 
         return nuevaReserva
+    }
+
+    override suspend fun obtenerReservasDeArea(areaId: String): List<Reserva> {
+        return reservas.whereEqualTo("areaId", areaId).get().await()
+            .documents.mapNotNull { it.toReserva() }
+            .filter { ReglasReserva.esVigente(it) }
+    }
+
+    override suspend fun obtenerReservasVigentes(): List<Reserva> {
+        return reservas.get().await().documents.mapNotNull { it.toReserva() }
+            .filter { ReglasReserva.esVigente(it) }
     }
 
     override suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado> {

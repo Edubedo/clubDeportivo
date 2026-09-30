@@ -7,8 +7,6 @@ import kotlinx.coroutines.delay
 interface TorneoRepository {
     suspend fun obtenerTorneos(): List<Torneo>
     suspend fun inscribirse(torneoId: String, usuarioId: String): InscripcionTorneo
-    /** true si algún torneo bloquea esa área en esa fecha (los torneos ocupan el área completa). */
-    suspend fun hayTorneoQueBloqueaArea(areaId: String, fecha: String): Boolean
     suspend fun crearTorneo(
         nombre: String,
         disciplina: String,
@@ -57,10 +55,6 @@ class FakeTorneoRepository : TorneoRepository {
             torneos[indice] = torneo.copy(inscritos = torneo.inscritos + 1)
         }
         return InscripcionTorneo((siguienteInscripcionId++).toString(), torneoId, usuarioId, "2026-09-08")
-    }
-
-    override suspend fun hayTorneoQueBloqueaArea(areaId: String, fecha: String): Boolean {
-        return torneos.any { it.areaId == areaId && fecha in it.fechaInicio..it.fechaFin }
     }
 
     override suspend fun crearTorneo(

@@ -17,6 +17,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,17 +40,31 @@ import com.example.clubdeportivo.util.FotoPerfilManager
 
 @Composable
 fun AdminHomeScreen(
-    onIrPerfil: () -> Unit
+    onIrPerfil: () -> Unit,
+    viewModel: AdminHomeViewModel = viewModel()
 ) {
+    val totalAreas by viewModel.totalAreas.observeAsState("–")
+    val totalPersonal by viewModel.totalPersonal.observeAsState("–")
+    val totalReservasHoy by viewModel.totalReservasHoy.observeAsState("–")
+    val totalMiembros by viewModel.totalMiembros.observeAsState("–")
+
     DashboardContent(
-        onIrPerfil = onIrPerfil
+        onIrPerfil = onIrPerfil,
+        totalAreas = totalAreas,
+        totalPersonal = totalPersonal,
+        totalReservasHoy = totalReservasHoy,
+        totalMiembros = totalMiembros
     )
 }
 
 
 @Composable
 fun DashboardContent(
-    onIrPerfil: () -> Unit
+    onIrPerfil: () -> Unit,
+    totalAreas: String = "–",
+    totalPersonal: String = "–",
+    totalReservasHoy: String = "–",
+    totalMiembros: String = "–"
 ) {
     val context = LocalContext.current
     val usuario = SesionManager.usuarioActual
@@ -146,15 +163,15 @@ fun DashboardContent(
 
                 DashboardCard(
                     emoji = "🏟️",
-                    cantidad = "9",
-                    titulo = "Canchas",
+                    cantidad = totalAreas,
+                    titulo = "Áreas",
                     backgroundColor = Color(0xFFEFF6FF),
                     modifier = Modifier.weight(1f)
                 )
 
                 DashboardCard(
                     emoji = "👥",
-                    cantidad = "3",
+                    cantidad = totalPersonal,
                     titulo = "Personal",
                     backgroundColor = Color(0xFFFAF5FF),
                     modifier = Modifier.weight(1f)
@@ -171,7 +188,7 @@ fun DashboardContent(
 
                 DashboardCard(
                     emoji = "👤",
-                    cantidad = "3",
+                    cantidad = totalMiembros,
                     titulo = "Miembros",
                     backgroundColor = Color(0xFFFFFBEB),
                     modifier = Modifier.weight(1f)
@@ -179,7 +196,7 @@ fun DashboardContent(
 
                 DashboardCard(
                     emoji = "🗓️",
-                    cantidad = "2",
+                    cantidad = totalReservasHoy,
                     titulo = "Reservas hoy",
                     backgroundColor = Color(0xFFECFDF5),
                     modifier = Modifier.weight(1f)
@@ -282,7 +299,9 @@ fun DashboardCard(
                     text = cantidad,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
+                    color = Color(0xFF111827),
+                    maxLines = 1,
+                    softWrap = false
                 )
 
                 Text(
