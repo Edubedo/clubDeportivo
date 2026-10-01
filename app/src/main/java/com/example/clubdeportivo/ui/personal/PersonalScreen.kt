@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.personal
 
+import android.util.Patterns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -11,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,226 +26,67 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.example.clubdeportivo.data.model.DatosPersonal
+import com.example.clubdeportivo.data.model.Personal
+import com.example.clubdeportivo.data.model.ROLES_DE_PERSONAL
+import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.BotonSecundario
 import com.example.clubdeportivo.ui.components.CampoTexto
 import com.example.clubdeportivo.ui.components.DialogoFormulario
+import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EspacioCampos
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
+import com.example.clubdeportivo.ui.components.FullScreenLoading
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.VerdeMarca
-import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.util.FotoPerfilManager
-import com.example.clubdeportivo.data.model.Rol
-import com.example.clubdeportivo.util.Fechas
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
-// =====================================================================
-// 1. MODELOS REALES
-// =====================================================================
+/** Tipos de personal que se pueden dar de alta por ahora. */
+private val TIPOS_DE_ALTA = listOf("Instructor")
+private val TURNOS = listOf("Matutino", "Vespertino")
+private val ESTADOS = listOf("ACTIVO", "INACTIVO")
+private const val SIN_AREA = "Sin área asignada"
 
-enum class DisponibilidadArea { DISPONIBLE, OCUPADA, MANTENIMIENTO }
-
-data class Usuario(
-    var id: String = "",
-    val nombre: String = "",
-    /** Campo heredado: los registros anteriores lo guardaron así; el estándar ahora es [email]. */
-    val correo: String = "",
-    val email: String = "",
-    val telefono: String = "",
-    val estado: String = "ACTIVO",
-    val fotoUrl: String? = null
-)
-
-data class Empleado(
-    var id: String = "",
-    val usuarioId: String = "",
-    val puesto: String = "",
-    /** Tipo sin el área: "Instructor", "Limpieza"... ([puesto] es el texto completo "Instructor de Cancha 1"). */
-    val tipoPersonal: String = "",
-    val turno: String = "",
-    val areaAsignadaId: String? = null,
-    /** Campos heredados de los datos de ejemplo; se leen solo si falta el nombre estándar. */
-    val tipoTurno: String = "",
-    val areaId: String? = null
-)
-
-data class Area(
-    var id: String = "",
-    val nombre: String = "",
-    val tipo: String = "",
-    val capacidad: Int = 0,
-    val disponibilidad: DisponibilidadArea = DisponibilidadArea.DISPONIBLE,
-    val permiteExternos: Boolean = false
-)
-
-data class EmpleadoUI(
-    val empleadoId: String,
-    val usuarioId: String,
-    val nombre: String,
-    val correo: String,
-    val telefono: String,
-    val estado: String,
-    val puesto: String,
-    val turno: String,
-    val areaAsignadaId: String?,
-    val areaNombre: String,
-    val fotoUrl: String?
-)
-
-// =====================================================================
-// 2. REPOSITORIO
-// =====================================================================
-
-class PersonalRepository {
-    private val db = FirebaseFirestore.getInstance()
-
-    suspend fun obtenerAreas(): List<Area> {
-        return db.collection("areas").get().await().documents.mapNotNull {
-            it.toObject(Area::class.java)?.apply { id = it.id }
-        }
-    }
-
-    suspend fun obtenerEmpleadosConUsuarios(areas: List<Area>): List<EmpleadoUI> {
-        val empleadosDb = db.collection("empleados").get().await().documents.mapNotNull {
-            it.toObject(Empleado::class.java)?.apply { id = it.id }
-        }
-        val usuariosDb = db.collection("usuarios").get().await().documents.mapNotNull {
-            it.toObject(Usuario::class.java)?.apply { id = it.id }
-        }
-
-        return empleadosDb.mapNotNull { emp ->
-            val usuario = usuariosDb.find { it.id == emp.usuarioId } ?: return@mapNotNull null
-            val area = areas.find { it.id == (emp.areaAsignadaId ?: emp.areaId) }
-
-            EmpleadoUI(
-                empleadoId = emp.id,
-                usuarioId = usuario.id,
-                nombre = usuario.nombre,
-                correo = usuario.email.ifBlank { usuario.correo },
-                telefono = usuario.telefono,
-                estado = usuario.estado,
-                puesto = emp.puesto,
-                turno = emp.turno.ifBlank { emp.tipoTurno },
-                areaAsignadaId = emp.areaAsignadaId ?: emp.areaId,
-                areaNombre = area?.nombre ?: "Sin área asignada",
-                fotoUrl = usuario.fotoUrl
-            )
-        }
-    }
-
-    suspend fun guardarPersonal(
-        empleadoId: String?, usuarioId: String?,
-        nombre: String, correo: String, telefono: String, estado: String,
-        puesto: String, turno: String, areaId: String?, contrasena: String, fotoUrl: String?
-    ) {
-        val esNuevo = usuarioId.isNullOrEmpty()
-        val finalUserId = if (esNuevo) db.collection("usuarios").document().id else usuarioId!!
-        val userRef = db.collection("usuarios").document(finalUserId)
-        val ahora = FieldValue.serverTimestamp()
-
-        // merge: solo se tocan estos campos. Antes se reemplazaba todo el documento y se perdían el rol, el
-        // email de acceso y el código del usuario cada vez que se editaba a una persona del personal.
-        val datosUsuario = mutableMapOf<String, Any?>(
-            "nombre" to nombre.trim(),
-            "email" to correo.trim(),
-            "telefono" to telefono.trim(),
-            "estado" to estado,
-            "fotoUrl" to fotoUrl,
-            "actualizadoEn" to ahora
-        )
-        if (esNuevo) {
-            datosUsuario["rol"] = Rol.AYUDANTE_AREA.name
-            datosUsuario["fechaRegistro"] = Fechas.hoy()
-            datosUsuario["creadoEn"] = ahora
-        }
-        userRef.set(datosUsuario, SetOptions.merge()).await()
-
-        val finalEmpId = if (empleadoId.isNullOrEmpty()) db.collection("empleados").document().id else empleadoId
-        val empRef = db.collection("empleados").document(finalEmpId)
-
-        val tipoPersonal = Catalogos.tipoDePuesto(puesto)
-        val datosEmpleado = mutableMapOf<String, Any?>(
-            "usuarioId" to finalUserId,
-            "puesto" to puesto,
-            "tipoPersonal" to tipoPersonal,
-            "turno" to turno,
-            "areaAsignadaId" to areaId,
-            "actualizadoEn" to ahora
-        )
-        if (empleadoId.isNullOrEmpty()) datosEmpleado["creadoEn"] = ahora
-        empRef.set(datosEmpleado, SetOptions.merge()).await()
-    }
-}
-
-// =====================================================================
-// 3. VIEWMODEL
-// =====================================================================
-
-class PersonalViewModel : ViewModel() {
-    private val repository = PersonalRepository()
-
-    private val _empleadosUI = MutableLiveData<List<EmpleadoUI>>()
-    val empleadosUI: LiveData<List<EmpleadoUI>> = _empleadosUI
-
-    private val _areasDisponibles = MutableLiveData<List<Area>>()
-    val areasDisponibles: LiveData<List<Area>> = _areasDisponibles
-
-    init {
-        cargarDatos()
-    }
-
-    fun cargarDatos() {
-        viewModelScope.launch {
-            try {
-                val areas = repository.obtenerAreas()
-                _areasDisponibles.value = areas
-                _empleadosUI.value = repository.obtenerEmpleadosConUsuarios(areas)
-            } catch (_: Exception) { }
-        }
-    }
-
-    fun guardarPersonal(
-        empleadoId: String?, usuarioId: String?,
-        nombre: String, correo: String, telefono: String, estado: String,
-        puesto: String, turno: String, areaId: String?, contrasena: String, fotoUrl: String?
-    ) {
-        viewModelScope.launch {
-            repository.guardarPersonal(empleadoId, usuarioId, nombre, correo, telefono, estado, puesto, turno, areaId, contrasena, fotoUrl)
-            cargarDatos()
-        }
-    }
-}
-
-// =====================================================================
-// 4. VISTA PRINCIPAL (UI)
-// =====================================================================
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
-    val empleados by viewModel.empleadosUI.observeAsState(emptyList())
-    val areas by viewModel.areasDisponibles.observeAsState(emptyList())
+    val personal by viewModel.personal.observeAsState(emptyList())
+    val areas by viewModel.areas.observeAsState(emptyList())
+    val cargando by viewModel.cargando.observeAsState(true)
+    val guardando by viewModel.guardando.observeAsState(false)
+    val mensaje by viewModel.mensaje.observeAsState()
+    val guardadoExitoso by viewModel.guardadoExitoso.observeAsState(false)
+    val avisoFormulario by viewModel.avisoFormulario.observeAsState()
 
     var mostrarFormulario by remember { mutableStateOf(false) }
-    var empleadoEnEdicion by remember { mutableStateOf<EmpleadoUI?>(null) }
+    var enEdicion by remember { mutableStateOf<Personal?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(mensaje) {
+        mensaje?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onMensajeMostrado()
+        }
+    }
+    LaunchedEffect(guardadoExitoso) {
+        if (guardadoExitoso) {
+            mostrarFormulario = false
+            viewModel.limpiarAvisoFormulario()
+            viewModel.onGuardadoProcesado()
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color(0xFFF9F9F9),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
-                    empleadoEnEdicion = null
+                    enEdicion = null
                     mostrarFormulario = true
                 },
                 containerColor = VerdeMarca,
@@ -259,17 +100,30 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Personal", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B), modifier = Modifier.padding(bottom = 16.dp))
+            Text(
+                "Personal",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF1E293B),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
-                items(empleados, key = { it.empleadoId }) { empleado ->
-                    EmpleadoCard(
-                        empleado = empleado,
-                        onEditClick = {
-                            empleadoEnEdicion = empleado
-                            mostrarFormulario = true
-                        }
-                    )
+            when {
+                cargando && personal.isEmpty() -> FullScreenLoading()
+                personal.isEmpty() -> EmptyState("Todavía no hay personal registrado.")
+                else -> LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(personal, key = { it.id }) { persona ->
+                        PersonalCard(
+                            persona = persona,
+                            onEditClick = {
+                                enEdicion = persona
+                                mostrarFormulario = true
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -278,96 +132,73 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
     if (mostrarFormulario) {
         FormularioPersonalDialog(
             areas = areas,
-            empleadoAEditar = empleadoEnEdicion,
-            onGuardar = { nombre, correo, telefono, estado, puesto, turno, areaId, contrasena, fotoUrl ->
-                viewModel.guardarPersonal(
-                    empleadoId = empleadoEnEdicion?.empleadoId,
-                    usuarioId = empleadoEnEdicion?.usuarioId,
-                    nombre = nombre,
-                    correo = correo,
-                    telefono = telefono,
-                    estado = estado,
-                    puesto = puesto,
-                    turno = turno,
-                    areaId = areaId,
-                    contrasena = contrasena,
-                    fotoUrl = fotoUrl
-                )
+            personaAEditar = enEdicion,
+            guardando = guardando,
+            aviso = avisoFormulario,
+            onGuardar = { datos -> viewModel.guardar(enEdicion, datos) },
+            onRestablecerContrasena = { viewModel.enviarRestablecimiento(it) },
+            onCerrar = {
                 mostrarFormulario = false
-            },
-            onCerrar = { mostrarFormulario = false }
+                viewModel.limpiarAvisoFormulario()
+            }
         )
     }
 }
 
-// =====================================================================
-// 5. FORMULARIO Y COMPONENTES
-// =====================================================================
-
 /**
- * Formulario de alta/edición de personal. Misma estructura que el de áreas: diálogo con título y X
- * fija, selectores en píldora, etiquetas en mayúsculas, campos estándar y un solo botón principal.
+ * Formulario de alta/edición de personal. Al crear, genera la cuenta de acceso (correo + contraseña); al editar,
+ * el correo no cambia y la contraseña se restablece por correo.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormularioPersonalDialog(
-    areas: List<Area>,
-    empleadoAEditar: EmpleadoUI?,
-    onGuardar: (String, String, String, String, String, String, String?, String, String?) -> Unit,
+    areas: List<String>,
+    personaAEditar: Personal?,
+    guardando: Boolean,
+    aviso: String?,
+    onGuardar: (DatosPersonal) -> Unit,
+    onRestablecerContrasena: (String) -> Unit,
     onCerrar: () -> Unit
 ) {
     val context = LocalContext.current
-    val esEdicion = empleadoAEditar != null
+    val esEdicion = personaAEditar != null
 
-    var nombre by remember { mutableStateOf(empleadoAEditar?.nombre ?: "") }
-    var telefono by remember { mutableStateOf(empleadoAEditar?.telefono ?: "") }
-    var correo by remember { mutableStateOf(empleadoAEditar?.correo ?: "") }
-    var estadoSeleccionado by remember { mutableStateOf(empleadoAEditar?.estado ?: "ACTIVO") }
+    var nombre by remember { mutableStateOf(personaAEditar?.nombre ?: "") }
+    var telefono by remember { mutableStateOf(personaAEditar?.telefono ?: "") }
+    var correo by remember { mutableStateOf(personaAEditar?.email ?: "") }
+    var estado by remember { mutableStateOf(personaAEditar?.estado ?: "ACTIVO") }
+    var rol by remember {
+        mutableStateOf(
+            // Los roles heredados (Superadmin, Admin de área) se muestran como los dos actuales.
+            personaAEditar?.rol?.let { if (it == Rol.SUPERADMIN) Rol.ADMIN else if (it in ROLES_DE_PERSONAL) it else Rol.AYUDANTE_AREA }
+                ?: Rol.AYUDANTE_AREA
+        )
+    }
     var contrasena by remember { mutableStateOf("") }
     var confirmarContrasena by remember { mutableStateOf("") }
     var mensajeError by remember { mutableStateOf<String?>(null) }
 
-    val tempUserId = remember { empleadoAEditar?.usuarioId ?: java.util.UUID.randomUUID().toString() }
-
-    var fotoPerfilPath by remember {
+    // La cuenta (y su uid) todavía no existe al dar de alta: la foto se guarda con un id temporal.
+    val idFoto = remember { personaAEditar?.id ?: java.util.UUID.randomUUID().toString() }
+    var fotoPath by remember {
         mutableStateOf<String?>(
-            if (empleadoAEditar != null) {
-                FotoPerfilManager.obtenerFoto(context, empleadoAEditar.usuarioId)?.absolutePath ?: empleadoAEditar.fotoUrl
-            } else {
-                null
-            }
+            personaAEditar?.let { FotoPerfilManager.obtenerFoto(context, it.id)?.absolutePath ?: it.fotoUrl }
         )
     }
-
-    val selectorFoto = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
+    val selectorFoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            val archivoFoto = FotoPerfilManager.guardarFoto(context = context, uri = uri, usuarioId = tempUserId)
-            fotoPerfilPath = archivoFoto?.absolutePath
+            fotoPath = FotoPerfilManager.guardarFoto(context = context, uri = uri, usuarioId = idFoto)?.absolutePath
         }
     }
 
-    // Además de Instructor y Limpieza se conserva el tipo que ya tenga la persona (Ayudante de área,
-    // Administrador de área...): antes el formulario lo cambiaba a Instructor en silencio al guardar.
-    val tipoActual = empleadoAEditar?.puesto?.takeIf { it.isNotBlank() }?.let { Catalogos.tipoDePuesto(it) }
-    val tiposPersonal = listOfNotNull("Instructor", "Limpieza", tipoActual).distinct()
-    val turnos = listOf("Matutino", "Vespertino")
-    val estados = listOf("ACTIVO", "INACTIVO")
+    // Se conserva el tipo que ya tenga la persona aunque ya no se ofrezca para altas nuevas.
+    val tipos = (TIPOS_DE_ALTA + listOfNotNull(personaAEditar?.tipoPersonal?.takeIf { it.isNotBlank() })).distinct()
+    var tipo by remember { mutableStateOf(personaAEditar?.tipoPersonal?.takeIf { it.isNotBlank() } ?: tipos[0]) }
+    var turno by remember { mutableStateOf(personaAEditar?.turno?.takeIf { it in TURNOS } ?: TURNOS[0]) }
 
+    val opcionesArea = listOf(SIN_AREA) + (areas + listOfNotNull(personaAEditar?.areaTrabajo)).distinct()
+    var area by remember { mutableStateOf(personaAEditar?.areaTrabajo ?: SIN_AREA) }
     var areaExpandida by remember { mutableStateOf(false) }
-    var areaSeleccionada by remember {
-        mutableStateOf(areas.find { it.id == empleadoAEditar?.areaAsignadaId } ?: areas.firstOrNull())
-    }
-    var tipoSeleccionado by remember { mutableStateOf(tipoActual ?: tiposPersonal[0]) }
-    var turnoSeleccionado by remember { mutableStateOf(empleadoAEditar?.turno?.ifEmpty { turnos[0] } ?: turnos[0]) }
-
-    // Si no se cambió ni el tipo ni el área, el puesto se queda tal cual estaba escrito.
-    val sinCambiosDePuesto = empleadoAEditar != null && tipoSeleccionado == tipoActual &&
-        areaSeleccionada?.id == empleadoAEditar.areaAsignadaId
-    val puestoGenerado = if (sinCambiosDePuesto) empleadoAEditar!!.puesto
-    else "$tipoSeleccionado de ${areaSeleccionada?.nombre ?: "Sin Área"}"
-    val puedeGuardar = nombre.isNotBlank() && correo.isNotBlank()
 
     DialogoFormulario(
         titulo = if (esEdicion) "Editar personal" else "Agregar personal",
@@ -382,9 +213,9 @@ fun FormularioPersonalDialog(
                     .clickable { selectorFoto.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
-                if (fotoPerfilPath != null) {
+                if (fotoPath != null) {
                     AsyncImage(
-                        model = fotoPerfilPath,
+                        model = fotoPath,
                         contentDescription = "Foto de perfil",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -396,7 +227,7 @@ fun FormularioPersonalDialog(
             Spacer(modifier = Modifier.width(16.dp))
             TextButton(onClick = { selectorFoto.launch("image/*") }) {
                 Text(
-                    text = if (fotoPerfilPath == null) "Subir foto de perfil" else "Cambiar foto",
+                    text = if (fotoPath == null) "Subir foto de perfil" else "Cambiar foto",
                     color = VerdeMarca,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
@@ -421,12 +252,29 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo("CORREO")
+        EtiquetaCampo(if (esEdicion) "CORREO (ES SU USUARIO DE ACCESO)" else "CORREO (SERÁ SU USUARIO DE ACCESO)")
         CampoTexto(
             value = correo,
             onValueChange = { correo = it },
             placeholder = "correo@gmail.com",
-            tipoTeclado = KeyboardType.Email
+            tipoTeclado = KeyboardType.Email,
+            readOnly = esEdicion
+        )
+
+        EspacioCampos()
+
+        EtiquetaCampo("ROL DE ACCESO")
+        PestanasPildora(
+            opciones = ROLES_DE_PERSONAL.map { it.nombreLegible() },
+            seleccionada = ROLES_DE_PERSONAL.indexOf(rol).coerceAtLeast(0),
+            onSeleccion = { rol = ROLES_DE_PERSONAL[it] },
+            margenHorizontal = 0.dp
+        )
+        Text(
+            text = if (rol == Rol.ADMIN) "Acceso total: dashboard, personal, áreas, reservas y membresías."
+            else "Acceso a reservas, áreas y membresías.",
+            fontSize = 12.sp,
+            color = Color(0xFF94A3B8)
         )
 
         EspacioCampos()
@@ -434,8 +282,8 @@ fun FormularioPersonalDialog(
         EtiquetaCampo("ESTADO")
         PestanasPildora(
             opciones = listOf("Activo", "Inactivo"),
-            seleccionada = estados.indexOf(estadoSeleccionado).coerceAtLeast(0),
-            onSeleccion = { estadoSeleccionado = estados[it] },
+            seleccionada = ESTADOS.indexOf(estado).coerceAtLeast(0),
+            onSeleccion = { estado = ESTADOS[it] },
             margenHorizontal = 0.dp
         )
 
@@ -443,9 +291,9 @@ fun FormularioPersonalDialog(
 
         EtiquetaCampo("TIPO DE PERSONAL")
         PestanasPildora(
-            opciones = tiposPersonal,
-            seleccionada = tiposPersonal.indexOf(tipoSeleccionado).coerceAtLeast(0),
-            onSeleccion = { tipoSeleccionado = tiposPersonal[it] },
+            opciones = tipos,
+            seleccionada = tipos.indexOf(tipo).coerceAtLeast(0),
+            onSeleccion = { tipo = tipos[it] },
             margenHorizontal = 0.dp
         )
 
@@ -453,9 +301,9 @@ fun FormularioPersonalDialog(
 
         EtiquetaCampo("TURNO")
         PestanasPildora(
-            opciones = turnos,
-            seleccionada = turnos.indexOf(turnoSeleccionado).coerceAtLeast(0),
-            onSeleccion = { turnoSeleccionado = turnos[it] },
+            opciones = TURNOS,
+            seleccionada = TURNOS.indexOf(turno).coerceAtLeast(0),
+            onSeleccion = { turno = TURNOS[it] },
             margenHorizontal = 0.dp
         )
 
@@ -464,17 +312,17 @@ fun FormularioPersonalDialog(
         EtiquetaCampo("ÁREA DE TRABAJO")
         ExposedDropdownMenuBox(expanded = areaExpandida, onExpandedChange = { areaExpandida = it }) {
             CampoTexto(
-                value = areaSeleccionada?.nombre ?: "Sin áreas registradas",
+                value = area,
                 onValueChange = {},
                 readOnly = true,
-                modifier = Modifier.menuAnchor(),
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = areaExpandida) }
             )
-            DropdownMenu(expanded = areaExpandida, onDismissRequest = { areaExpandida = false }) {
-                areas.forEach { area ->
+            ExposedDropdownMenu(expanded = areaExpandida, onDismissRequest = { areaExpandida = false }) {
+                opcionesArea.forEach { opcion ->
                     DropdownMenuItem(
-                        text = { Text(area.nombre) },
-                        onClick = { areaSeleccionada = area; areaExpandida = false }
+                        text = { Text(opcion) },
+                        onClick = { area = opcion; areaExpandida = false }
                     )
                 }
             }
@@ -482,30 +330,38 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo(if (esEdicion) "CONTRASEÑA (DEJAR EN BLANCO SI NO SE CAMBIA)" else "CONTRASEÑA")
-        CampoTexto(
-            value = contrasena,
-            onValueChange = { contrasena = it },
-            placeholder = "Mín. 8 caracteres, 1 mayúscula, 1 número",
-            esContrasena = true
-        )
+        if (esEdicion) {
+            EtiquetaCampo("CONTRASEÑA")
+            BotonSecundario(
+                texto = "Enviar correo para cambiarla",
+                onClick = { onRestablecerContrasena(correo) }
+            )
+        } else {
+            EtiquetaCampo("CONTRASEÑA")
+            CampoTexto(
+                value = contrasena,
+                onValueChange = { contrasena = it },
+                placeholder = "Mín. 8 caracteres, 1 mayúscula, 1 número",
+                esContrasena = true
+            )
 
-        EspacioCampos()
+            EspacioCampos()
 
-        EtiquetaCampo("CONFIRMAR CONTRASEÑA")
-        CampoTexto(
-            value = confirmarContrasena,
-            onValueChange = { confirmarContrasena = it },
-            placeholder = "********",
-            esContrasena = true
-        )
+            EtiquetaCampo("CONFIRMAR CONTRASEÑA")
+            CampoTexto(
+                value = confirmarContrasena,
+                onValueChange = { confirmarContrasena = it },
+                placeholder = "********",
+                esContrasena = true
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (mensajeError != null) {
+        (mensajeError ?: aviso)?.let {
             Text(
-                text = mensajeError.orEmpty(),
-                color = MaterialTheme.colorScheme.error,
+                text = it,
+                color = if (mensajeError == null && it.startsWith("Enviamos")) VerdeMarca else MaterialTheme.colorScheme.error,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -514,22 +370,34 @@ fun FormularioPersonalDialog(
 
         BotonPrimario(
             texto = if (esEdicion) "Guardar cambios" else "Agregar personal",
-            enabled = puedeGuardar,
+            cargando = guardando,
             onClick = {
-                if (esEdicion && contrasena.isEmpty()) {
-                    mensajeError = null
-                    onGuardar(nombre, correo, telefono, estadoSeleccionado, puestoGenerado, turnoSeleccionado, areaSeleccionada?.id, "", fotoPerfilPath)
-                } else {
-                    when {
-                        contrasena.length < 8 -> mensajeError = "La contraseña debe tener al menos 8 caracteres."
-                        contrasena.none { it.isUpperCase() } -> mensajeError = "La contraseña debe incluir al menos una letra mayúscula."
-                        contrasena.none { it.isDigit() } -> mensajeError = "La contraseña debe incluir al menos un número."
-                        contrasena != confirmarContrasena -> mensajeError = "Las contraseñas no coinciden."
-                        else -> {
-                            mensajeError = null
-                            onGuardar(nombre, correo, telefono, estadoSeleccionado, puestoGenerado, turnoSeleccionado, areaSeleccionada?.id, contrasena, fotoPerfilPath)
-                        }
-                    }
+                val error = when {
+                    nombre.isBlank() -> "Escribe el nombre."
+                    telefono.isNotBlank() && telefono.count { it.isDigit() } < 10 -> "El teléfono debe tener al menos 10 dígitos."
+                    !esEdicion && !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() -> "Escribe un correo válido."
+                    !esEdicion && contrasena.length < 8 -> "La contraseña debe tener al menos 8 caracteres."
+                    !esEdicion && contrasena.none { it.isUpperCase() } -> "La contraseña debe incluir al menos una letra mayúscula."
+                    !esEdicion && contrasena.none { it.isDigit() } -> "La contraseña debe incluir al menos un número."
+                    !esEdicion && contrasena != confirmarContrasena -> "Las contraseñas no coinciden."
+                    else -> null
+                }
+                mensajeError = error
+                if (error == null) {
+                    onGuardar(
+                        DatosPersonal(
+                            nombre = nombre,
+                            email = correo,
+                            telefono = telefono,
+                            estado = estado,
+                            rol = rol,
+                            tipoPersonal = tipo,
+                            turno = turno,
+                            areaTrabajo = area.takeIf { it != SIN_AREA },
+                            fotoUrl = fotoPath,
+                            contrasena = contrasena
+                        )
+                    )
                 }
             }
         )
@@ -537,11 +405,13 @@ fun FormularioPersonalDialog(
 }
 
 @Composable
-private fun EmpleadoCard(empleado: EmpleadoUI, onEditClick: () -> Unit) {
+private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
     val context = LocalContext.current
-    val fotoPerfil = remember(empleado.usuarioId) {
-        FotoPerfilManager.obtenerFoto(context, empleado.usuarioId)?.absolutePath ?: empleado.fotoUrl
+    val fotoPerfil = remember(persona.id) {
+        FotoPerfilManager.obtenerFoto(context, persona.id)?.absolutePath ?: persona.fotoUrl
     }
+    val activo = persona.estado == "ACTIVO"
+    val detalle = listOf(persona.tipoPersonal, persona.turno).filter { it.isNotBlank() }.joinToString(" • ")
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -561,27 +431,32 @@ private fun EmpleadoCard(empleado: EmpleadoUI, onEditClick: () -> Unit) {
                     if (fotoPerfil != null) {
                         AsyncImage(
                             model = fotoPerfil,
-                            contentDescription = "Foto de empleado",
+                            contentDescription = "Foto de ${persona.nombre}",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        val letra = if (empleado.nombre.isNotEmpty()) empleado.nombre.take(1).uppercase() else "?"
-                        Text(text = letra, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(
+                            text = persona.nombre.take(1).uppercase().ifEmpty { "?" },
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = empleado.nombre, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF333333))
-                    Text(text = "${empleado.puesto} • ${empleado.turno}", fontSize = 13.sp, color = Color(0xFF94A3B8))
+                    Text(text = persona.nombre, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF333333))
+                    if (detalle.isNotEmpty()) Text(text = detalle, fontSize = 13.sp, color = Color(0xFF94A3B8))
+                    Text(text = persona.email, fontSize = 12.sp, color = Color(0xFF94A3B8))
+                    if (persona.telefono.isNotBlank()) Text(text = persona.telefono, fontSize = 12.sp, color = Color(0xFF94A3B8))
+                    if (persona.fechaIngreso.isNotBlank()) Text(text = "Ingreso: ${persona.fechaIngreso}", fontSize = 12.sp, color = Color(0xFF94A3B8))
                 }
 
-                val colorEstado = if (empleado.estado == "ACTIVO") Color(0xFF2E7D32) else Color(0xFFC62828)
-                val fondoEstado = if (empleado.estado == "ACTIVO") Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-                Surface(shape = RoundedCornerShape(8.dp), color = fondoEstado) {
+                Surface(shape = RoundedCornerShape(8.dp), color = if (activo) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)) {
                     Text(
-                        text = empleado.estado,
-                        color = colorEstado,
+                        text = persona.estado,
+                        color = if (activo) Color(0xFF2E7D32) else Color(0xFFC62828),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -594,14 +469,27 @@ private fun EmpleadoCard(empleado: EmpleadoUI, onEditClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFE3F2FD)) {
-                    Text(
-                        text = "📍 ${empleado.areaNombre}",
-                        color = Color(0xFF1E88E5),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                    Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFE3F2FD)) {
+                        Text(
+                            text = "📍 ${persona.areaTrabajo ?: SIN_AREA}",
+                            color = Color(0xFF1E88E5),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                    Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFF1F5F9)) {
+                        Text(
+                            text = persona.rol.nombreLegible(),
+                            color = Color(0xFF64748B),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
                 }
 
                 TextButton(

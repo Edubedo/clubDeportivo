@@ -20,14 +20,17 @@ import java.util.Locale
  *    (`correo`, `codigo`, `tipoTurno`, `leido`...): siguen ahí, marcados como obsoletos en el diccionario.
  *  - Es idempotente: correrla dos veces deja lo mismo que una.
  *  - Queda registrada en `config/esquema` (versión y fecha) y no vuelve a correr hasta subir [VERSION].
- *  - Las únicas eliminaciones son los horarios de áreas que ya no existen (no tienen ningún uso) y el campo
- *    `id` que algunos documentos de `usuarios` y `empleados` guardaban dentro, repetido del id del documento.
+ *  - Las únicas eliminaciones son los horarios de áreas que ya no existen (no tienen ningún uso), el campo
+ *    `id` que algunos documentos de `usuarios` guardaban dentro y, desde la versión 4, la colección `empleados`:
+ *    sus datos laborales (tipoPersonal, turno, areaTrabajo) se copian primero al documento de `usuarios` de cada
+ *    persona y solo entonces se borran los documentos de `empleados`.
  */
 object MigracionEsquema {
 
-    const val VERSION = 3L
+    const val VERSION = 5L
     private const val TAG = "Esquema"
     private const val TAMANO_LOTE = 400
+    private val ROLES_DE_PERSONAL = listOf("SUPERADMIN", "ADMIN", "ADMIN_AREA", "AYUDANTE_AREA")
     private val TODOS_LOS_DIAS = listOf("LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM")
 
     /** Corre la migración si la base todavía no está en [VERSION]. Devuelve el resumen (vacío si no hizo falta). */
@@ -78,16 +81,17 @@ object MigracionEsquema {
             )
         }
 
-        resumen["empleados"] = completar(db.collection("empleados"), empleados) { doc ->
-            val puesto = doc.getString("puesto").orEmpty()
-            val areaId = doc.getString("areaAsignadaId") ?: doc.getString("areaId")
+        // Todo el personal lleva siempre sus campos laborales (vacíos si aún no se capturan), para que se vean en la base.
+        val personal = usuarios.filter { it.getString("rol") in ROLES_DE_PERSONAL || it.id in usuariosDeEmpleados }
+        resumen["personal_campos"] = completar(db.collection("usuarios"), personal) { doc ->
             mapOf(
-                "turno" to doc.getString("tipoTurno"),
-                "areaAsignadaId" to doc.getString("areaId"),
-                "areaNombre" to areaId?.let { areas[it]?.getString("nombre") },
-                "tipoPersonal" to Catalogos.tipoDePuesto(puesto).ifBlank { null }
+                "tipoPersonal" to "",
+                "turno" to "",
+                "areaTrabajo" to "",
+                "fechaIngreso" to (doc.getString("fechaRegistro") ?: "")
             )
         }
+        resumen["personal_fusionado"] = fusionarEmpleados(db, empleados, usuarios, areas)
 
         resumen["miembros"] = completar(db.collection("miembros"), miembros) { doc ->
             mapOf("esTitular" to (doc.getString("parentesco") == "Titular"))
@@ -209,11 +213,45 @@ object MigracionEsquema {
         }
 
         resumen["campo_id_redundante_borrado"] =
-            quitarCampo(db, usuarios + empleados, "id")
+            quitarCampo(db, usuarios, "id")
 
         resumen["precios"] = completar(db.collection("precios"), leer(db, "precios")) { mapOf("moneda" to "MXN") }
 
         return resumen
+    }
+
+    /**
+     * Pasa los datos laborales de `empleados` al documento de `usuarios` de cada persona y borra `empleados`.
+     * Turno: solo Matutino o Vespertino (los datos de ejemplo decían "Completo"). Área: el deporte del área
+     * que tenía asignada (la cancha concreta ya no se guarda). Devuelve cuántos documentos de `empleados` se fusionaron.
+     */
+    private suspend fun fusionarEmpleados(
+        db: FirebaseFirestore,
+        empleados: List<DocumentSnapshot>,
+        usuarios: List<DocumentSnapshot>,
+        areas: Map<String, DocumentSnapshot>
+    ): Long {
+        if (empleados.isEmpty()) return 0L
+        val empleadoPorUsuario = empleados.mapNotNull { e -> e.getString("usuarioId")?.let { it to e } }.toMap()
+        completar(
+            db.collection("usuarios"), usuarios.filter { it.id in empleadoPorUsuario },
+            forzar = setOf("turno")
+        ) { usuario ->
+            val e = empleadoPorUsuario.getValue(usuario.id)
+            val puesto = e.getString("puesto").orEmpty()
+            val areaId = e.getString("areaAsignadaId") ?: e.getString("areaId")
+            val turno = (e.getString("turno") ?: e.getString("tipoTurno"))
+                ?.takeIf { it == "Matutino" || it == "Vespertino" } ?: "Matutino"
+            mapOf(
+                "tipoPersonal" to (e.getString("tipoPersonal") ?: Catalogos.tipoDePuesto(puesto)).ifBlank { null },
+                // Solo se fuerza si el turno que ya tenía el usuario no es uno de los dos válidos.
+                "turno" to turno.takeIf { usuario.getString("turno") !in listOf("Matutino", "Vespertino") },
+                "areaTrabajo" to areaId?.let { areas[it]?.getString("tipo") },
+                "fechaIngreso" to usuario.getString("fechaRegistro")
+            )
+        }
+        borrar(db, empleados)
+        return empleados.size.toLong()
     }
 
     /**
@@ -273,7 +311,7 @@ object MigracionEsquema {
     /** Escribe en el log qué campos existen de verdad en cada colección (para compararlos con el diccionario). */
     private suspend fun auditar(db: FirebaseFirestore) {
         listOf(
-            "areas", "checkins", "empleados", "herramientas", "inscripcionesTorneo", "integrantesFamiliares",
+            "areas", "checkins", "herramientas", "inscripcionesTorneo", "integrantesFamiliares",
             "materialAsignado", "membresias", "miembros", "notificaciones", "pagos", "precios", "reservas",
             "restriccionesHorario", "torneos", "usuarios"
         ).forEach { nombre ->

@@ -16,7 +16,9 @@ import com.example.clubdeportivo.data.repository.MembresiaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import com.example.clubdeportivo.data.repository.RestriccionHorarioRepository
 import com.example.clubdeportivo.data.repository.TorneoRepository
+import com.example.clubdeportivo.data.repository.FirebasePersonalRepository
 import com.example.clubdeportivo.data.repository.FirebaseUsuarioRepository
+import com.example.clubdeportivo.data.repository.PersonalRepository
 import com.example.clubdeportivo.data.repository.UsuarioRepository
 
 /**
@@ -39,6 +41,7 @@ object AppContainer {
     val gestionMembresiasRepository: GestionMembresiasRepository = FirebaseGestionMembresiasRepository()
     val preciosRepository: PreciosRepository = FirebasePreciosRepository()
     val torneoRepository: TorneoRepository = FirebaseTorneoRepository()
+    val personalRepository: PersonalRepository = FirebasePersonalRepository()
 
     val usuarioRepository: UsuarioRepository = FirebaseUsuarioRepository()
 }

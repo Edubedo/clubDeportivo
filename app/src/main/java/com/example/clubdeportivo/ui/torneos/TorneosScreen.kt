@@ -92,7 +92,7 @@ import java.time.ZoneOffset
 
 private val fondoPantalla = Color(0xFFF8FAFD)
 private val colorVerde = Color(0xFF10B981)
-private val rolesDeAdministracion = setOf(Rol.SUPERADMIN, Rol.ADMIN, Rol.ADMIN_AREA)
+private val rolesDeAdministracion = setOf(Rol.SUPERADMIN, Rol.ADMIN, Rol.ADMIN_AREA, Rol.AYUDANTE_AREA)
 
 @Composable
 fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {

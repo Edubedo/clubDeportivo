@@ -1,0 +1,169 @@
+rules_version = '2';
+
+// Reglas de seguridad de ClubDeportivo. Se publican a mano: Firebase console > Firestore > Reglas > pegar > Publicar.
+// Contexto y razones de cada regla: docs/diccionario-de-datos.txt, sección 8.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Quién es quien ----------
+    function firmado() {
+      return request.auth != null;
+    }
+    function rutaPerfil() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.uid);
+    }
+    function conPerfil() {
+      return firmado() && exists(rutaPerfil());
+    }
+    function rolActual() {
+      return get(rutaPerfil()).data.get('rol', 'SOCIO');
+    }
+    function activo() {
+      return get(rutaPerfil()).data.get('estado', 'ACTIVO') != 'INACTIVO';
+    }
+    // Administrador: dashboard, Personal y todo lo demás.
+    function esAdmin() {
+      return conPerfil() && activo() && rolActual() in ['SUPERADMIN', 'ADMIN'];
+    }
+    // Personal del club: administradores y encargados de área (ADMIN_AREA es el nombre heredado).
+    function esPersonal() {
+      return conPerfil() && activo() && rolActual() in ['SUPERADMIN', 'ADMIN', 'ADMIN_AREA', 'AYUDANTE_AREA'];
+    }
+    function esDeCliente(rol) {
+      return rol in ['SOCIO', 'VISITANTE_EXTERNO'];
+    }
+
+    // ---------- Personas ----------
+    match /usuarios/{uid} {
+      allow read: if firmado() && (request.auth.uid == uid || esPersonal());
+
+      // Registro propio (solo como socio o visitante), alta de personal por un administrador, o alta de un
+      // miembro con código por el personal.
+      allow create: if (firmado() && request.auth.uid == uid
+                        && esDeCliente(request.resource.data.rol)
+                        && request.resource.data.get('estado', 'ACTIVO') == 'ACTIVO')
+                    || esAdmin()
+                    || (esPersonal() && esDeCliente(request.resource.data.rol));
+
+      // Cada quien edita solo su nombre, teléfono y foto; nunca su rol ni su estado. El personal edita
+      // clientes; solo un administrador toca al personal.
+      allow update: if esAdmin()
+                    || (esPersonal() && esDeCliente(resource.data.rol) && esDeCliente(request.resource.data.rol))
+                    || (firmado() && request.auth.uid == uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['nombre', 'telefono', 'fotoUrl', 'actualizadoEn']));
+      allow delete: if esAdmin();
+    }
+
+    match /miembros/{codigo} {
+      allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
+      allow write: if esPersonal();
+    }
+
+    match /membresias/{id} {
+      // La ve su titular y cada persona cubierta por ella (a través de su código de miembro).
+      allow read: if esPersonal()
+                  || (firmado() && resource.data.usuarioId == request.auth.uid)
+                  || (conPerfil() && get(rutaPerfil()).data.get('codigoMiembro', '') != ''
+                      && get(/databases/$(database)/documents/miembros/$(get(rutaPerfil()).data.codigoMiembro))
+                           .data.membresiaId == id);
+      allow write: if esPersonal();
+    }
+
+    match /integrantesFamiliares/{id} {
+      allow read: if firmado();
+      allow write: if esPersonal();
+    }
+
+    match /pagos/{id} {
+      allow read, write: if esPersonal();
+    }
+
+    match /precios/{id} {
+      allow read: if firmado();
+      allow write: if esPersonal();
+    }
+
+    // ---------- Áreas, material y horarios ----------
+    match /areas/{id} {
+      allow read: if firmado();
+      allow write: if esPersonal();
+    }
+
+    match /herramientas/{id} {
+      allow read: if firmado();
+      allow write: if esPersonal();
+    }
+
+    match /restriccionesHorario/{id} {
+      allow read, write: if esPersonal();
+    }
+
+    // ---------- Reservas ----------
+    match /reservas/{id} {
+      // Se leen todas porque el cupo por hora se calcula con las reservas de todos.
+      allow read: if firmado();
+
+      // Un socio crea reservas a su nombre; un visitante externo siempre queda pendiente de aprobación.
+      allow create: if esPersonal()
+                    || (conPerfil() && activo()
+                        && request.resource.data.usuarioId == request.auth.uid
+                        && (rolActual() != 'VISITANTE_EXTERNO'
+                            || request.resource.data.estado == 'PENDIENTE_APROBACION'));
+
+      // Quien reserva solo puede cancelar la suya; confirmar o finalizar es del personal.
+      allow update: if esPersonal()
+                    || (firmado() && resource.data.usuarioId == request.auth.uid
+                        && request.resource.data.usuarioId == resource.data.usuarioId
+                        && request.resource.data.estado == 'CANCELADA');
+      allow delete: if esPersonal();
+    }
+
+    match /materialAsignado/{id} {
+      allow read: if firmado();
+      allow create: if esPersonal()
+                    || (firmado() && get(/databases/$(database)/documents/reservas/$(request.resource.data.reservaId))
+                          .data.usuarioId == request.auth.uid);
+      allow update: if esPersonal()
+                    || (firmado() && get(/databases/$(database)/documents/reservas/$(resource.data.reservaId))
+                          .data.usuarioId == request.auth.uid);
+      allow delete: if esPersonal();
+    }
+
+    match /checkins/{id} {
+      allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
+      allow write: if esPersonal();
+    }
+
+    match /notificaciones/{id} {
+      allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
+      allow write: if esPersonal();
+    }
+
+    // ---------- Torneos ----------
+    match /torneos/{id} {
+      allow read: if firmado();
+      allow create, delete: if esPersonal();
+      // Inscribirse sube torneos.inscritos (sin pasar del cupo); cualquier otro cambio es del personal.
+      allow update: if esPersonal()
+                    || (firmado()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['inscritos', 'actualizadoEn'])
+                        && request.resource.data.inscritos <= resource.data.cupoMaximo);
+    }
+
+    match /inscripcionesTorneo/{id} {
+      // Se leen todas para contar los inscritos de cada torneo.
+      allow read: if firmado();
+      allow create: if esPersonal()
+                    || (firmado() && request.resource.data.usuarioId == request.auth.uid
+                        && id == request.resource.data.torneoId + '_' + request.auth.uid);
+      allow update, delete: if esPersonal();
+    }
+
+    // ---------- Sistema ----------
+    // config/esquema: versión de la migración. Solo la corre un administrador.
+    match /config/{id} {
+      allow read, write: if esAdmin();
+    }
+  }
+}

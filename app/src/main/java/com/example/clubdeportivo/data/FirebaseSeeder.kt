@@ -1,6 +1,7 @@
 package com.example.clubdeportivo.data
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -110,12 +111,12 @@ object FirebaseSeeder {
         val uidAyudante = "f1Cfw5en8qh8klPMH8shzaSsbqw1"     // ayudante@clubdeportivo.com
         val uidExterno = "qcNNBKvOmNOdvrC1v1R4gF6N0iA3"      // externo@clubdeportivo.com
 
-        // empleados: personal asignado al área 1 (Cancha de fútbol 1)
-        db.collection("empleados").document("empleado-1").set(
-            mapOf("usuarioId" to uidAdminArea, "areaAsignadaId" to "1", "areaNombre" to "Cancha de fútbol 1", "puesto" to "Administrador de área", "tipoPersonal" to "Administrador de área", "turno" to "Matutino")
+        // personal: sus datos laborales viven en el propio documento de usuarios (ya no existe la colección empleados)
+        db.collection("usuarios").document(uidAdminArea).set(
+            mapOf("tipoPersonal" to "Instructor", "turno" to "Matutino", "areaTrabajo" to "Fútbol"), SetOptions.merge()
         ).await()
-        db.collection("empleados").document("empleado-2").set(
-            mapOf("usuarioId" to uidAyudante, "areaAsignadaId" to "1", "areaNombre" to "Cancha de fútbol 1", "puesto" to "Ayudante de área", "tipoPersonal" to "Ayudante de área", "turno" to "Vespertino")
+        db.collection("usuarios").document(uidAyudante).set(
+            mapOf("tipoPersonal" to "Instructor", "turno" to "Vespertino", "areaTrabajo" to "Fútbol"), SetOptions.merge()
         ).await()
 
         // membresia + integrantes familiares del socio (paqueteFamiliarId 1 = "Familiar", ver Catalogos.kt)

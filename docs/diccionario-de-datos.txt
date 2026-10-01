@@ -11,7 +11,7 @@ CONTENIDO
   3. Mapa de relaciones
   4. Colecciones
        4.1  usuarios                  4.9   materialAsignado
-       4.2  empleados                 4.10  herramientas
+       4.2  (empleados: retirada)     4.10  herramientas
        4.3  miembros                  4.11  checkins
        4.4  membresias                4.12  notificaciones
        4.5  integrantesFamiliares     4.13  restriccionesHorario
@@ -68,7 +68,7 @@ Identificadores (PK)
       inscripcionesTorneo/{torneoId}_{usuarioId}   una persona no se inscribe dos veces al mismo torneo.
       restriccionesHorario/rh-{areaId}     un horario general por área.
       precios/{clave}                      INDIVIDUAL_NORMAL, FAMILIAR_1, VISITA...
-  - El id NO se repite dentro del documento (antes usuarios y empleados guardaban un campo "id": ya se quitó).
+  - El id NO se repite dentro del documento (antes usuarios guardaba un campo "id": ya se quitó).
 
 Fechas y horas
   - Fecha de negocio : String "yyyy-MM-dd"        (fecha de una reserva, vigencia de una membresía).
@@ -93,10 +93,10 @@ Desnormalización (copiar un dato para no tener que buscarlo)
     NOMBRE del documento referenciado junto a su id:
       reservas.areaNombre / usuarioNombre / deporte        torneos.areaNombre
       membresias.titularNombre / titularCodigo             inscripcionesTorneo.torneoNombre / usuarioNombre
-      materialAsignado.herramientaNombre                   empleados.areaNombre
+      materialAsignado.herramientaNombre
   - En reservas, pagos e inscripciones la copia es a propósito HISTÓRICA: si el área se renombra o se
     elimina, el registro sigue diciendo lo que decía cuando ocurrió.
-  - En empleados y torneos la copia puede quedar desactualizada si se renombra el área; se corrige la
+  - En torneos la copia puede quedar desactualizada si se renombra el área; se corrige la
     siguiente vez que se guarda el registro. El id (areaId) es siempre la fuente de verdad.
 
 Contadores
@@ -117,7 +117,6 @@ Contadores
         v
    usuarios ---------------------------------------------------------------+
      | 1                                                                     |
-     |--< empleados (usuarioId) >-- 1 areas (areaAsignadaId)                 |
      |                                                                       |
      |--< miembros (usuarioId)                                               |
      |        ^                                                              |
@@ -160,52 +159,47 @@ Escribe : FirebaseAuthRepository (registro), FirebaseGestionMembresiasRepository
 Lee     : login, perfil, Personal, Membresías.
 Observado: 12 documentos.
 
+  Un solo documento por persona, para TODOS los tipos (personal, socios, visitantes). Los campos se agrupan
+  por quién los usa; "Req" dice si siempre existen (S) o solo en ese tipo de persona (N).
+
   Campo          Tipo       Req  Descripción
   -------------- ---------- ---- --------------------------------------------------------------------
+  -- Identidad y acceso (todos) --
   nombre         String     S    Nombre completo.
-  email          String     S    Correo de la cuenta. Para personal y registros normales es el correo
-                                 real; para miembros con código es el correo interno derivado del
-                                 código (clb-xxxxxx@miembros.clubdeportivo.app).
+  email          String     S    Correo de la cuenta. Personal y registros normales: correo real. Miembros con
+                                 código: correo interno derivado del código (clb-xxxxxx@miembros.clubdeportivo.app).
   telefono       String     S    Teléfono; "" si no se capturó.
   rol            String     S    SUPERADMIN | ADMIN | ADMIN_AREA | AYUDANTE_AREA | SOCIO | VISITANTE_EXTERNO.
-                                 Si faltara, la app asume SOCIO (el rol de menor alcance).
-  estado         String     S    ACTIVO | INACTIVO.
+                                 Si faltara, la app asume SOCIO. Personal: ADMIN (Administrador) o
+                                 AYUDANTE_AREA (Encargado de área).
+  estado         String     S    ACTIVO | INACTIVO. Inactivo = no puede iniciar sesión.
   fotoUrl        String     N    Ruta o URL de la foto de perfil.
+  fechaRegistro  String     N    Fecha de alta de la cuenta (yyyy-MM-dd).
+  creadoEn       Timestamp  N    Cuándo se creó el documento.
+  actualizadoEn  Timestamp  N    Última modificación.
+  -- Solo personal (rol ADMIN / AYUDANTE_AREA). Siempre presentes en ellos; "" si aún no se capturan --
+  tipoPersonal   String     N    Tipo de trabajo: "Instructor" (por ahora el único que se da de alta).
+  turno          String     N    Matutino | Vespertino.
+  areaTrabajo    String     N    Área del club donde trabaja (deporte: "Fútbol", "Tenis"...). "" = sin área.
+  fechaIngreso   String     N    Fecha en que entró como personal (yyyy-MM-dd).
+  creadoPor      String     N    uid del administrador que lo dio de alta.
+  -- Solo socios y visitantes con código --
   codigoMiembro  String     N    Código CLB-XXXXXX. Solo existe en cuentas creadas al registrar un miembro.
-  fechaRegistro  String     N    Fecha de alta (yyyy-MM-dd). Falta en algunos registros anteriores.
-  creadoEn       Timestamp  N    Cuándo se creó el documento (desde la versión 3).
-  actualizadoEn  Timestamp  N    Última modificación (desde la versión 3).
 
   OBSOLETOS:  correo  -> reemplazado por email.
               codigo  -> reemplazado por codigoMiembro.
               id      -> ya eliminado (repetía el id del documento).
-  Nota: el personal dado de alta desde la pantalla Personal tiene documento aquí pero AÚN no cuenta de
-        acceso en Firebase Authentication (ver sección 9).
+  Nota: el personal se da de alta desde la pantalla Personal (solo administradores): se crea la cuenta en
+        Firebase Authentication (correo + contraseña) y este documento con el mismo uid. La contraseña no se
+        guarda en Firestore; para cambiarla se envía un correo de restablecimiento. Una persona INACTIVA no
+        puede iniciar sesión.
 
 ----------------------------------------------------------------------------------------------------
-4.2  empleados
+4.2  empleados  (RETIRADA en la versión 4)
 ----------------------------------------------------------------------------------------------------
-Datos laborales del personal. La identidad (nombre, correo, teléfono, estado) vive en usuarios; aquí solo
-lo que describe el trabajo.
-PK : id automático (o "empleado-N" en los datos de ejemplo).
-FK : usuarioId -> usuarios ; areaAsignadaId -> areas.
-Escribe : PersonalRepository.   Lee : Personal, dashboard (conteo).
-Observado: 4 documentos.
-
-  Campo           Tipo       Req  Descripción
-  --------------- ---------- ---- -------------------------------------------------------------------
-  usuarioId       String     S    FK a usuarios.
-  puesto          String     S    Texto completo del cargo, p. ej. "Instructor de Cancha de fútbol 1".
-  tipoPersonal    String     S    Tipo sin el área: "Instructor", "Limpieza", "Administrador de área"...
-  turno           String     S    Matutino | Vespertino.
-  areaAsignadaId  String     N    FK a areas. Ausente = sin área asignada.
-  areaNombre      String     N    Nombre del área (copia, ver desnormalización).
-  creadoEn        Timestamp  N    Alta del registro.
-  actualizadoEn   Timestamp  N    Última modificación.
-
-  OBSOLETOS:  areaId    -> reemplazado por areaAsignadaId.
-              tipoTurno -> reemplazado por turno.
-              id        -> ya eliminado.
+Esta colección ya no existe: sus datos (tipoPersonal, turno y el área de trabajo) pasaron al documento de
+usuarios de cada persona (ver 4.1). La migración a la versión 4 los copia y borra los documentos de empleados.
+Los turnos "Completo" de los datos de ejemplo se convirtieron en Matutino.
 
 ----------------------------------------------------------------------------------------------------
 4.3  miembros
@@ -551,7 +545,8 @@ Ajustes internos de la aplicación. Documento actual: config/esquema.
                           SOCIO        Cliente con membresía.
                           VISITANTE_EXTERNO  Cliente de visita; sus reservas requieren aprobación.
   usuarios.estado         ACTIVO | INACTIVO
-  empleados.turno         Matutino | Vespertino
+  usuarios.turno          Matutino | Vespertino (solo personal)
+  usuarios.tipoPersonal   Instructor (por ahora el único tipo que se da de alta)
   membresias.tipo         INDIVIDUAL | FAMILIAR | VISITA
   membresias.plan         NINO ($1,500) | NORMAL ($1,800) | DELUXE ($3,500)      (precios base, al mes)
   membresias.paqueteFamiliarId   1 Familiar $7,000 (5 personas) | 2 Pareja $2,999 (2) | 3 Niños $2,800 (3)
@@ -618,21 +613,32 @@ Si más adelante se filtra en el servidor por área Y fecha a la vez (reservas d
 8. SEGURIDAD
 ====================================================================================================
 
-Las reglas de Firestore actuales solo exigen sesión iniciada (request.auth != null) para leer y escribir
-TODO. Eso significa que cualquier cuenta, incluida la de un socio, podría leer o modificar miembros,
-membresias, precios y pagos. Como el código de miembro funciona como contraseña de su cuenta, conviene
-restringir antes de usar la app con datos reales. Propuesta por colección:
+Las reglas están en `firestore.rules` (raíz del repo). Firebase no las toma del repo: se pegan en
+Firebase console > Firestore > Reglas y se publican. Resumen:
 
-  usuarios, empleados, miembros, membresias, pagos, precios, config, herramientas, restriccionesHorario
-      Leer   : personal del club (rol SUPERADMIN, ADMIN, ADMIN_AREA); cada persona puede leer SU documento.
-      Escribir: solo personal del club.
-  areas, torneos
-      Leer   : cualquier sesión iniciada.   Escribir: personal del club.
-  reservas, inscripcionesTorneo, checkins, notificaciones
-      Leer   : el dueño (usuarioId) y el personal.   Crear: el dueño.   Modificar: dueño o personal.
+  Roles      Administrador (SUPERADMIN, ADMIN) | Encargado de área (AYUDANTE_AREA, ADMIN_AREA heredado) |
+             Socio | Visitante externo. Una cuenta con estado INACTIVO pierde los permisos del personal.
+  usuarios   Leer: la propia cuenta y el personal. Crear: registro propio (solo Socio/Visitante), un
+             administrador (cualquier rol) o el personal (solo clientes con código). Editar: cada quien su
+             nombre/teléfono/foto, NUNCA su rol ni estado; el personal edita clientes; el personal del club
+             solo lo edita un administrador. Borrar: administrador.
+  miembros, membresias, integrantesFamiliares, pagos, precios
+             Escribir: personal. Leer: personal y la persona dueña (titular o cubierta por la membresía);
+             precios e integrantesFamiliares los lee cualquier sesión.
+  areas, herramientas, torneos
+             Leer: cualquier sesión. Escribir: personal (los torneos también suben `inscritos` al inscribirse,
+             sin pasar de cupoMaximo).
+  reservas   Leer: cualquier sesión (el cupo se calcula con las de todos). Crear: personal o la propia persona
+             (un visitante externo siempre PENDIENTE_APROBACION). Quien reserva solo puede cancelar la suya.
+  inscripcionesTorneo, materialAsignado
+             Se crean a nombre de la propia persona (o el personal); el resto lo cambia el personal.
+  config     Solo administrador (la migración de esquema).
+  restriccionesHorario, checkins, notificaciones: personal (los dos últimos también los lee su dueño).
+  Todo lo demás: denegado.
 
-Las reglas necesitan poder consultar el rol de quien escribe (usuarios/{request.auth.uid}.rol); en
-Firestore se hace con get() dentro de las reglas.
+Campos que las reglas necesitan: usuarios.rol (si falta, la persona cuenta como Socio y no tiene permisos de
+personal), usuarios.estado, usuarios.codigoMiembro (miembros con código), miembros.usuarioId, membresias.usuarioId,
+reservas.usuarioId, inscripcionesTorneo.usuarioId y torneoId, torneos.cupoMaximo e inscritos.
 
 
 ====================================================================================================
@@ -641,15 +647,16 @@ Firestore se hace con get() dentro de las reglas.
 
   1. PAGOS no se registran. Registrar o renovar una membresía no crea un documento en pagos, así que el
      club no tiene historial de cobros. Falta elegir método de pago en los formularios y escribirlo.
-  2. PERSONAL sin cuenta de acceso. El formulario de Personal pide contraseña pero no crea la cuenta en
-     Firebase Authentication; solo crea el perfil. Esas personas no pueden iniciar sesión todavía.
+  2. PERSONAL anterior a la versión 4 puede no tener cuenta de acceso (se creó solo el perfil). Para esas
+     personas, "Enviar correo para cambiarla" avisa que no hay cuenta; hay que darlas de alta de nuevo con otro
+     correo o crearles la cuenta a mano en Firebase Authentication con el uid del documento.
   3. INVENTARIO en memoria. La pantalla Inventario no usa la colección herramientas; sus datos se pierden
      al cerrar la app. Es la conexión más natural pendiente.
   4. HERRAMIENTAS sin descuento. Al asignar material a una reserva no baja cantidadDisponible.
   5. HORARIOS por deporte. restriccionesHorario no se lee; los horarios salen del código. Un deporte nuevo
      usa el horario por omisión (08:00 a 20:00).
   6. CHECKINS y NOTIFICACIONES sin pantalla ni escritura todavía.
-  7. NOMBRES COPIADOS. empleados.areaNombre y torneos.areaNombre no se actualizan si se renombra un área.
+  7. NOMBRES COPIADOS. torneos.areaNombre no se actualizan si se renombra un área.
   8. INTEGRANTES anteriores. Las membresías creadas antes de los códigos no tienen miembros con código; se
      pueden renovar, suspender y cambiar de plan, pero sus personas no se editan hasta volver a registrarlas.
   9. CAMPOS OBSOLETOS. Siguen en los documentos viejos (correo, codigo, areaId, tipoTurno, leido,

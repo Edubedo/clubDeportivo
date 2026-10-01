@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esCliente
 
 /** Rutas equivalentes a los ids de res/navigation/nav_graph.xml. */
@@ -48,6 +49,14 @@ val bottomNavItems = listOf(
 
 )
 
+/** Encargados de área: solo reservas, áreas y membresías (sin dashboard ni Personal). */
+val bottomNavItemsEncargado = listOf(
+    BottomNavItem(Destinations.RESERVAS, "Reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
+    BottomNavItem(Destinations.AREAS, "Áreas", Icons.Filled.Place, Icons.Outlined.Place),
+    BottomNavItem(Destinations.MEMBRESIA, "Membresías", Icons.Filled.CardMembership, Icons.Outlined.CardMembership),
+    BottomNavItem(Destinations.PERFIL, "Perfil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
+)
+
 /** Menú de socios y visitantes: solo lo suyo. Las secciones de administración no se les muestran. */
 val bottomNavItemsCliente = listOf(
     BottomNavItem(Destinations.RESERVAS, "Reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
@@ -55,8 +64,19 @@ val bottomNavItemsCliente = listOf(
     BottomNavItem(Destinations.PERFIL, "Perfil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
 )
 
-/** Primera pantalla tras entrar: el panel para el personal, las reservas para los clientes. */
-fun rutaInicial(rol: Rol?): String = if (rol?.esCliente() == true) Destinations.RESERVAS else Destinations.HOME
+/** Menú inferior según el rol: administradores, encargados de área o clientes. */
+fun menuPara(rol: Rol?): List<BottomNavItem> = when {
+    rol == null || rol.esCliente() -> bottomNavItemsCliente
+    rol.esAdministrador() -> bottomNavItems
+    else -> bottomNavItemsEncargado
+}
+
+/** Primera pantalla tras entrar: el panel para los administradores, las reservas para todos los demás. */
+fun rutaInicial(rol: Rol?): String = if (rol?.esAdministrador() == true) Destinations.HOME else Destinations.RESERVAS
+
+/** Una ruta solo se abre si está en el menú del rol (o es el perfil): evita entrar a Personal o al dashboard sin permiso. */
+fun rutaPermitida(rol: Rol?, ruta: String): Boolean =
+    ruta == Destinations.PERFIL || menuPara(rol).any { it.route == ruta }
 
 fun tituloPantalla(route: String?): String = when {
     route == Destinations.HOME -> "Inicio"

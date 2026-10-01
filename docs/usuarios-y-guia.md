@@ -20,9 +20,9 @@ La app maneja distintos **roles** (`Rol.kt`), de mayor a menor alcance:
 | Rol | Alcance |
 |---|---|
 | `SUPERADMIN` | Nivel sistema, controla todo. |
-| `ADMIN` | Nivel empresa, controla todas las áreas. |
-| `ADMIN_AREA` | Solo administra su área. |
-| `AYUDANTE_AREA` | Ayuda dentro de un área. |
+| `ADMIN` | Administrador. Único con dashboard y Personal (crea las cuentas del personal). |
+| `ADMIN_AREA` | Heredado; se trata como Encargado de área. |
+| `AYUDANTE_AREA` | Encargado de área. Solo reservas, áreas y membresías. |
 | `SOCIO` | Elige área y reserva turnos. |
 | `VISITANTE_EXTERNO` | Acceso limitado, requiere aprobación para reservar. |
 
@@ -41,7 +41,7 @@ Ya existen 6 cuentas reales, una por rol (creadas el 2026-09-08 desde la propia 
 | `superadmin@clubdeportivo.com` | Superadministrador |
 | `admin@clubdeportivo.com` | Administrador |
 | `areadmin@clubdeportivo.com` | Administrador de área |
-| `ayudante@clubdeportivo.com` | Ayudante de área |
+| `ayudante@clubdeportivo.com` | Encargado de área |
 | `socio@prueba.com` | Socio |
 | `externo@clubdeportivo.com` | Visitante externo |
 

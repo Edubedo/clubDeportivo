@@ -12,7 +12,6 @@ import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class AdminHomeViewModel : ViewModel() {
 
@@ -64,8 +63,7 @@ class AdminHomeViewModel : ViewModel() {
                     .count { it.fecha == hoy }.toString()
             } catch (_: Exception) { }
             try {
-                _totalPersonal.value = FirebaseFirestore.getInstance()
-                    .collection("empleados").get().await().size().toString()
+                _totalPersonal.value = AppContainer.personalRepository.contarPersonal().toString()
             } catch (_: Exception) { }
         }
     }

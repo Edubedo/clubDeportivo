@@ -45,7 +45,12 @@ class FirebaseAuthRepository(
             val uid = resultado.user?.uid
                 ?: return Resultado.Error("No se pudo iniciar sesión, intenta de nuevo.")
 
-            val usuario = usuarios.document(uid).get().await().toUsuario(uid, correo)
+            val perfil = usuarios.document(uid).get().await()
+            if (perfil.getString("estado") == "INACTIVO") {
+                auth.signOut()
+                return Resultado.Error("Tu cuenta está desactivada. Contacta a un administrador.")
+            }
+            val usuario = perfil.toUsuario(uid, correo)
                 ?: return Resultado.Error("Tu cuenta no tiene un perfil guardado. Contacta a un administrador.")
 
             Resultado.Exito(usuario)
