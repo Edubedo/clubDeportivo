@@ -84,7 +84,7 @@ private val paleta = listOf(
 
 private fun colorDeDeporte(tipo: String): Pair<Color, Color> = paleta[(tipo.hashCode() and Int.MAX_VALUE) % paleta.size]
 
-/** Gestión de áreas: lista, alta, edición y baja (mockup "Gestión de Canchas"). */
+/** Gestión de áreas: lista, alta, edición y baja (mockup "Gestión de Áreas"). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
@@ -116,7 +116,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                     mostrarFormulario = true
                 },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Agregar cancha", fontWeight = FontWeight.Bold) },
+                text = { Text("Agregar área", fontWeight = FontWeight.Bold) },
                 containerColor = VerdeMarca,
                 contentColor = Color.White
             )
@@ -124,7 +124,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             Text(
-                text = "Gestión de canchas",
+                text = "Gestión de áreas",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF111827),
@@ -138,7 +138,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
             ) {
                 when {
                     cargando && areas.isEmpty() -> FullScreenLoading()
-                    areas.isEmpty() -> EmptyState("No hay áreas registradas. Agrega la primera con \"Agregar cancha\".")
+                    areas.isEmpty() -> EmptyState("No hay áreas registradas. Agrega la primera con \"Agregar área\".")
                     else -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
@@ -178,7 +178,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
     areaAEliminar?.let { area ->
         AlertDialog(
             onDismissRequest = { areaAEliminar = null },
-            title = { Text("Eliminar cancha") },
+            title = { Text("Eliminar área") },
             text = { Text("¿Seguro que quieres eliminar \"${Deportes.titulo(area.tipo, area.nombre)}\"? Esta acción no se puede deshacer.") },
             confirmButton = {
                 TextButton(onClick = {
@@ -260,7 +260,7 @@ private fun AreaCard(area: Area, reservasHoy: Int, onEditar: () -> Unit, onElimi
     }
 }
 
-/** Formulario de alta/edición de cancha (mockup "+ Agregar Cancha": deporte existente o nuevo). */
+/** Formulario de alta/edición de área (mockup "+ Agregar Área": deporte existente o nuevo). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AreaFormDialog(
@@ -285,7 +285,7 @@ private fun AreaFormDialog(
         (!modoNuevo || emojiNuevo.isNotBlank()) && (capacidad.toIntOrNull() ?: 0) > 0
 
     DialogoFormulario(
-        titulo = if (esEdicion) "Editar cancha" else "Agregar cancha",
+        titulo = if (esEdicion) "Editar área" else "Agregar área",
         onCerrar = onCerrar
     ) {
         PestanasPildora(
@@ -357,7 +357,7 @@ private fun AreaFormDialog(
         Spacer(modifier = Modifier.height(24.dp))
 
         BotonPrimario(
-            texto = if (esEdicion) "Guardar cambios" else "Agregar cancha",
+            texto = if (esEdicion) "Guardar cambios" else "Agregar área",
             enabled = puedeGuardar,
             onClick = {
                 val emoji = if (modoNuevo) emojiNuevo.trim() else areaExistente?.emoji.orEmpty()

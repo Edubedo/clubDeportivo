@@ -73,7 +73,7 @@ fun HomeScreen(
             DashboardCard(
                 emoji = "🏟️",
                 cantidad = "9",
-                titulo = "Canchas",
+                titulo = "Áreas",
                 backgroundColor = Color(0xFFEFF6FF),
                 modifier = Modifier.weight(1f)
             )
