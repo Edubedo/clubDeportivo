@@ -1,6 +1,7 @@
 package com.example.clubdeportivo.data.repository
 
-import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.data.SesionManager
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -20,6 +21,13 @@ class FirebasePreciosRepository(
         coleccion.get().await().documents.mapNotNull { doc -> doc.getDouble("precio")?.let { doc.id to it } }.toMap()
 
     override suspend fun guardar(clave: String, precio: Double) {
-        coleccion.document(clave).set(mapOf("precio" to precio, "actualizado" to Fechas.hoy())).await()
+        coleccion.document(clave).set(
+            mapOf(
+                "precio" to precio,
+                "moneda" to "MXN",
+                "actualizadoEn" to FieldValue.serverTimestamp(),
+                "actualizadoPor" to (SesionManager.usuarioActual?.id ?: "")
+            )
+        ).await()
     }
 }

@@ -2,6 +2,7 @@ package com.example.clubdeportivo.data.repository
 
 import com.example.clubdeportivo.data.model.Usuario
 import com.example.clubdeportivo.util.Resultado
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -20,7 +21,10 @@ class FirebaseUsuarioRepository(
             usuarios
                 .document(usuario.id)
                 .update(
-                    "nombre", usuario.nombre
+                    mapOf(
+                        "nombre" to usuario.nombre,
+                        "actualizadoEn" to FieldValue.serverTimestamp()
+                    )
                 )
                 .await()
 

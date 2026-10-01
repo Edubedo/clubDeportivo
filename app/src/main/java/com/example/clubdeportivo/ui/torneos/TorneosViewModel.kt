@@ -58,8 +58,12 @@ class TorneosViewModel(
     fun inscribirse(torneo: Torneo) {
         val usuarioId = SesionManager.usuarioActual?.id ?: return
         viewModelScope.launch {
-            torneoRepository.inscribirse(torneo.id, usuarioId)
-            _mensaje.value = "Te inscribiste a ${torneo.nombre}"
+            try {
+                torneoRepository.inscribirse(torneo.id, usuarioId)
+                _mensaje.value = "Te inscribiste a ${torneo.nombre}"
+            } catch (e: Exception) {
+                _mensaje.value = e.message ?: "No se pudo completar la inscripción."
+            }
             cargarTorneos()
         }
     }

@@ -4,7 +4,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.example.clubdeportivo.data.AppContainer
+import com.example.clubdeportivo.data.MigracionEsquema
 import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
@@ -40,6 +42,12 @@ class AdminHomeViewModel : ViewModel() {
 
     private fun cargarTotales() {
         viewModelScope.launch {
+            // Primero se deja la base en la estructura actual (solo hace algo la primera vez que entra el personal).
+            try {
+                MigracionEsquema.asegurar(FirebaseFirestore.getInstance())
+            } catch (e: Exception) {
+                Log.w("Esquema", "No se pudo migrar la estructura de la base de datos", e)
+            }
             try {
                 _totalAreas.value = AppContainer.areaRepository.obtenerAreas().size.toString()
             } catch (_: Exception) { }

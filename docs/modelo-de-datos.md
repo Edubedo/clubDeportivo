@@ -1,5 +1,10 @@
 # Modelo de datos
 
+> **Diccionario de datos completo de Firestore: [`diccionario-de-datos.txt`](diccionario-de-datos.txt)**
+> (campos, tipos, relaciones, valores permitidos, índices y reglas de cada colección). Este archivo solo
+> describe las clases de Kotlin; si algo difiere, manda el diccionario.
+
+
 Todas las entidades viven como `data class` / `enum class` en
 `app/src/main/java/com/example/clubdeportivo/data/model/`. Son los objetos que circulan entre
 los repositorios (ver [`arquitectura.md`](arquitectura.md#conectado-a-firebase)) y la UI, con la

@@ -13,6 +13,13 @@ object Catalogos {
 
     const val PRECIO_VISITA = 200.0
 
+    /** Tipos de personal conocidos. El puesto se escribe "<tipo> de <área>" (salvo los que ya traen "de área"). */
+    val TIPOS_DE_PERSONAL = listOf("Instructor", "Limpieza", "Ayudante de área", "Administrador de área")
+
+    /** Tipo de personal de un puesto ("Instructor de Cancha 1" -> "Instructor"); si no es conocido, el puesto completo. */
+    fun tipoDePuesto(puesto: String): String =
+        TIPOS_DE_PERSONAL.firstOrNull { puesto.startsWith(it) } ?: puesto
+
     /** Cómo se cobra: membresías y paquetes se pagan cada mes; la visita se paga una sola vez, por día. */
     val METODOS_DE_PAGO = listOf("Efectivo", "Tarjeta", "Transferencia")
 

@@ -12,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -63,8 +64,11 @@ class FirebaseAuthRepository(
                 "nombre" to nombre,
                 "email" to correo,
                 "rol" to rol.name,
+                "telefono" to "",
                 "estado" to "ACTIVO",
-                "fechaRegistro" to Fechas.hoy()
+                "fechaRegistro" to Fechas.hoy(),
+                "creadoEn" to FieldValue.serverTimestamp(),
+                "actualizadoEn" to FieldValue.serverTimestamp()
             )
             usuarios.document(uid).set(datos).await()
 

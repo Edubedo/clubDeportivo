@@ -39,8 +39,13 @@ import com.example.clubdeportivo.ui.components.EspacioCampos
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.VerdeMarca
+import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.util.FotoPerfilManager
+import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.util.Fechas
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -53,7 +58,9 @@ enum class DisponibilidadArea { DISPONIBLE, OCUPADA, MANTENIMIENTO }
 data class Usuario(
     var id: String = "",
     val nombre: String = "",
+    /** Campo heredado: los registros anteriores lo guardaron así; el estándar ahora es [email]. */
     val correo: String = "",
+    val email: String = "",
     val telefono: String = "",
     val estado: String = "ACTIVO",
     val fotoUrl: String? = null
@@ -63,8 +70,13 @@ data class Empleado(
     var id: String = "",
     val usuarioId: String = "",
     val puesto: String = "",
+    /** Tipo sin el área: "Instructor", "Limpieza"... ([puesto] es el texto completo "Instructor de Cancha 1"). */
+    val tipoPersonal: String = "",
     val turno: String = "",
-    val areaAsignadaId: String? = null
+    val areaAsignadaId: String? = null,
+    /** Campos heredados de los datos de ejemplo; se leen solo si falta el nombre estándar. */
+    val tipoTurno: String = "",
+    val areaId: String? = null
 )
 
 data class Area(
@@ -113,18 +125,18 @@ class PersonalRepository {
 
         return empleadosDb.mapNotNull { emp ->
             val usuario = usuariosDb.find { it.id == emp.usuarioId } ?: return@mapNotNull null
-            val area = areas.find { it.id == emp.areaAsignadaId }
+            val area = areas.find { it.id == (emp.areaAsignadaId ?: emp.areaId) }
 
             EmpleadoUI(
                 empleadoId = emp.id,
                 usuarioId = usuario.id,
                 nombre = usuario.nombre,
-                correo = usuario.correo,
+                correo = usuario.email.ifBlank { usuario.correo },
                 telefono = usuario.telefono,
                 estado = usuario.estado,
                 puesto = emp.puesto,
-                turno = emp.turno,
-                areaAsignadaId = emp.areaAsignadaId,
+                turno = emp.turno.ifBlank { emp.tipoTurno },
+                areaAsignadaId = emp.areaAsignadaId ?: emp.areaId,
                 areaNombre = area?.nombre ?: "Sin área asignada",
                 fotoUrl = usuario.fotoUrl
             )
@@ -136,30 +148,42 @@ class PersonalRepository {
         nombre: String, correo: String, telefono: String, estado: String,
         puesto: String, turno: String, areaId: String?, contrasena: String, fotoUrl: String?
     ) {
-        val finalUserId = if (usuarioId.isNullOrEmpty()) db.collection("usuarios").document().id else usuarioId
+        val esNuevo = usuarioId.isNullOrEmpty()
+        val finalUserId = if (esNuevo) db.collection("usuarios").document().id else usuarioId!!
         val userRef = db.collection("usuarios").document(finalUserId)
+        val ahora = FieldValue.serverTimestamp()
 
-        val usuario = Usuario(
-            id = finalUserId,
-            nombre = nombre,
-            correo = correo,
-            telefono = telefono,
-            estado = estado,
-            fotoUrl = fotoUrl
+        // merge: solo se tocan estos campos. Antes se reemplazaba todo el documento y se perdían el rol, el
+        // email de acceso y el código del usuario cada vez que se editaba a una persona del personal.
+        val datosUsuario = mutableMapOf<String, Any?>(
+            "nombre" to nombre.trim(),
+            "email" to correo.trim(),
+            "telefono" to telefono.trim(),
+            "estado" to estado,
+            "fotoUrl" to fotoUrl,
+            "actualizadoEn" to ahora
         )
-        userRef.set(usuario).await()
+        if (esNuevo) {
+            datosUsuario["rol"] = Rol.AYUDANTE_AREA.name
+            datosUsuario["fechaRegistro"] = Fechas.hoy()
+            datosUsuario["creadoEn"] = ahora
+        }
+        userRef.set(datosUsuario, SetOptions.merge()).await()
 
         val finalEmpId = if (empleadoId.isNullOrEmpty()) db.collection("empleados").document().id else empleadoId
         val empRef = db.collection("empleados").document(finalEmpId)
 
-        val empleado = Empleado(
-            id = finalEmpId,
-            usuarioId = finalUserId,
-            puesto = puesto,
-            turno = turno,
-            areaAsignadaId = areaId
+        val tipoPersonal = Catalogos.tipoDePuesto(puesto)
+        val datosEmpleado = mutableMapOf<String, Any?>(
+            "usuarioId" to finalUserId,
+            "puesto" to puesto,
+            "tipoPersonal" to tipoPersonal,
+            "turno" to turno,
+            "areaAsignadaId" to areaId,
+            "actualizadoEn" to ahora
         )
-        empRef.set(empleado).await()
+        if (empleadoId.isNullOrEmpty()) datosEmpleado["creadoEn"] = ahora
+        empRef.set(datosEmpleado, SetOptions.merge()).await()
     }
 }
 
@@ -216,6 +240,7 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
     var empleadoEnEdicion by remember { mutableStateOf<EmpleadoUI?>(null) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color(0xFFF9F9F9),
         floatingActionButton = {
             ExtendedFloatingActionButton(
@@ -323,7 +348,10 @@ fun FormularioPersonalDialog(
         }
     }
 
-    val tiposPersonal = listOf("Instructor", "Limpieza")
+    // Además de Instructor y Limpieza se conserva el tipo que ya tenga la persona (Ayudante de área,
+    // Administrador de área...): antes el formulario lo cambiaba a Instructor en silencio al guardar.
+    val tipoActual = empleadoAEditar?.puesto?.takeIf { it.isNotBlank() }?.let { Catalogos.tipoDePuesto(it) }
+    val tiposPersonal = listOfNotNull("Instructor", "Limpieza", tipoActual).distinct()
     val turnos = listOf("Matutino", "Vespertino")
     val estados = listOf("ACTIVO", "INACTIVO")
 
@@ -331,12 +359,14 @@ fun FormularioPersonalDialog(
     var areaSeleccionada by remember {
         mutableStateOf(areas.find { it.id == empleadoAEditar?.areaAsignadaId } ?: areas.firstOrNull())
     }
-    var tipoSeleccionado by remember {
-        mutableStateOf(tiposPersonal.find { empleadoAEditar?.puesto?.startsWith(it) == true } ?: tiposPersonal[0])
-    }
+    var tipoSeleccionado by remember { mutableStateOf(tipoActual ?: tiposPersonal[0]) }
     var turnoSeleccionado by remember { mutableStateOf(empleadoAEditar?.turno?.ifEmpty { turnos[0] } ?: turnos[0]) }
 
-    val puestoGenerado = "$tipoSeleccionado de ${areaSeleccionada?.nombre ?: "Sin Área"}"
+    // Si no se cambió ni el tipo ni el área, el puesto se queda tal cual estaba escrito.
+    val sinCambiosDePuesto = empleadoAEditar != null && tipoSeleccionado == tipoActual &&
+        areaSeleccionada?.id == empleadoAEditar.areaAsignadaId
+    val puestoGenerado = if (sinCambiosDePuesto) empleadoAEditar!!.puesto
+    else "$tipoSeleccionado de ${areaSeleccionada?.nombre ?: "Sin Área"}"
     val puedeGuardar = nombre.isNotBlank() && correo.isNotBlank()
 
     DialogoFormulario(

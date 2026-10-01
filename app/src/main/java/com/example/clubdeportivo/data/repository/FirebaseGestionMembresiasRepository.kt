@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.data.repository
 
+import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.MembresiaDetalle
 import com.example.clubdeportivo.data.model.Membresia
@@ -13,6 +14,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -22,7 +24,7 @@ private fun DocumentSnapshot.toMiembro(): MiembroClub = MiembroClub(
     telefono = getString("telefono") ?: "",
     correo = getString("correo") ?: "",
     membresiaId = getString("membresiaId") ?: "",
-    parentesco = getString("parentesco") ?: MiembroClub.PARENTESCO_TITULAR,
+    parentesco = getString("parentesco") ?: if (getBoolean("esTitular") == false) "Integrante" else MiembroClub.PARENTESCO_TITULAR,
     usuarioId = getString("usuarioId") ?: ""
 )
 
@@ -114,13 +116,21 @@ class FirebaseGestionMembresiasRepository(
         val membresiaId = membresias.document().id
         val rol = ReglasMembresia.rolDeAcceso(tipo)
 
+        val ahora = FieldValue.serverTimestamp()
         val datosMembresia = mutableMapOf<String, Any>(
             "usuarioId" to cuentas.first().uid,
+            "titularCodigo" to cuentas.first().codigo,
+            "titularNombre" to personas.first().nombre.trim(),
+            "totalPersonas" to personas.size.toLong(),
             "tipo" to tipo.name,
             "precio" to precio,
             "estado" to EstadoMembresia.ACTIVA.name,
             "fechaInicio" to hoy,
-            "fechaVencimiento" to ReglasMembresia.vencimientoInicial(tipo, hoy)
+            "fechaVencimiento" to ReglasMembresia.vencimientoInicial(tipo, hoy),
+            "renovaciones" to 0L,
+            "creadoPor" to (SesionManager.usuarioActual?.id ?: ""),
+            "creadoEn" to ahora,
+            "actualizadoEn" to ahora
         )
         plan?.let { datosMembresia["plan"] = it.name }
         paqueteId?.let { datosMembresia["paqueteFamiliarId"] = it.toLong() }
@@ -131,18 +141,7 @@ class FirebaseGestionMembresiasRepository(
             val cuenta = cuentas[indice]
             val parentesco = if (indice == 0) MiembroClub.PARENTESCO_TITULAR else persona.parentesco.ifBlank { "Integrante" }
             batch.set(miembros.document(cuenta.codigo), datosPersona(persona, membresiaId, parentesco, cuenta.uid, hoy))
-            batch.set(
-                usuarios.document(cuenta.uid),
-                mapOf(
-                    "nombre" to persona.nombre.trim(),
-                    "email" to ReglasMembresia.emailDeCodigo(cuenta.codigo),
-                    "telefono" to persona.telefono.trim(),
-                    "rol" to rol.name,
-                    "estado" to "ACTIVO",
-                    "codigo" to cuenta.codigo,
-                    "fechaRegistro" to hoy
-                )
-            )
+            batch.set(usuarios.document(cuenta.uid), datosUsuarioDeMiembro(persona, cuenta.codigo, rol.name, hoy))
             MiembroClub(cuenta.codigo, persona.nombre.trim(), persona.telefono.trim(), persona.correo.trim(), membresiaId, parentesco, cuenta.uid)
         }
         batch.commit().await()
@@ -157,8 +156,23 @@ class FirebaseGestionMembresiasRepository(
         "correo" to persona.correo.trim(),
         "membresiaId" to membresiaId,
         "parentesco" to parentesco,
+        "esTitular" to (parentesco == MiembroClub.PARENTESCO_TITULAR),
         "usuarioId" to uid,
-        "fechaRegistro" to hoy
+        "fechaRegistro" to hoy,
+        "creadoEn" to FieldValue.serverTimestamp()
+    )
+
+    /** Perfil de acceso de una persona con código. `email` es el correo interno de la cuenta, no el de contacto (ese vive en `miembros`). */
+    private fun datosUsuarioDeMiembro(persona: PersonaForm, codigo: String, rol: String, hoy: String) = mapOf(
+        "nombre" to persona.nombre.trim(),
+        "email" to ReglasMembresia.emailDeCodigo(codigo),
+        "telefono" to persona.telefono.trim(),
+        "rol" to rol,
+        "estado" to "ACTIVO",
+        "codigoMiembro" to codigo,
+        "fechaRegistro" to hoy,
+        "creadoEn" to FieldValue.serverTimestamp(),
+        "actualizadoEn" to FieldValue.serverTimestamp()
     )
 
     override suspend fun actualizar(
@@ -177,7 +191,12 @@ class FirebaseGestionMembresiasRepository(
         val nuevas = personas.filter { it.codigo == null }.map { it to crearCuenta() }
 
         val batch = db.batch()
-        val cambiosMembresia = mutableMapOf<String, Any>("precio" to precio)
+        val cambiosMembresia = mutableMapOf<String, Any>(
+            "precio" to precio,
+            "totalPersonas" to personas.size.toLong(),
+            "titularNombre" to personas.first().nombre.trim(),
+            "actualizadoEn" to FieldValue.serverTimestamp()
+        )
         plan?.let { cambiosMembresia["plan"] = it.name }
         paqueteId?.let { cambiosMembresia["paqueteFamiliarId"] = it.toLong() }
         batch.update(membresias.document(membresiaId), cambiosMembresia)
@@ -191,45 +210,50 @@ class FirebaseGestionMembresiasRepository(
                     "nombre" to persona.nombre.trim(),
                     "telefono" to persona.telefono.trim(),
                     "correo" to persona.correo.trim(),
-                    "parentesco" to parentesco
+                    "parentesco" to parentesco,
+                    "esTitular" to actual.esTitular,
+                    "actualizadoEn" to FieldValue.serverTimestamp()
                 )
             )
             if (actual.usuarioId.isNotBlank()) {
-                batch.update(usuarios.document(actual.usuarioId), mapOf("nombre" to persona.nombre.trim(), "telefono" to persona.telefono.trim()))
+                batch.update(
+                    usuarios.document(actual.usuarioId),
+                    mapOf(
+                        "nombre" to persona.nombre.trim(),
+                        "telefono" to persona.telefono.trim(),
+                        "actualizadoEn" to FieldValue.serverTimestamp()
+                    )
+                )
             }
         }
         // Quien se quita de la membresía pierde el acceso: sin su documento de miembro el código ya no entra.
         actuales.filter { it.codigo.isNotBlank() && it.codigo !in conservadas && !it.esTitular }.forEach { quitado ->
             batch.delete(miembros.document(quitado.codigo))
-            if (quitado.usuarioId.isNotBlank()) batch.update(usuarios.document(quitado.usuarioId), "estado", "INACTIVO")
+            if (quitado.usuarioId.isNotBlank()) {
+                batch.update(
+                    usuarios.document(quitado.usuarioId),
+                    mapOf("estado" to "INACTIVO", "actualizadoEn" to FieldValue.serverTimestamp())
+                )
+            }
         }
         nuevas.forEach { (persona, cuenta) ->
             batch.set(miembros.document(cuenta.codigo), datosPersona(persona, membresiaId, persona.parentesco.ifBlank { "Integrante" }, cuenta.uid, hoy))
-            batch.set(
-                usuarios.document(cuenta.uid),
-                mapOf(
-                    "nombre" to persona.nombre.trim(),
-                    "email" to ReglasMembresia.emailDeCodigo(cuenta.codigo),
-                    "telefono" to persona.telefono.trim(),
-                    "rol" to rol.name,
-                    "estado" to "ACTIVO",
-                    "codigo" to cuenta.codigo,
-                    "fechaRegistro" to hoy
-                )
-            )
+            batch.set(usuarios.document(cuenta.uid), datosUsuarioDeMiembro(persona, cuenta.codigo, rol.name, hoy))
         }
         batch.commit().await()
     }
 
     override suspend fun cambiarPlan(membresiaId: String, plan: PlanIndividual?, paqueteId: Int?, precio: Double) {
-        val cambios = mutableMapOf<String, Any>("precio" to precio)
+        val cambios = mutableMapOf<String, Any>("precio" to precio, "actualizadoEn" to FieldValue.serverTimestamp())
         plan?.let { cambios["plan"] = it.name }
         paqueteId?.let { cambios["paqueteFamiliarId"] = it.toLong() }
         membresias.document(membresiaId).update(cambios).await()
     }
 
     override suspend fun cambiarEstado(membresiaId: String, estado: EstadoMembresia) {
-        membresias.document(membresiaId).update("estado", estado.name).await()
+        membresias.document(membresiaId).update(
+            mapOf("estado" to estado.name, "actualizadoEn" to FieldValue.serverTimestamp())
+        ).await()
     }
 
     override suspend fun renovar(membresiaId: String, precio: Double) {
@@ -240,7 +264,10 @@ class FirebaseGestionMembresiasRepository(
                 "estado" to EstadoMembresia.ACTIVA.name,
                 "fechaInicio" to inicio,
                 "fechaVencimiento" to vence,
-                "precio" to precio
+                "precio" to precio,
+                "renovaciones" to FieldValue.increment(1),
+                "ultimaRenovacion" to Fechas.hoy(),
+                "actualizadoEn" to FieldValue.serverTimestamp()
             )
         ).await()
     }

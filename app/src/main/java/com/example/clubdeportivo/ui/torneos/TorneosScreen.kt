@@ -329,7 +329,7 @@ private fun TorneosSocioContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp)
+        contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         items(torneos, key = { it.id }) { torneo ->
             TorneoCardSocio(torneo = torneo, onInscribirse = { onInscribirse(torneo) })
@@ -340,43 +340,72 @@ private fun TorneosSocioContent(
 @Composable
 private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
     val cupoLleno = torneo.inscritos >= torneo.cupoMaximo
+    val estilo = estiloDisciplina(torneo.disciplina)
+    val libres = (torneo.cupoMaximo - torneo.inscritos).coerceAtLeast(0)
+    val progreso = if (torneo.cupoMaximo > 0) torneo.inscritos.toFloat() / torneo.cupoMaximo.toFloat() else 0f
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = torneo.nombre, fontWeight = FontWeight.Bold)
-            Text(
-                text = "${torneo.disciplina} · ${torneo.fechaInicio} a ${torneo.fechaFin}",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                LinearProgressIndicator(
-                    progress = { torneo.inscritos.toFloat() / torneo.cupoMaximo.toFloat() },
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = torneo.nombre,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1F2937),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                )
+                EtiquetaDisciplina(estilo = estilo, disciplina = torneo.disciplina)
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(text = textoRangoFecha(torneo), fontSize = 13.sp, color = Color(0xFF94A3B8))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "${torneo.inscritos}/${torneo.cupoMaximo} participantes",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF374151),
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp)
                 )
                 Text(
-                    text = "${torneo.inscritos} / ${torneo.cupoMaximo}",
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1
+                    text = "$libres libres",
+                    maxLines = 1,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorVerde
                 )
             }
-            Button(
-                onClick = onInscribirse,
+
+            Spacer(modifier = Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { progreso },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(50)),
+                color = colorVerde,
+                trackColor = Color(0xFFE5E7EB)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            BotonPrimario(
+                texto = if (cupoLleno) "Cupo lleno" else "Inscribirme",
                 enabled = !cupoLleno,
-                modifier = Modifier.padding(top = 12.dp)
-            ) {
-                Text(if (cupoLleno) "Cupo lleno" else "Inscribirme")
-            }
+                onClick = onInscribirse
+            )
         }
     }
 }
