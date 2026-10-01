@@ -59,6 +59,7 @@ import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.model.nombreLegible
 import kotlinx.coroutines.launch
 
@@ -226,7 +227,7 @@ fun RegistroScreen(
                         expanded = menuRolAbierto,
                         onDismissRequest = { menuRolAbierto = false }
                     ) {
-                        Rol.entries.forEach { opcion ->
+                        Rol.entries.filter { it.esCliente() }.forEach { opcion ->
                             DropdownMenuItem(
                                 text = { Text(opcion.nombreLegible()) },
                                 onClick = {

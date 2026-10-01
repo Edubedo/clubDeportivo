@@ -205,7 +205,7 @@ los mismos datos de ejemplo que antes vivían hardcodeados en `FakeAreaRepositor
 no hace falta cargar nada a mano.
 
 **Lo que todavía no se puede hacer desde la app** (faltan pantallas para eso, no es un límite de
-Firebase): contratar una membresía, ni dar de alta áreas/torneos/empleados nuevos (no hay un panel
+Firebase): contratar una membresía, ni dar de alta áreas/torneos nuevos (no hay un panel
 de administración todavía). Esas colecciones se llenan desde `FirebaseSeeder.kt` o a mano en la
 consola (Firestore Database → Iniciar colección → agregar documento).
 
@@ -221,7 +221,7 @@ de ejemplo para el resto de las colecciones del modelo (ver
 - `herramientas` — las 4 que se prestan automáticamente al reservar.
 - `restriccionesHorario` — un documento por área (dato informativo; la app en realidad calcula
   esto mismo con `FakeRestriccionHorarioRepository`, no lee esta colección — ver más abajo).
-- `empleados` — administrador y ayudante de área asignados a "Cancha de fútbol 1".
+- Personal — el administrador de área y el ayudante de ejemplo llevan tipoPersonal/turno/areaTrabajo en su documento de `usuarios` (la colección `empleados` se fusionó ahí).
 - `membresias` + `integrantesFamiliares` + `pagos` — la membresía familiar activa del socio de
   prueba, con sus 2 integrantes y el pago del mes.
 - `reservas` (3 en total, distintos estados) + `materialAsignado` + `checkins` +

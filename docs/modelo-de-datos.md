@@ -25,7 +25,8 @@ data class Usuario(
 
 enum class Rol { SUPERADMIN, ADMIN, ADMIN_AREA, AYUDANTE_AREA, SOCIO, VISITANTE_EXTERNO }
 
-data class Empleado(val id: String, val usuarioId: String, val puesto: String, val areaAsignadaId: String? = null)
+// El personal (administradores y encargados de área) es un usuario más: sus datos laborales
+// (tipoPersonal, turno, areaTrabajo) viven en usuarios/{uid}; ya no hay colección empleados.
 ```
 
 Ver el detalle de cada rol y cómo crear una cuenta de prueba para cada uno en

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.repository.AuthRepository
 import com.example.clubdeportivo.util.Resultado
 import kotlinx.coroutines.launch
@@ -42,6 +43,12 @@ class RegistroViewModel(
 
     fun registrar(nombre: String, email: String, password: String, rol: Rol) {
         var esValido = true
+
+        // El personal no se registra solo: lo da de alta un administrador desde Personal.
+        if (!rol.esCliente()) {
+            _errorGeneral.value = "Las cuentas del personal las crea un administrador."
+            return
+        }
 
         if (nombre.isBlank()) {
             _nombreError.value = "Ingresá tu nombre"

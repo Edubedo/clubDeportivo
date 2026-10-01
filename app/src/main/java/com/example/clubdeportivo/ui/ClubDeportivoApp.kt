@@ -11,9 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import com.example.clubdeportivo.data.model.esCliente
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -25,8 +25,8 @@ import com.example.clubdeportivo.ui.login.LoginScreen
 import com.example.clubdeportivo.ui.membresia.MembresiaScreen
 import com.example.clubdeportivo.ui.navigation.Destinations
 import com.example.clubdeportivo.data.SesionManager
-import com.example.clubdeportivo.ui.navigation.bottomNavItems
-import com.example.clubdeportivo.ui.navigation.bottomNavItemsCliente
+import com.example.clubdeportivo.ui.navigation.menuPara
+import com.example.clubdeportivo.ui.navigation.rutaPermitida
 import com.example.clubdeportivo.ui.navigation.rutaInicial
 import com.example.clubdeportivo.ui.navigation.tituloPantalla
 import com.example.clubdeportivo.ui.perfil.PerfilScreen
@@ -41,7 +41,7 @@ fun ClubDeportivoApp() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val rol = SesionManager.usuarioActual?.rol
-    val menu = if (rol?.esCliente() == true) bottomNavItemsCliente else bottomNavItems
+    val menu = menuPara(rol)
     val enPantallaDeLogin = currentRoute == null ||
         currentRoute == Destinations.LOGIN ||
         currentRoute == Destinations.REGISTRO
@@ -105,16 +105,20 @@ fun ClubDeportivoApp() {
                 )
             }
             composable(Destinations.HOME) {
-                AdminHomeScreen(
-                    onIrPerfil = {
-                        navController.navigate(Destinations.PERFIL)
-                    }
-                )
+                RutaProtegida(navController, Destinations.HOME) {
+                    AdminHomeScreen(
+                        onIrPerfil = {
+                            navController.navigate(Destinations.PERFIL)
+                        }
+                    )
+                }
             }
             composable(Destinations.PERSONAL) {
-                PersonalScreen()
+                RutaProtegida(navController, Destinations.PERSONAL) { PersonalScreen() }
             }
-            composable(Destinations.AREAS) { AreasDetailScreen() }
+            composable(Destinations.AREAS) {
+                RutaProtegida(navController, Destinations.AREAS) { AreasDetailScreen() }
+            }
             composable(Destinations.RESERVAS) { ReservasScreen() }
             composable(Destinations.MEMBRESIA) { MembresiaScreen() }
             composable(Destinations.PERFIL) {
@@ -126,6 +130,23 @@ fun ClubDeportivoApp() {
                     }
                 )
             }
+        }
+    }
+}
+
+/** Muestra [contenido] solo si el rol de la sesión puede abrir [ruta]; si no, lo manda a su pantalla inicial. */
+@Composable
+private fun RutaProtegida(
+    navController: androidx.navigation.NavController,
+    ruta: String,
+    contenido: @Composable () -> Unit
+) {
+    val rol = SesionManager.usuarioActual?.rol
+    if (rutaPermitida(rol, ruta)) {
+        contenido()
+    } else {
+        LaunchedEffect(Unit) {
+            navController.navigate(rutaInicial(rol)) { popUpTo(0) { inclusive = true } }
         }
     }
 }
