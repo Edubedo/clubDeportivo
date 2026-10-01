@@ -27,6 +27,12 @@ fun Rol.nombreLegible(): String = when (this) {
     Rol.VISITANTE_EXTERNO -> "Visitante externo"
 }
 
+/** Roles del personal del club: no están sujetos a los límites de reservas pensados para socios y visitantes. */
+fun Rol.esPersonal(): Boolean = this == Rol.SUPERADMIN || this == Rol.ADMIN || this == Rol.ADMIN_AREA
+
+/** Socios y visitantes: clientes del club, no personal; usan la app con un menú propio (reservar, su membresía y su perfil). */
+fun Rol.esCliente(): Boolean = this == Rol.SOCIO || this == Rol.VISITANTE_EXTERNO
+
 /** [id] es el mismo uid que genera Firebase Authentication al iniciar sesión. */
 data class Usuario(
     val id: String,

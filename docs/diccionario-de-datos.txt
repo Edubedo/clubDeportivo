@@ -1,0 +1,661 @@
+====================================================================================================
+DICCIONARIO DE DATOS - CLUB DEPORTIVO
+Base de datos : Cloud Firestore (NoSQL, orientada a documentos) + Firebase Authentication
+Versión del esquema : 3   (se guarda en config/esquema; ver MigracionEsquema.kt)
+Actualizado : 2026-09-30
+====================================================================================================
+
+CONTENIDO
+  1. Cómo leer este documento
+  2. Convenciones de diseño
+  3. Mapa de relaciones
+  4. Colecciones
+       4.1  usuarios                  4.9   materialAsignado
+       4.2  empleados                 4.10  herramientas
+       4.3  miembros                  4.11  checkins
+       4.4  membresias                4.12  notificaciones
+       4.5  integrantesFamiliares     4.13  restriccionesHorario
+       4.6  pagos                     4.14  torneos
+       4.7  precios                   4.15  inscripcionesTorneo
+       4.8  reservas                  4.16  areas
+       4.17 config
+  5. Catálogo de valores (enumeraciones)
+  6. Índices y consultas
+  7. Reglas de negocio que dependen de los datos
+  8. Seguridad
+  9. Pendientes y limitaciones conocidas
+
+
+====================================================================================================
+1. CÓMO LEER ESTE DOCUMENTO
+====================================================================================================
+
+Firestore no tiene tablas ni columnas: guarda DOCUMENTOS (conjuntos de campos) dentro de COLECCIONES.
+Este diccionario describe cada colección como si fuera una tabla:
+
+  Campo        Nombre exacto del campo dentro del documento.
+  Tipo         String, Number, Boolean, Timestamp, Array<String>, Map.
+  Req          S = el campo siempre existe en documentos nuevos.
+               N = es opcional: puede no existir (se indica cuándo).
+  Descripción  Qué guarda y qué valores admite.
+
+"PK" es el id del documento. "FK" es un campo que guarda el id de un documento de OTRA colección
+(Firestore NO valida ni hace cumplir estas referencias: lo hace la aplicación).
+
+Cada colección indica también:
+  Escribe / Lee : qué parte de la app la usa hoy.
+  Observado     : cuántos documentos tenía la base el 2026-09-30 (puede haber cambiado).
+  OBSOLETOS     : campos heredados de estructuras anteriores. Siguen en los documentos viejos y la app
+                  los sabe leer, pero ya no se escriben. Se pueden borrar cuando todo el equipo use
+                  la versión actual de la app.
+
+
+====================================================================================================
+2. CONVENCIONES DE DISEÑO
+====================================================================================================
+
+Nombres
+  - Colecciones en plural y camelCase (membresias, inscripcionesTorneo).
+  - Campos en camelCase y en español (fechaInicio, cupoMaximo). Sin abreviaturas.
+  - Un mismo concepto se llama igual en todas las colecciones: areaId, usuarioId, membresiaId,
+    reservaId, torneoId, herramientaId siempre son referencias; xxxNombre es el nombre copiado.
+
+Identificadores (PK)
+  - Por omisión, id automático de Firestore (20 caracteres).
+  - Excepciones con significado, para impedir duplicados:
+      usuarios/{uid}                       uid que entrega Firebase Authentication.
+      miembros/{codigo}                    el código de miembro (CLB-XXXXXX) es el id: no puede repetirse.
+      inscripcionesTorneo/{torneoId}_{usuarioId}   una persona no se inscribe dos veces al mismo torneo.
+      restriccionesHorario/rh-{areaId}     un horario general por área.
+      precios/{clave}                      INDIVIDUAL_NORMAL, FAMILIAR_1, VISITA...
+  - El id NO se repite dentro del documento (antes usuarios y empleados guardaban un campo "id": ya se quitó).
+
+Fechas y horas
+  - Fecha de negocio : String "yyyy-MM-dd"        (fecha de una reserva, vigencia de una membresía).
+  - Hora de negocio  : String "HH:mm", 24 horas   (horaInicio, horaFin, horaApertura).
+    Se guardan como texto porque así se ordenan y comparan correctamente sin depender de zonas horarias.
+  - Momento exacto (auditoría): Timestamp de Firestore (creadoEn, actualizadoEn), puesto por el servidor.
+  - Excepción: checkins.fechaHora es String ISO "yyyy-MM-ddTHH:mm:ss" (ver 4.11).
+
+Valores con opciones fijas
+  - Se guardan como String en MAYÚSCULAS sin espacios (ACTIVA, PENDIENTE_APROBACION). Ver sección 5.
+
+Dinero
+  - Number (double) en pesos mexicanos. El campo "moneda" ("MXN") acompaña a pagos y precios.
+
+Auditoría
+  - creadoEn / actualizadoEn (Timestamp) en todos los documentos que crea la app desde esta versión.
+  - creadoPor / actualizadoPor (uid) donde importa saber quién lo hizo: membresias, torneos, precios.
+  - Los documentos anteriores a la versión 3 pueden no tener estos campos (no se inventan fechas).
+
+Desnormalización (copiar un dato para no tener que buscarlo)
+  - En NoSQL no hay JOIN. Para mostrar una lista sin hacer una lectura extra por fila, se copia el
+    NOMBRE del documento referenciado junto a su id:
+      reservas.areaNombre / usuarioNombre / deporte        torneos.areaNombre
+      membresias.titularNombre / titularCodigo             inscripcionesTorneo.torneoNombre / usuarioNombre
+      materialAsignado.herramientaNombre                   empleados.areaNombre
+  - En reservas, pagos e inscripciones la copia es a propósito HISTÓRICA: si el área se renombra o se
+    elimina, el registro sigue diciendo lo que decía cuando ocurrió.
+  - En empleados y torneos la copia puede quedar desactualizada si se renombra el área; se corrige la
+    siguiente vez que se guarda el registro. El id (areaId) es siempre la fuente de verdad.
+
+Contadores
+  - torneos.inscritos y membresias.totalPersonas son contadores guardados en el documento. Se cambian en
+    la misma operación que crea o quita el registro relacionado (transacción o lote), así no se cuenta
+    cada vez y no se desfasan.
+
+
+====================================================================================================
+3. MAPA DE RELACIONES
+====================================================================================================
+
+  Lectura: A --< B  significa "un documento de A se relaciona con MUCHOS de B" (B guarda el id de A).
+
+  Firebase Authentication (uid)
+        |
+        |  el uid es el id de
+        v
+   usuarios ---------------------------------------------------------------+
+     | 1                                                                     |
+     |--< empleados (usuarioId) >-- 1 areas (areaAsignadaId)                 |
+     |                                                                       |
+     |--< miembros (usuarioId)                                               |
+     |        ^                                                              |
+     |        | membresiaId                                                  |
+     |        |                                                              |
+     |   membresias (usuarioId = titular) --< integrantesFamiliares (OBSOLETA)
+     |        |                                                              |
+     |        +--< pagos (membresiaId, usuarioId)                            |
+     |                                                                       |
+     |--< reservas (usuarioId) >-- 1 areas (areaId)                          |
+     |        |                                                              |
+     |        +--< materialAsignado (reservaId) >-- 1 herramientas           |
+     |        +--< checkins (reservaId)                                      |
+     |                                                                       |
+     |--< inscripcionesTorneo (usuarioId) >-- 1 torneos (torneoId) >-- 1 areas
+     |                                                                       |
+     +--< notificaciones (usuarioId)                                         |
+                                                                             |
+   areas --< restriccionesHorario (areaId)        herramientas (areaIds[]) >-- N areas
+   precios, config: no dependen de otras colecciones.
+
+  Cardinalidades importantes
+    - Una membresía tiene 1 titular y, si es FAMILIAR, hasta (maxIntegrantes - 1) integrantes más.
+      Cada persona es un documento en miembros con su propio código y su propia cuenta de acceso.
+    - Una herramienta se usa en VARIAS áreas del mismo deporte (por eso areaIds es un arreglo).
+    - Un torneo ocupa UN área durante un rango de fechas y horas.
+
+
+====================================================================================================
+4. COLECCIONES
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+4.1  usuarios
+----------------------------------------------------------------------------------------------------
+Perfil de cada persona que tiene acceso al sistema (personal, socios, visitantes).
+PK : uid de Firebase Authentication.
+Escribe : FirebaseAuthRepository (registro), FirebaseGestionMembresiasRepository (miembros con código),
+          PersonalRepository (alta/edición de personal), FirebaseUsuarioRepository (cambio de nombre).
+Lee     : login, perfil, Personal, Membresías.
+Observado: 12 documentos.
+
+  Campo          Tipo       Req  Descripción
+  -------------- ---------- ---- --------------------------------------------------------------------
+  nombre         String     S    Nombre completo.
+  email          String     S    Correo de la cuenta. Para personal y registros normales es el correo
+                                 real; para miembros con código es el correo interno derivado del
+                                 código (clb-xxxxxx@miembros.clubdeportivo.app).
+  telefono       String     S    Teléfono; "" si no se capturó.
+  rol            String     S    SUPERADMIN | ADMIN | ADMIN_AREA | AYUDANTE_AREA | SOCIO | VISITANTE_EXTERNO.
+                                 Si faltara, la app asume SOCIO (el rol de menor alcance).
+  estado         String     S    ACTIVO | INACTIVO.
+  fotoUrl        String     N    Ruta o URL de la foto de perfil.
+  codigoMiembro  String     N    Código CLB-XXXXXX. Solo existe en cuentas creadas al registrar un miembro.
+  fechaRegistro  String     N    Fecha de alta (yyyy-MM-dd). Falta en algunos registros anteriores.
+  creadoEn       Timestamp  N    Cuándo se creó el documento (desde la versión 3).
+  actualizadoEn  Timestamp  N    Última modificación (desde la versión 3).
+
+  OBSOLETOS:  correo  -> reemplazado por email.
+              codigo  -> reemplazado por codigoMiembro.
+              id      -> ya eliminado (repetía el id del documento).
+  Nota: el personal dado de alta desde la pantalla Personal tiene documento aquí pero AÚN no cuenta de
+        acceso en Firebase Authentication (ver sección 9).
+
+----------------------------------------------------------------------------------------------------
+4.2  empleados
+----------------------------------------------------------------------------------------------------
+Datos laborales del personal. La identidad (nombre, correo, teléfono, estado) vive en usuarios; aquí solo
+lo que describe el trabajo.
+PK : id automático (o "empleado-N" en los datos de ejemplo).
+FK : usuarioId -> usuarios ; areaAsignadaId -> areas.
+Escribe : PersonalRepository.   Lee : Personal, dashboard (conteo).
+Observado: 4 documentos.
+
+  Campo           Tipo       Req  Descripción
+  --------------- ---------- ---- -------------------------------------------------------------------
+  usuarioId       String     S    FK a usuarios.
+  puesto          String     S    Texto completo del cargo, p. ej. "Instructor de Cancha de fútbol 1".
+  tipoPersonal    String     S    Tipo sin el área: "Instructor", "Limpieza", "Administrador de área"...
+  turno           String     S    Matutino | Vespertino.
+  areaAsignadaId  String     N    FK a areas. Ausente = sin área asignada.
+  areaNombre      String     N    Nombre del área (copia, ver desnormalización).
+  creadoEn        Timestamp  N    Alta del registro.
+  actualizadoEn   Timestamp  N    Última modificación.
+
+  OBSOLETOS:  areaId    -> reemplazado por areaAsignadaId.
+              tipoTurno -> reemplazado por turno.
+              id        -> ya eliminado.
+
+----------------------------------------------------------------------------------------------------
+4.3  miembros
+----------------------------------------------------------------------------------------------------
+Cada PERSONA cubierta por una membresía (el titular y cada integrante de un paquete familiar). Tiene su
+propio código y con él entra al sistema.
+PK : código de miembro, formato CLB- + 6 caracteres (A-Z sin I,L,O y 2-9). Ejemplo: CLB-DBWC3H.
+     Como el código ES el id, Firestore garantiza que no se repita.
+FK : membresiaId -> membresias ; usuarioId -> usuarios (su cuenta de acceso).
+Escribe : FirebaseGestionMembresiasRepository.   Lee : login por código, Membresías, dashboard.
+Observado: 1 documento.
+
+  Campo          Tipo       Req  Descripción
+  -------------- ---------- ---- --------------------------------------------------------------------
+  nombre         String     S    Nombre completo.
+  telefono       String     S    Teléfono de contacto; "" si no se capturó.
+  correo         String     S    Correo de CONTACTO (no es el de acceso); "" si no se capturó.
+  membresiaId    String     S    FK a membresias.
+  parentesco     String     S    "Titular" o el parentesco con el titular (Cónyuge, Hijo, Integrante...).
+  esTitular      Boolean    S    true solo para el titular de la membresía.
+  usuarioId      String     S    FK a usuarios (uid de su cuenta en Authentication).
+  fechaRegistro  String     S    Fecha de alta (yyyy-MM-dd).
+  creadoEn       Timestamp  N    Alta del registro.
+  actualizadoEn  Timestamp  N    Última modificación.
+
+  Regla: quitar a un integrante de la membresía BORRA su documento aquí y marca su usuario INACTIVO; sin
+         este documento su código deja de entrar.
+
+----------------------------------------------------------------------------------------------------
+4.4  membresias
+----------------------------------------------------------------------------------------------------
+Contrato vigente de una persona o familia con el club.
+PK : id automático.   FK : usuarioId -> usuarios (titular) ; titularCodigo -> miembros.
+Escribe : FirebaseGestionMembresiasRepository.   Lee : Membresías, login por código, dashboard.
+Observado: 2 documentos.
+
+  Campo              Tipo       Req  Descripción
+  ------------------ ---------- ---- ----------------------------------------------------------------
+  usuarioId          String     S    FK al usuario del titular.
+  titularCodigo      String     N    Código del titular (FK a miembros). Falta en membresías anteriores
+                                     a los códigos.
+  titularNombre      String     S    Nombre del titular (copia, para listar sin más lecturas).
+  totalPersonas      Number     S    Cuántas personas cubre (titular incluido).
+  tipo               String     S    INDIVIDUAL | FAMILIAR | VISITA.
+  plan               String     N    NINO | NORMAL | DELUXE. Solo cuando tipo = INDIVIDUAL.
+  paqueteFamiliarId  Number     N    1 = Familiar, 2 = Pareja, 3 = Niños. Solo cuando tipo = FAMILIAR.
+                                     (Los paquetes son un catálogo fijo en Catalogos.kt, no una colección.)
+  precio             Number     S    Precio (MXN) con el que se registró o renovó. NO cambia si después se
+                                     edita el precio del plan.
+  estado             String     S    ACTIVA | SUSPENDIDA. VENCIDA no se guarda: se calcula al leer cuando
+                                     estado = ACTIVA y fechaVencimiento < hoy.
+  fechaInicio        String     S    Inicio de la vigencia (yyyy-MM-dd).
+  fechaVencimiento   String     S    Fin de la vigencia. Membresías: un mes. Visita: el mismo día.
+  renovaciones       Number     S    Cuántas veces se ha renovado.
+  ultimaRenovacion   String     N    Fecha de la última renovación.
+  creadoPor          String     N    uid de quien la registró.
+  creadoEn           Timestamp  N    Alta del registro.
+  actualizadoEn      Timestamp  N    Última modificación.
+
+----------------------------------------------------------------------------------------------------
+4.5  integrantesFamiliares                                                      [COLECCIÓN OBSOLETA]
+----------------------------------------------------------------------------------------------------
+Antes guardaba a los integrantes de un paquete familiar solo como nombre y parentesco (sin código ni
+acceso). Fue reemplazada por miembros. Ya NO se escribe; se conserva solo para mostrar las membresías
+registradas antes de los códigos.
+PK : id automático.   FK : membresiaId -> membresias.
+Observado: 2 documentos.
+
+  Campo        Tipo    Req  Descripción
+  ------------ ------- ---- ---------------------------------------------------------------------------
+  membresiaId  String  S    FK a membresias.
+  nombre       String  S    Nombre del integrante.
+  parentesco   String  S    Cónyuge, Hijo...
+
+----------------------------------------------------------------------------------------------------
+4.6  pagos
+----------------------------------------------------------------------------------------------------
+Dinero recibido por el club.
+PK : id automático.   FK : usuarioId -> usuarios ; membresiaId -> membresias.
+Escribe : nadie todavía (solo datos de ejemplo).   Lee : nadie todavía.   Ver sección 9.
+Observado: 1 documento.
+
+  Campo        Tipo       Req  Descripción
+  ------------ ---------- ---- -----------------------------------------------------------------------
+  usuarioId    String     S    Quién pagó.
+  membresiaId  String     N    Membresía que se pagó; ausente si es un cobro suelto.
+  concepto     String     S    MENSUALIDAD | VISITA | OTRO.
+  monto        Number     S    Importe.
+  moneda       String     S    "MXN".
+  metodoPago   String     S    EFECTIVO | TARJETA | TRANSFERENCIA.
+  estado       String     S    PAGADO | PENDIENTE | RECHAZADO.
+  fechaPago    String     S    Fecha del pago (yyyy-MM-dd).
+
+----------------------------------------------------------------------------------------------------
+4.7  precios
+----------------------------------------------------------------------------------------------------
+Precios que el administrador EDITÓ. Lo que no esté aquí usa el precio base de Catalogos.kt.
+PK : clave del precio:  INDIVIDUAL_NINO | INDIVIDUAL_NORMAL | INDIVIDUAL_DELUXE | FAMILIAR_1 |
+     FAMILIAR_2 | FAMILIAR_3 | VISITA.
+Escribe : FirebasePreciosRepository (pestaña Planes y precios).   Lee : Membresías.
+Observado: 0 documentos (todos los precios están en su valor base).
+
+  Campo           Tipo       Req  Descripción
+  --------------- ---------- ---- -------------------------------------------------------------------
+  precio          Number     S    Nuevo precio (MXN), mayor a 0.
+  moneda          String     S    "MXN".
+  actualizadoEn   Timestamp  S    Cuándo se cambió.
+  actualizadoPor  String     S    uid de quien lo cambió.
+
+  OBSOLETOS:  actualizado (String) -> reemplazado por actualizadoEn.
+  Regla: un precio nuevo se aplica a altas y renovaciones posteriores; las membresías existentes
+         conservan el que pagaron hasta que se renuevan.
+
+----------------------------------------------------------------------------------------------------
+4.8  reservas
+----------------------------------------------------------------------------------------------------
+Uso de un área por una persona en una fecha y un rango de horas.
+PK : id automático.   FK : usuarioId -> usuarios ; areaId -> areas.
+Escribe : FirebaseReservaRepository.   Lee : Reservas, Áreas (reservas de hoy), dashboard, cupo.
+Observado: 7 documentos (2 de áreas que ya se eliminaron: conservan su deporte y nombre copiados).
+
+  Campo            Tipo       Req  Descripción
+  ---------------- ---------- ---- --------------------------------------------------------------------
+  usuarioId        String     S    FK a usuarios. Quien reserva.
+  usuarioNombre    String     S    Nombre de quien reserva (copia histórica).
+  areaId           String     S    FK a areas.
+  areaNombre       String     S    Nombre del área al momento de reservar (copia histórica).
+  deporte          String     S    Deporte del área (copia histórica).
+  fecha            String     S    Día de la reserva (yyyy-MM-dd).
+  horaInicio       String     S    "HH:mm" (siempre en punto).
+  horaFin          String     S    "HH:mm"; posterior a horaInicio. Máximo 4 horas.
+  duracionHoras    Number     S    horaFin - horaInicio, en horas.
+  personas         Number     S    Lugares del cupo del área que ocupa (mínimo 1).
+  estado           String     S    CONFIRMADA | PENDIENTE_APROBACION | CANCELADA | FINALIZADA.
+  esExterno        Boolean    S    true si la hizo un visitante externo (nace PENDIENTE_APROBACION).
+  canceladaEn      Timestamp  N    Cuándo se canceló. Solo si estado = CANCELADA.
+  sinPenalizacion  Boolean    N    true si se canceló con 4 horas o más de anticipación. Solo si CANCELADA.
+  creadoEn         Timestamp  N    Alta del registro.
+  actualizadoEn    Timestamp  N    Última modificación.
+
+  Regla de cupo: por cada hora, la suma de "personas" de las reservas CONFIRMADA o PENDIENTE_APROBACION
+  no puede pasar de areas.capacidad; y en las horas de un torneo del área no entra ninguna reserva.
+
+----------------------------------------------------------------------------------------------------
+4.9  materialAsignado
+----------------------------------------------------------------------------------------------------
+Material del inventario que se aparta para una reserva.
+PK : id automático.   FK : reservaId -> reservas ; herramientaId -> herramientas ; areaId -> areas.
+Escribe : FirebaseReservaRepository (al reservar y al cancelar).   Lee : Reservas.
+Observado: 3 documentos.
+
+  Campo              Tipo       Req  Descripción
+  ------------------ ---------- ---- --------------------------------------------------------------------
+  reservaId          String     S    FK a reservas.
+  herramientaId      String     S    FK a herramientas.
+  herramientaNombre  String     S    Nombre de la herramienta (copia histórica).
+  areaId             String     S    Área de la reserva.
+  fecha              String     S    Día de la reserva (yyyy-MM-dd).
+  cantidad           Number     S    Unidades apartadas.
+  estado             String     S    ASIGNADO | ENTREGADO | DEVUELTO | CANCELADO. (La app hoy usa ASIGNADO y
+                                     CANCELADO; los otros dos son para cuando se registre la entrega.)
+  creadoEn           Timestamp  N    Alta del registro.
+
+  Regla: se asigna solo si la reserva queda CONFIRMADA con al menos 1 hora de anticipación.
+  Limitación: asignar material todavía NO descuenta herramientas.cantidadDisponible (sección 9).
+
+----------------------------------------------------------------------------------------------------
+4.10  herramientas
+----------------------------------------------------------------------------------------------------
+Material deportivo del club (balones, raquetas, tablas...).
+PK : id automático (o "10", "11", "12", "15" en los datos de ejemplo).   FK : areaIds[] -> areas.
+Escribe : datos de ejemplo.   Lee : FirebaseReservaRepository (nombre al asignar).
+Observado: 4 documentos.
+
+  Campo               Tipo           Req  Descripción
+  ------------------- -------------- ---- ----------------------------------------------------------
+  nombre              String         S    Nombre del artículo.
+  deporte             String         S    Deporte al que pertenece (igual que areas.tipo).
+  areaIds             Array<String>  S    Áreas donde se usa (todas las del mismo deporte).
+  icono               String         S    Emoji.
+  cantidadTotal       Number         S    Existencias totales.
+  cantidadDisponible  Number         S    Existencias libres ahora (<= cantidadTotal).
+  stockMinimo         Number         S    Umbral de alerta de stock bajo; 0 = sin alerta.
+  estado              String         S    BUENO | REGULAR | DANADO | BAJA.
+
+  OBSOLETOS:  areaId -> apuntaba a una sola de las áreas del deporte; reemplazado por areaIds.
+  Nota: la pantalla Inventario maneja los mismos conceptos (nombre, deporte, cantidad, stockMinimo) pero
+        todavía los guarda solo en memoria; esta colección es su destino natural (sección 9).
+
+----------------------------------------------------------------------------------------------------
+4.11  checkins
+----------------------------------------------------------------------------------------------------
+Registro de llegada o salida de una persona a su reserva.
+PK : id automático.   FK : reservaId -> reservas ; usuarioId -> usuarios ; areaId -> areas.
+Escribe : nadie todavía (solo datos de ejemplo).   Lee : nadie todavía.
+Observado: 1 documento.
+
+  Campo       Tipo    Req  Descripción
+  ----------- ------- ---- --------------------------------------------------------------------------
+  reservaId   String  S    FK a reservas.
+  usuarioId   String  S    Quien llegó.
+  areaId      String  S    Área donde se registró.
+  fecha       String  S    Día (yyyy-MM-dd), para consultar el día sin leer la reserva.
+  fechaHora   String  S    Momento exacto, ISO "yyyy-MM-ddTHH:mm:ss".
+  tipo        String  S    ENTRADA | SALIDA.
+  metodo      String  S    MANUAL | CODIGO (registrado por personal, o escaneando/escribiendo el código).
+
+----------------------------------------------------------------------------------------------------
+4.12  notificaciones
+----------------------------------------------------------------------------------------------------
+Avisos para una persona.
+PK : id automático.   FK : usuarioId -> usuarios.
+Escribe : nadie todavía (solo datos de ejemplo).   Lee : nadie todavía.
+Observado: 1 documento.
+
+  Campo      Tipo       Req  Descripción
+  ---------- ---------- ---- --------------------------------------------------------------------------
+  usuarioId  String     S    Destinatario.
+  tipo       String     S    RESERVA | MEMBRESIA | TORNEO | SISTEMA.
+  titulo     String     S    Encabezado corto.
+  mensaje    String     S    Texto del aviso.
+  leida      Boolean    S    false hasta que la persona la abre.
+  creadoEn   Timestamp  S    Cuándo se generó.
+
+  OBSOLETOS:  leido      -> reemplazado por leida.
+              fechaEnvio -> reemplazado por creadoEn (era texto).
+
+----------------------------------------------------------------------------------------------------
+4.13  restriccionesHorario
+----------------------------------------------------------------------------------------------------
+Horario de apertura de cada área.
+PK : "rh-{areaId}".   FK : areaId -> areas.
+Escribe : datos de ejemplo; se borra junto con su área.   Lee : nadie (ver nota).
+Observado: 8 documentos (una por área).
+
+  Campo         Tipo           Req  Descripción
+  ------------- -------------- ---- --------------------------------------------------------------
+  areaId        String         S    FK a areas.
+  areaNombre    String         S    Nombre del área (copia).
+  tipo          String         S    HORARIO_GENERAL (reservado para futuros CIERRE_ESPECIAL).
+  dias          Array<String>  S    Días en que aplica: LUN MAR MIE JUE VIE SAB DOM.
+  horaApertura  String         S    "HH:mm".
+  horaCierre    String         S    "HH:mm".
+  activa        Boolean        S    false = se ignora.
+  motivo        String         N    Descripción libre.
+
+  OBSOLETOS:  diaSemana  -> reemplazado por dias (era texto, "TODOS").
+              horaInicio -> reemplazado por horaApertura.
+              horaFin    -> reemplazado por horaCierre.
+  Nota: la app calcula el horario por DEPORTE (RestriccionHorarioRepository.kt), no lee esta colección.
+        Hoy es informativa; ver sección 9.
+
+----------------------------------------------------------------------------------------------------
+4.14  torneos
+----------------------------------------------------------------------------------------------------
+Competencia que ocupa un área completa en un rango de fechas y horas.
+PK : id automático.   FK : areaId -> areas.
+Escribe : FirebaseTorneoRepository.   Lee : Reservas > Torneo, cupo de reservas.
+Observado: 7 documentos (5 sin horario: ocupan el día completo).
+
+  Campo          Tipo       Req  Descripción
+  -------------- ---------- ---- --------------------------------------------------------------------
+  nombre         String     S    Nombre del torneo.
+  disciplina     String     S    Deporte; coincide con areas.tipo del área elegida.
+  areaId         String     S    FK a areas.
+  areaNombre     String     S    Nombre del área (copia).
+  fechaInicio    String     S    Primer día (yyyy-MM-dd).
+  fechaFin       String     S    Último día; no anterior a fechaInicio.
+  horaInicio     String     N    "HH:mm". Con horaFin define el horario de CADA día del rango.
+  horaFin        String     N    "HH:mm". Si faltan las dos horas el torneo ocupa el día completo.
+  cupoMaximo     Number     S    Participantes permitidos.
+  inscritos      Number     S    Contador de inscripciones CONFIRMADAS (0 <= inscritos <= cupoMaximo).
+  creadoPor      String     N    uid de quien lo creó.
+  creadoEn       Timestamp  N    Alta del registro.
+  actualizadoEn  Timestamp  N    Última modificación.
+
+----------------------------------------------------------------------------------------------------
+4.15  inscripcionesTorneo
+----------------------------------------------------------------------------------------------------
+Participación de una persona en un torneo.
+PK : "{torneoId}_{usuarioId}" (impide inscribirse dos veces). Las anteriores tienen id automático.
+FK : torneoId -> torneos ; usuarioId -> usuarios.
+Escribe : FirebaseTorneoRepository.inscribirse (transacción: valida cupo y duplicado y sube torneos.inscritos).
+Lee : recuento de inscritos de torneos anteriores al contador.
+Observado: 4 documentos.
+
+  Campo             Tipo       Req  Descripción
+  ----------------- ---------- ---- ------------------------------------------------------------------
+  torneoId          String     S    FK a torneos.
+  torneoNombre      String     S    Nombre del torneo (copia histórica).
+  usuarioId         String     S    FK a usuarios.
+  usuarioNombre     String     S    Nombre de la persona (copia histórica).
+  fechaInscripcion  String     S    Día de inscripción (yyyy-MM-dd).
+  estado            String     S    CONFIRMADA | CANCELADA.
+  creadoEn          Timestamp  N    Alta del registro.
+
+----------------------------------------------------------------------------------------------------
+4.16  areas
+----------------------------------------------------------------------------------------------------
+Espacios del club que se pueden reservar (canchas y albercas).
+PK : id automático (o "1".."8" en los datos de ejemplo).
+Escribe : FirebaseAreaRepository (Áreas > agregar, editar, eliminar).
+Lee     : Áreas, Reservas, Torneos, Personal, dashboard.
+Observado: 8 documentos: 2 de Fútbol, 2 de Básquetbol, 2 de Natación, 2 de Tenis.
+
+  Campo            Tipo       Req  Descripción
+  ---------------- ---------- ---- ------------------------------------------------------------------
+  nombre           String     S    Nombre visible ("Cancha de fútbol 1"). No se repite dentro del deporte.
+  tipo             String     S    Deporte: Fútbol | Básquetbol | Tenis | Natación u otro dado de alta.
+  capacidad        Number     S    Cupo máximo de personas por hora.
+  disponibilidad   String     S    DISPONIBLE | OCUPADA | MANTENIMIENTO (solo MANTENIMIENTO bloquea reservas).
+  permiteExternos  Boolean    S    Si los visitantes externos pueden reservarla.
+  emoji            String     N    Emoji propio de un deporte nuevo; si falta se usa el del catálogo de deportes.
+  creadoEn         Timestamp  N    Alta del registro.
+  actualizadoEn    Timestamp  N    Última modificación.
+
+  Regla: no se puede eliminar un área con reservas futuras o torneos pendientes. Al eliminarla se borra
+         también su documento de restriccionesHorario.
+
+----------------------------------------------------------------------------------------------------
+4.17  config
+----------------------------------------------------------------------------------------------------
+Ajustes internos de la aplicación. Documento actual: config/esquema.
+
+  Campo            Tipo       Req  Descripción
+  ---------------- ---------- ---- ------------------------------------------------------------------
+  version          Number     S    Versión del esquema a la que ya se migró la base (ahora 3).
+  migradoEn        Timestamp  S    Cuándo se hizo la última migración.
+  camposAgregados  Map        S    Cuántos campos se agregaron por colección en esa migración.
+
+  Al subir MigracionEsquema.VERSION, la primera vez que entre personal del club la app completa los
+  documentos existentes (solo agrega campos que faltan; ver encabezado de MigracionEsquema.kt).
+
+
+====================================================================================================
+5. CATÁLOGO DE VALORES (ENUMERACIONES)
+====================================================================================================
+
+  usuarios.rol            SUPERADMIN   Nivel sistema, controla todo.
+                          ADMIN        Nivel empresa, todas las áreas.
+                          ADMIN_AREA   Administra su área.
+                          AYUDANTE_AREA Ayuda dentro de un área.
+                          SOCIO        Cliente con membresía.
+                          VISITANTE_EXTERNO  Cliente de visita; sus reservas requieren aprobación.
+  usuarios.estado         ACTIVO | INACTIVO
+  empleados.turno         Matutino | Vespertino
+  membresias.tipo         INDIVIDUAL | FAMILIAR | VISITA
+  membresias.plan         NINO ($1,500) | NORMAL ($1,800) | DELUXE ($3,500)      (precios base, al mes)
+  membresias.paqueteFamiliarId   1 Familiar $7,000 (5 personas) | 2 Pareja $2,999 (2) | 3 Niños $2,800 (3)
+  visita                  $200 por visita
+  membresias.estado       ACTIVA | SUSPENDIDA  (y VENCIDA, calculado, nunca guardado)
+  reservas.estado         CONFIRMADA | PENDIENTE_APROBACION | CANCELADA | FINALIZADA
+  materialAsignado.estado ASIGNADO | ENTREGADO | DEVUELTO | CANCELADO
+  herramientas.estado     BUENO | REGULAR | DANADO | BAJA
+  pagos.concepto          MENSUALIDAD | VISITA | OTRO
+  pagos.metodoPago        EFECTIVO | TARJETA | TRANSFERENCIA
+  pagos.estado            PAGADO | PENDIENTE | RECHAZADO
+  checkins.tipo           ENTRADA | SALIDA
+  checkins.metodo         MANUAL | CODIGO
+  notificaciones.tipo     RESERVA | MEMBRESIA | TORNEO | SISTEMA
+  restriccionesHorario.tipo  HORARIO_GENERAL (reservado: CIERRE_ESPECIAL)
+  restriccionesHorario.dias  LUN | MAR | MIE | JUE | VIE | SAB | DOM
+  inscripcionesTorneo.estado CONFIRMADA | CANCELADA
+  areas.disponibilidad    DISPONIBLE | OCUPADA | MANTENIMIENTO
+  areas.tipo (deportes)   Fútbol | Básquetbol | Tenis | Natación   (se pueden dar de alta más)
+
+
+====================================================================================================
+6. ÍNDICES Y CONSULTAS
+====================================================================================================
+
+Todas las consultas de la app son de IGUALDAD sobre un solo campo, por lo que Firestore las resuelve con
+sus índices automáticos: NO hace falta crear índices compuestos.
+
+  Colección              Consulta                                   Para qué
+  ---------------------- ------------------------------------------ -------------------------------------
+  reservas               areaId ==                                  cupo y torneos de un área
+  reservas               usuarioId ==                               reservas de una persona, límite de 3
+  membresias             usuarioId ==                               membresía de una persona
+  miembros               membresiaId ==                             personas de una membresía
+  miembros               usuarioId ==  (limit 1)                    membresía de un integrante
+  inscripcionesTorneo    torneoId ==  (conteo)                      torneos sin contador
+  materialAsignado       reservaId ==                               material de una reserva
+  restriccionesHorario   areaId ==                                  borrar el horario de un área
+  integrantesFamiliares  membresiaId ==                             membresías anteriores a los códigos
+
+Por documento: lecturas directas por id (usuarios, miembros, membresias, areas, torneos, herramientas).
+Si más adelante se filtra en el servidor por área Y fecha a la vez (reservas de un día), hará falta un
+índice compuesto reservas(areaId, fecha); Firestore muestra el enlace para crearlo en el primer intento.
+
+
+====================================================================================================
+7. REGLAS DE NEGOCIO QUE DEPENDEN DE LOS DATOS
+====================================================================================================
+
+  Acceso por código     Solo entra con el código quien tiene miembros/{codigo} y una membresía ACTIVA con
+                        fechaVencimiento >= hoy. Suspender o vencer la membresía bloquea a TODAS sus personas.
+  Cupo de reservas      Por hora: sum(reservas.personas vigentes) <= areas.capacidad.
+  Reserva y torneo      Un torneo bloquea su área en sus horas; un torneo no puede crearse sobre reservas
+                        vigentes ni sobre otro torneo del mismo área y horario.
+  Reservas por socio    Máximo 3 reservas activas; 2 horas de anticipación mínima; 7 días como máximo hacia
+                        adelante; cancelar sin penalización con 4 horas o más. El personal no tiene el límite.
+  Torneo e inscripción  Una inscripción por persona y torneo; torneos.inscritos nunca pasa de cupoMaximo
+                        (se valida en una transacción).
+  Renovación            Suma un mes desde el vencimiento (si sigue vigente) o desde hoy (si ya venció).
+  Precios               El precio de una membresía es el vigente al registrarla o renovarla.
+
+
+====================================================================================================
+8. SEGURIDAD
+====================================================================================================
+
+Las reglas de Firestore actuales solo exigen sesión iniciada (request.auth != null) para leer y escribir
+TODO. Eso significa que cualquier cuenta, incluida la de un socio, podría leer o modificar miembros,
+membresias, precios y pagos. Como el código de miembro funciona como contraseña de su cuenta, conviene
+restringir antes de usar la app con datos reales. Propuesta por colección:
+
+  usuarios, empleados, miembros, membresias, pagos, precios, config, herramientas, restriccionesHorario
+      Leer   : personal del club (rol SUPERADMIN, ADMIN, ADMIN_AREA); cada persona puede leer SU documento.
+      Escribir: solo personal del club.
+  areas, torneos
+      Leer   : cualquier sesión iniciada.   Escribir: personal del club.
+  reservas, inscripcionesTorneo, checkins, notificaciones
+      Leer   : el dueño (usuarioId) y el personal.   Crear: el dueño.   Modificar: dueño o personal.
+
+Las reglas necesitan poder consultar el rol de quien escribe (usuarios/{request.auth.uid}.rol); en
+Firestore se hace con get() dentro de las reglas.
+
+
+====================================================================================================
+9. PENDIENTES Y LIMITACIONES CONOCIDAS
+====================================================================================================
+
+  1. PAGOS no se registran. Registrar o renovar una membresía no crea un documento en pagos, así que el
+     club no tiene historial de cobros. Falta elegir método de pago en los formularios y escribirlo.
+  2. PERSONAL sin cuenta de acceso. El formulario de Personal pide contraseña pero no crea la cuenta en
+     Firebase Authentication; solo crea el perfil. Esas personas no pueden iniciar sesión todavía.
+  3. INVENTARIO en memoria. La pantalla Inventario no usa la colección herramientas; sus datos se pierden
+     al cerrar la app. Es la conexión más natural pendiente.
+  4. HERRAMIENTAS sin descuento. Al asignar material a una reserva no baja cantidadDisponible.
+  5. HORARIOS por deporte. restriccionesHorario no se lee; los horarios salen del código. Un deporte nuevo
+     usa el horario por omisión (08:00 a 20:00).
+  6. CHECKINS y NOTIFICACIONES sin pantalla ni escritura todavía.
+  7. NOMBRES COPIADOS. empleados.areaNombre y torneos.areaNombre no se actualizan si se renombra un área.
+  8. INTEGRANTES anteriores. Las membresías creadas antes de los códigos no tienen miembros con código; se
+     pueden renovar, suspender y cambiar de plan, pero sus personas no se editan hasta volver a registrarlas.
+  9. CAMPOS OBSOLETOS. Siguen en los documentos viejos (correo, codigo, areaId, tipoTurno, leido,
+     fechaEnvio, diaSemana, horaInicio/horaFin de restricciones, actualizado). Se dejaron para no romper
+     las ramas del equipo que aún los leen; se pueden borrar cuando todas usen la versión actual.
+
+====================================================================================================
+FIN DEL DICCIONARIO
+====================================================================================================

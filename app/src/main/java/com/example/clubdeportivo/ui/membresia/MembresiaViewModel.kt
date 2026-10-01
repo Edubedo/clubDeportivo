@@ -7,10 +7,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.SesionManager
+import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.IntegranteFamiliar
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.TipoMembresia
 import com.example.clubdeportivo.data.repository.MembresiaRepository
+import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasMembresia
 import kotlinx.coroutines.launch
 
 class MembresiaViewModel(
@@ -84,7 +87,13 @@ class MembresiaViewModel(
                 }
             }
 
-            _mensaje.value = "${membresia.estado.name} · $%.0f al mes".format(membresia.precio)
+            val estadoActual = ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy())
+            val estadoTexto = when (estadoActual) {
+                EstadoMembresia.ACTIVA -> "Activa"
+                EstadoMembresia.VENCIDA -> "Vencida"
+                EstadoMembresia.SUSPENDIDA -> "Suspendida"
+            }
+            _mensaje.value = "$estadoTexto · ${dinero(membresia.precio)} al mes"
             _detalle.value = "Vigente del ${membresia.fechaInicio} al ${membresia.fechaVencimiento}"
             _cargando.value = false
         }

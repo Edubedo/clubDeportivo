@@ -3,6 +3,7 @@ package com.example.clubdeportivo.ui.inventario
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.clubdeportivo.data.Deportes
 
 data class ArticuloInventario(
     val id: String,
@@ -28,11 +29,11 @@ class InventarioViewModel : ViewModel() {
         listOf(
             ArticuloInventario("1", "Raquetas de Tenis", "Tenis", 12, "🎾", 5),
             ArticuloInventario("2", "Pelotas de Tenis", "Tenis", 48, "🎾", 20),
-            ArticuloInventario("4", "Balones de Voleibol", "Voleibol", 6, "🏐", 4),
+            ArticuloInventario("4", "Balones de Básquetbol", "Básquetbol", 6, "🏀", 4),
             ArticuloInventario("5", "Balones de Fútbol", "Fútbol", 10, "⚽", 5),
             ArticuloInventario("6", "Gorros de Natación", "Natación", 20, "🏊", 10),
             ArticuloInventario("7", "Tablas de Natación", "Natación", 15, "🏊", 8),
-            ArticuloInventario("8", "Redes de Voleibol", "Voleibol", 4, "🏐", 2)
+            ArticuloInventario("8", "Redes de Básquetbol", "Básquetbol", 4, "🏀", 2)
         )
     )
     val articulos: LiveData<List<ArticuloInventario>> = _articulos
@@ -50,7 +51,7 @@ class InventarioViewModel : ViewModel() {
     private val _historial = MutableLiveData<List<ActividadInventario>>(emptyList())
     val historial: LiveData<List<ActividadInventario>> = _historial
 
-    private val _deportes = listOf("Todos", "Voleibol", "Tenis", "Fútbol", "Natación")
+    private val _deportes = listOf("Todos") + Deportes.predefinidos
 
     fun obtenerDeportes(): List<String> = _deportes
 
@@ -82,11 +83,19 @@ class InventarioViewModel : ViewModel() {
         _articuloEnEdicion.value = null
     }
 
-    fun agregarArticulo(nombre: String, deporte: String, cantidadInicial: Int, stockMinimo: Int) {
+    /** true si ya hay otro artículo con ese nombre (sin distinguir mayúsculas ni espacios sobrantes). */
+    fun existeNombre(nombre: String, excluirId: String? = null): Boolean {
+        val buscado = nombre.trim()
+        return _articulos.value.orEmpty().any { it.id != excluirId && it.nombre.trim().equals(buscado, ignoreCase = true) }
+    }
+
+    /** @return false (sin guardar nada) si el nombre ya existe en el inventario. */
+    fun agregarArticulo(nombre: String, deporte: String, cantidadInicial: Int, stockMinimo: Int): Boolean {
+        if (existeNombre(nombre)) return false
         val iconoDeporte = mapearIconoDeporte(deporte)
         val nuevoArticulo = ArticuloInventario(
             id = System.currentTimeMillis().toString(),
-            nombre = nombre,
+            nombre = nombre.trim(),
             deporte = deporte,
             cantidad = cantidadInicial,
             icono = iconoDeporte,
@@ -98,6 +107,7 @@ class InventarioViewModel : ViewModel() {
         registrarActividad("Se agregó \"$nombre\" ($cantidadInicial uds.)")
         _mostrarModal.value = false
         _articuloEnEdicion.value = null
+        return true
     }
 
     /**
@@ -106,12 +116,13 @@ class InventarioViewModel : ViewModel() {
      * cantidad de a 1 en 1 desde la tarjeta), esto permite corregir cualquier campo desde
      * el modal de edición.
      */
-    fun editarArticulo(id: String, nombre: String, deporte: String, cantidad: Int, stockMinimo: Int) {
-        val listaActual = _articulos.value?.toMutableList() ?: return
+    fun editarArticulo(id: String, nombre: String, deporte: String, cantidad: Int, stockMinimo: Int): Boolean {
+        if (existeNombre(nombre, excluirId = id)) return false
+        val listaActual = _articulos.value?.toMutableList() ?: return false
         val indice = listaActual.indexOfFirst { it.id == id }
         if (indice != -1) {
             listaActual[indice] = listaActual[indice].copy(
-                nombre = nombre,
+                nombre = nombre.trim(),
                 deporte = deporte,
                 cantidad = cantidad,
                 icono = mapearIconoDeporte(deporte),
@@ -122,6 +133,7 @@ class InventarioViewModel : ViewModel() {
         }
         _mostrarModal.value = false
         _articuloEnEdicion.value = null
+        return true
     }
 
     fun eliminarArticulo(articulo: ArticuloInventario) {
@@ -163,11 +175,5 @@ class InventarioViewModel : ViewModel() {
         _historial.value = (listOf(nueva) + actual).take(MAX_ACTIVIDADES)
     }
 
-    private fun mapearIconoDeporte(deporte: String): String = when (deporte) {
-        "Tenis" -> "🎾"
-        "Fútbol" -> "⚽"
-        "Voleibol" -> "🏐"
-        "Natación" -> "🏊"
-        else -> "📦"
-    }
+    private fun mapearIconoDeporte(deporte: String): String = Deportes.emojiDe(deporte).let { if (it == "🏆") "📦" else it }
 }

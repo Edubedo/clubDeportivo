@@ -1,8 +1,10 @@
 package com.example.clubdeportivo.data.repository
 
+import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.Usuario
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Resultado
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -10,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -61,12 +64,60 @@ class FirebaseAuthRepository(
                 "nombre" to nombre,
                 "email" to correo,
                 "rol" to rol.name,
+                "telefono" to "",
                 "estado" to "ACTIVO",
-                "fechaRegistro" to Fechas.hoy()
+                "fechaRegistro" to Fechas.hoy(),
+                "creadoEn" to FieldValue.serverTimestamp(),
+                "actualizadoEn" to FieldValue.serverTimestamp()
             )
             usuarios.document(uid).set(datos).await()
 
             Resultado.Exito(Usuario(id = uid, nombre = nombre, correo = correo, rol = rol))
+        } catch (e: Exception) {
+            Resultado.Error(traducirError(e))
+        }
+    }
+
+    override suspend fun loginConCodigo(codigo: String): Resultado<Usuario> {
+        val codigoNormalizado = ReglasMembresia.normalizarCodigo(codigo)
+        if (!ReglasMembresia.esCodigo(codigoNormalizado)) {
+            return Resultado.Error("Ese código no tiene el formato correcto (ej. CLB-7K3M9Q).")
+        }
+        val correoInterno = ReglasMembresia.emailDeCodigo(codigoNormalizado)
+        return try {
+            // La cuenta de cada código usa el propio código como contraseña.
+            val uid = auth.signInWithEmailAndPassword(correoInterno, codigoNormalizado).await().user?.uid
+                ?: return Resultado.Error("No se pudo iniciar sesión, intenta de nuevo.")
+
+            val miembro = db.collection("miembros").document(codigoNormalizado).get().await()
+            val membresiaId = miembro.getString("membresiaId")
+            val membresia = membresiaId?.let { db.collection("membresias").document(it).get().await().toMembresia() }
+            if (!miembro.exists() || membresia == null) {
+                auth.signOut()
+                return Resultado.Error("Este código ya no está activo. Habla con recepción.")
+            }
+
+            val estado = ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy())
+            if (estado != EstadoMembresia.ACTIVA) {
+                auth.signOut()
+                return Resultado.Error(
+                    when (estado) {
+                        EstadoMembresia.VENCIDA -> "Tu membresía está vencida. Renuévala en recepción para volver a entrar."
+                        else -> "Tu membresía está suspendida. Habla con recepción."
+                    }
+                )
+            }
+
+            val usuario = usuarios.document(uid).get().await().toUsuario(uid, correoInterno)
+            if (usuario == null) {
+                auth.signOut()
+                return Resultado.Error("Tu cuenta no tiene un perfil guardado. Contacta a un administrador.")
+            }
+            Resultado.Exito(usuario)
+        } catch (e: FirebaseAuthInvalidUserException) {
+            Resultado.Error("No existe ningún miembro con ese código.")
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Resultado.Error("No existe ningún miembro con ese código.")
         } catch (e: Exception) {
             Resultado.Error(traducirError(e))
         }

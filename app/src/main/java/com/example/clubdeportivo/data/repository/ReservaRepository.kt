@@ -5,6 +5,7 @@ import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.MaterialAsignado
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasReserva
 import kotlinx.coroutines.delay
 
 interface ReservaRepository {
@@ -16,8 +17,13 @@ interface ReservaRepository {
         fecha: String,
         horaInicio: String,
         horaFin: String,
-        esExterno: Boolean
+        esExterno: Boolean,
+        personas: Int = 1
     ): Reserva
+    /** Reservas vigentes (confirmadas o pendientes) de un área, de cualquier usuario: base del control de cupo. */
+    suspend fun obtenerReservasDeArea(areaId: String): List<Reserva>
+    /** Todas las reservas vigentes del club (confirmadas o pendientes). */
+    suspend fun obtenerReservasVigentes(): List<Reserva>
     suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado>
     /** true si se pudo cancelar sin penalización (fue con 4+ horas de anticipación). */
     suspend fun cancelarReserva(reservaId: String): Boolean
@@ -68,7 +74,8 @@ class FakeReservaRepository : ReservaRepository {
         fecha: String,
         horaInicio: String,
         horaFin: String,
-        esExterno: Boolean
+        esExterno: Boolean,
+        personas: Int
     ): Reserva {
         delay(500)
 
@@ -84,7 +91,8 @@ class FakeReservaRepository : ReservaRepository {
             horaInicio = horaInicio,
             horaFin = horaFin,
             estado = estadoInicial,
-            esExterno = esExterno
+            esExterno = esExterno,
+            personas = personas
         )
         reservas.add(nuevaReserva)
 
@@ -106,6 +114,12 @@ class FakeReservaRepository : ReservaRepository {
 
         return nuevaReserva
     }
+
+    override suspend fun obtenerReservasDeArea(areaId: String): List<Reserva> =
+        reservas.filter { it.areaId == areaId && ReglasReserva.esVigente(it) }
+
+    override suspend fun obtenerReservasVigentes(): List<Reserva> =
+        reservas.filter { ReglasReserva.esVigente(it) }
 
     override suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado> {
         delay(200)

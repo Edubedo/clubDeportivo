@@ -174,4 +174,32 @@ class InventarioViewModelTest {
         assertTrue(historial[1].descripcion.contains("+1"))
         assertTrue(historial[2].descripcion.contains("agregó"))
     }
+
+    @Test
+    fun `no permite agregar un articulo con nombre repetido`() {
+        val cantidadAntes = viewModel.articulos.value!!.size
+
+        val agregado = viewModel.agregarArticulo("  raquetas de tenis ", "Tenis", 3, 1)
+
+        assertFalse(agregado)
+        assertEquals(cantidadAntes, viewModel.articulos.value!!.size)
+    }
+
+    @Test
+    fun `no permite renombrar un articulo con el nombre de otro`() {
+        val primero = viewModel.articulos.value!![0]
+        val segundo = viewModel.articulos.value!![1]
+
+        val editado = viewModel.editarArticulo(primero.id, segundo.nombre, primero.deporte, primero.cantidad, primero.stockMinimo)
+
+        assertFalse(editado)
+        assertEquals(primero.nombre, viewModel.articulos.value!!.first { it.id == primero.id }.nombre)
+    }
+
+    @Test
+    fun `editar un articulo conservando su propio nombre si se permite`() {
+        val primero = viewModel.articulos.value!![0]
+
+        assertTrue(viewModel.editarArticulo(primero.id, primero.nombre, primero.deporte, 99, primero.stockMinimo))
+    }
 }

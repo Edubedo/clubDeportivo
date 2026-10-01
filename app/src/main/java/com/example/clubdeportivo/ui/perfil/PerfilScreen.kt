@@ -35,7 +35,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.BotonSecundario
+import com.example.clubdeportivo.ui.components.CampoTexto
+import com.example.clubdeportivo.ui.components.EspacioCampos
+import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.model.nombreLegible
@@ -57,7 +63,6 @@ import com.example.clubdeportivo.data.SesionManager
 
 @Composable
 fun PerfilScreen(
-    onVerMembresia: () -> Unit,
     onCerrarSesion: () -> Unit,
     viewModel: PerfilViewModel = viewModel()
 ) {
@@ -235,111 +240,41 @@ fun PerfilScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Nombre
-                Text(
-                    text = "Nombre",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF475569)
-                )
-
-                OutlinedTextField(
+                EtiquetaCampo("NOMBRE")
+                CampoTexto(
                     value = nombre,
-                    onValueChange = {
-                        nombre = it
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp),
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = null
-                        )
-                    },
-                    placeholder = {
-                        Text("Nombre del administrador")
-                    },
-                    shape = RoundedCornerShape(12.dp)
+                    onValueChange = { nombre = it },
+                    placeholder = "Nombre del administrador",
+                    leadingIcon = { Icon(imageVector = Icons.Filled.Person, contentDescription = null) }
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                EspacioCampos()
 
-                // Correo
-                Text(
-                    text = "Correo electrónico",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF475569)
-                )
-
-                OutlinedTextField(
+                EtiquetaCampo("CORREO ELECTRÓNICO")
+                CampoTexto(
                     value = correo,
-                    onValueChange = {
-                        correo = it
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp),
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Email,
-                            contentDescription = null
-                        )
-                    },
-                    placeholder = {
-                        Text("correo@clubdeportivo.com")
-                    },
-                    shape = RoundedCornerShape(12.dp)
+                    onValueChange = { correo = it },
+                    placeholder = "correo@clubdeportivo.com",
+                    tipoTeclado = KeyboardType.Email,
+                    leadingIcon = { Icon(imageVector = Icons.Filled.Email, contentDescription = null) }
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                EspacioCampos()
 
-                // Rol - solo lectura
-                Text(
-                    text = "Rol",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF475569)
-                )
-
-                OutlinedTextField(
+                EtiquetaCampo("ROL")
+                CampoTexto(
                     value = usuario?.rol?.nombreLegible() ?: "",
-                    onValueChange = { },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp),
-                    enabled = false,
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = null
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp)
+                    onValueChange = {},
+                    readOnly = true,
+                    leadingIcon = { Icon(imageVector = Icons.Filled.Person, contentDescription = null) }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = {
-                        viewModel.actualizarPerfil(
-                            nombre = nombre
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text(
-                        text = "Guardar cambios",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                BotonPrimario(
+                    texto = "Guardar cambios",
+                    onClick = { viewModel.actualizarPerfil(nombre = nombre) }
+                )
             }
         }
 
@@ -375,25 +310,16 @@ fun PerfilScreen(
                     modifier = Modifier.padding(top = 4.dp)
                 )
 
-                OutlinedButton(
+                Spacer(modifier = Modifier.height(18.dp))
+
+                BotonSecundario(
+                    texto = "Cerrar sesión",
+                    colorTexto = MaterialTheme.colorScheme.error,
                     onClick = {
                         viewModel.cerrarSesion()
                         onCerrarSesion()
-                    },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 18.dp)
-                        .height(50.dp),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text(
-                        text = "Cerrar sesión",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                    }
+                )
             }
         }
 

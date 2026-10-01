@@ -8,6 +8,9 @@ import kotlinx.coroutines.delay
 interface AuthRepository {
     suspend fun login(correo: String, password: String): Resultado<Usuario>
     suspend fun registrar(nombre: String, correo: String, password: String, rol: Rol): Resultado<Usuario>
+
+    /** Entrada con el código único de miembro (sin contraseña): solo funciona con una membresía activa y vigente. */
+    suspend fun loginConCodigo(codigo: String): Resultado<Usuario>
 }
 
 /**
@@ -59,4 +62,7 @@ class FakeAuthRepository : AuthRepository {
         delay(400)
         return Resultado.Exito(Usuario(id = correo, nombre = nombre, correo = correo, rol = rol))
     }
+
+    override suspend fun loginConCodigo(codigo: String): Resultado<Usuario> =
+        Resultado.Error("El acceso por código solo está disponible con la base de datos real.")
 }

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.repository.AuthRepository
+import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Resultado
 import kotlinx.coroutines.launch
 
@@ -39,6 +40,12 @@ class LoginViewModel(
         var esValido = true
         val emailLimpio = email.trim()
 
+        // Sin "@" lo escrito es un código de miembro: entra con el código solo, sin contraseña.
+        if (!emailLimpio.contains("@")) {
+            loginConCodigo(emailLimpio)
+            return
+        }
+
         if (emailLimpio.isBlank() || !isValidEmail(emailLimpio)) {
             _emailError.value = "Ingresá un correo electrónico válido"
             esValido = false
@@ -66,6 +73,28 @@ class LoginViewModel(
                 is Resultado.Error -> {
                     _errorGeneral.value = resultado.mensaje
                 }
+            }
+            _cargando.value = false
+        }
+    }
+
+    private fun loginConCodigo(codigo: String) {
+        _passwordError.value = null
+        if (!ReglasMembresia.esCodigo(codigo)) {
+            _emailError.value = "Escribe tu correo o tu código de miembro (ej. CLB-7K3M9Q)"
+            return
+        }
+        _emailError.value = null
+
+        viewModelScope.launch {
+            _cargando.value = true
+            when (val resultado = authRepository.loginConCodigo(codigo)) {
+                is Resultado.Exito -> {
+                    SesionManager.iniciarSesion(resultado.datos)
+                    _errorGeneral.value = null
+                    _loginExitoso.value = true
+                }
+                is Resultado.Error -> _errorGeneral.value = resultado.mensaje
             }
             _cargando.value = false
         }
