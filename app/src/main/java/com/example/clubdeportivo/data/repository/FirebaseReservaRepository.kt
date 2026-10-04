@@ -13,6 +13,7 @@ import kotlinx.coroutines.tasks.await
 
 private fun DocumentSnapshot.toReserva(): Reserva? {
     val usuarioId = getString("usuarioId") ?: return null
+
     return Reserva(
         id = id,
         usuarioId = usuarioId,
@@ -20,9 +21,17 @@ private fun DocumentSnapshot.toReserva(): Reserva? {
         fecha = getString("fecha") ?: "",
         horaInicio = getString("horaInicio") ?: "",
         horaFin = getString("horaFin") ?: "",
-        estado = EstadoReserva.valueOf(getString("estado") ?: "CONFIRMADA"),
+        estado = EstadoReserva.valueOf(
+            getString("estado") ?: "CONFIRMADA"
+        ),
         esExterno = getBoolean("esExterno") ?: false,
-        personas = (getLong("personas") ?: 1L).toInt().coerceAtLeast(1)
+        personas = (getLong("personas") ?: 1L)
+            .toInt()
+            .coerceAtLeast(1),
+
+        usuarioNombre = getString("usuarioNombre") ?: "",
+        areaNombre = getString("areaNombre") ?: "",
+        deporte = getString("deporte") ?: ""
     )
 }
 
@@ -32,6 +41,7 @@ class FirebaseReservaRepository(
 
     private val reservas = db.collection("reservas")
     private val materialAsignado = db.collection("materialAsignado")
+    private val checkins = db.collection("checkins")
 
     /**
      * Qué herramienta se presta automáticamente según el área — dato fijo del club (no
@@ -128,6 +138,19 @@ class FirebaseReservaRepository(
             .filter { ReglasReserva.esVigente(it) }
     }
 
+    override suspend fun obtenerReservasPorDeporte(
+        deporte: String
+    ): List<Reserva> {
+
+        return reservas
+            .whereEqualTo("deporte", deporte)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { it.toReserva() }
+            .filter { ReglasReserva.esVigente(it) }
+    }
+
     override suspend fun obtenerReservasVigentes(): List<Reserva> {
         return reservas.get().await().documents.mapNotNull { it.toReserva() }
             .filter { ReglasReserva.esVigente(it) }
@@ -142,6 +165,42 @@ class FirebaseReservaRepository(
                 cantidad = (doc.getLong("cantidad") ?: 0).toInt()
             )
         }
+    }
+
+    override suspend fun registrarAsistencia(
+        reservaId: String,
+        usuarioId: String,
+        asistencia: String
+    ) {
+
+        val datos = mapOf(
+            "reservaId" to reservaId,
+            "usuarioId" to usuarioId,
+            "asistencia" to asistencia,
+            "registradoEn" to FieldValue.serverTimestamp()
+        )
+
+        checkins.document(reservaId).set(datos).await()
+
+        if (asistencia == "NO_ASISTIO") {
+            registrarNoShow(usuarioId)
+        }
+    }
+
+    override suspend fun obtenerAsistencia(
+        reservaId: String
+    ): String? {
+
+        val documento = checkins
+            .document(reservaId)
+            .get()
+            .await()
+
+        if (!documento.exists()) {
+            return null
+        }
+
+        return documento.getString("asistencia")
     }
 
     override suspend fun cancelarReserva(reservaId: String): Boolean {

@@ -33,6 +33,9 @@ import com.example.clubdeportivo.ui.perfil.PerfilScreen
 import com.example.clubdeportivo.ui.personal.PersonalScreen
 import com.example.clubdeportivo.ui.registro.RegistroScreen
 import com.example.clubdeportivo.ui.reservas.ReservasScreen
+import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.ui.reservas.ReservasEncargadoScreen
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +122,27 @@ fun ClubDeportivoApp() {
             composable(Destinations.AREAS) {
                 RutaProtegida(navController, Destinations.AREAS) { AreasDetailScreen() }
             }
-            composable(Destinations.RESERVAS) { ReservasScreen() }
+            composable(Destinations.RESERVAS) {
+
+                val usuario = SesionManager.usuarioActual
+
+                when (usuario?.rol) {
+
+                    Rol.ADMIN_AREA,
+                    Rol.AYUDANTE_AREA -> {
+                        ReservasEncargadoScreen()
+                    }
+
+                    Rol.SOCIO,
+                    Rol.VISITANTE_EXTERNO -> {
+                        ReservasScreen()
+                    }
+
+                    else -> {
+                        ReservasScreen()
+                    }
+                }
+            }
             composable(Destinations.MEMBRESIA) { MembresiaScreen() }
             composable(Destinations.PERFIL) {
                 PerfilScreen(

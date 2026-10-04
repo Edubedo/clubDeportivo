@@ -16,13 +16,20 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
-private fun DocumentSnapshot.toUsuario(uid: String, correoDeRespaldo: String): Usuario? {
+private fun DocumentSnapshot.toUsuario(
+    uid: String,
+    correoDeRespaldo: String
+): Usuario? {
+
     val nombre = getString("nombre") ?: return null
+
     return Usuario(
         id = uid,
         nombre = nombre,
         correo = getString("email") ?: correoDeRespaldo,
-        rol = Rol.valueOf(getString("rol") ?: Rol.SOCIO.name)
+        rol = Rol.valueOf(getString("rol") ?: Rol.SOCIO.name),
+        fotoUrl = getString("fotoUrl"),
+        areaTrabajo = getString("areaTrabajo")
     )
 }
 
