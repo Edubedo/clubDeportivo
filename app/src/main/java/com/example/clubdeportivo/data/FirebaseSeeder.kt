@@ -193,7 +193,7 @@ object FirebaseSeeder {
         db.collection("torneos").document("1").update("inscritos", 1L).await()
 
         // notificación de ejemplo
-        db.collection("notificaciones").document("notificacion-1").set(
+        db.collection("com/example/clubdeportivo/data/notificaciones").document("notificacion-1").set(
             mapOf(
                 "usuarioId" to uidSocio, "tipo" to "RESERVA", "titulo" to "Reserva confirmada",
                 "mensaje" to "Tu reserva en Cancha de fútbol 1 fue confirmada.",
