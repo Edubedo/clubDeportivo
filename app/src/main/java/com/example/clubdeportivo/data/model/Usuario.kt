@@ -45,5 +45,5 @@ data class Usuario(
     val nombre: String,
     val correo: String,
     val rol: Rol,
-    val fotoUrl: String? = null
-)
+    val fotoUrl: String? = null,
+    val areaTrabajo: String? = null)

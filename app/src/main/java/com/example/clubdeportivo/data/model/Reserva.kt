@@ -11,8 +11,13 @@ data class Reserva(
     val horaFin: String,
     val estado: EstadoReserva,
     val esExterno: Boolean = false,
-    /** Cuántos lugares del cupo del área ocupa esta reserva (un grupo cuenta como varias personas). */
-    val personas: Int = 1
+    val personas: Int = 1,
+
+
+    // Datos para mostrar la reserva
+    val usuarioNombre: String = "",
+    val areaNombre: String = "",
+    val deporte: String = ""
 )
 
 data class MaterialAsignado(
@@ -25,5 +30,6 @@ data class MaterialAsignado(
 data class Checkin(
     val id: String,
     val reservaId: String,
-    val horaLlegada: String
+    val asistencia: String,
+    val horaLlegada: String = ""
 )
