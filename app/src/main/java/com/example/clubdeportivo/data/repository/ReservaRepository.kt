@@ -11,6 +11,11 @@ import kotlinx.coroutines.delay
 interface ReservaRepository {
     suspend fun obtenerReservasDeUsuario(usuarioId: String): List<Reserva>
     suspend fun contarReservasActivas(usuarioId: String): Int
+
+    suspend fun registrarAsistencia(reservaId: String, usuarioId: String, asistencia: String)
+
+    suspend fun obtenerAsistencia(reservaId: String): String?
+
     suspend fun crearReserva(
         usuarioId: String,
         areaId: String,
@@ -23,12 +28,14 @@ interface ReservaRepository {
     /** Reservas vigentes (confirmadas o pendientes) de un área, de cualquier usuario: base del control de cupo. */
     suspend fun obtenerReservasDeArea(areaId: String): List<Reserva>
     /** Todas las reservas vigentes del club (confirmadas o pendientes). */
+    suspend fun obtenerReservasPorDeporte(deporte: String): List<Reserva>
     suspend fun obtenerReservasVigentes(): List<Reserva>
     suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado>
     /** true si se pudo cancelar sin penalización (fue con 4+ horas de anticipación). */
     suspend fun cancelarReserva(reservaId: String): Boolean
     suspend fun registrarNoShow(usuarioId: String)
     suspend fun estaBloqueadoPorInasistencias(usuarioId: String): Boolean
+
 }
 
 /**
@@ -54,6 +61,22 @@ class FakeReservaRepository : ReservaRepository {
 
     /** Marcas de tiempo (ms) de inasistencias por usuario, para la regla de 3 strikes. */
     private val noShowsPorUsuario = mutableMapOf<String, MutableList<Long>>()
+
+    private val asistencias = mutableMapOf<String, String>()
+
+    override suspend fun registrarAsistencia(
+        reservaId: String,
+        usuarioId: String,
+        asistencia: String
+    ) {
+        asistencias[reservaId] = asistencia
+    }
+
+    override suspend fun obtenerAsistencia(
+        reservaId: String
+    ): String? {
+        return asistencias[reservaId]
+    }
 
     override suspend fun obtenerReservasDeUsuario(usuarioId: String): List<Reserva> {
         delay(400)
@@ -118,6 +141,22 @@ class FakeReservaRepository : ReservaRepository {
     override suspend fun obtenerReservasDeArea(areaId: String): List<Reserva> =
         reservas.filter { it.areaId == areaId && ReglasReserva.esVigente(it) }
 
+    override suspend fun obtenerReservasPorDeporte(deporte: String): List<Reserva> {
+        // En el repositorio falso no tenemos guardado el deporte directamente
+        // en Reserva, así que relacionamos los IDs de área con su deporte.
+        val areasDelDeporte = when (deporte.trim().lowercase()) {
+            "tenis" -> listOf("7", "8")
+            "fútbol", "futbol" -> listOf("1", "2")
+            "básquetbol", "basquetbol", "baloncesto" -> listOf("3", "4")
+            "natación", "natacion" -> listOf("5", "6")
+            else -> emptyList()
+        }
+
+        return reservas.filter {
+            it.areaId in areasDelDeporte && ReglasReserva.esVigente(it)
+        }
+    }
+
     override suspend fun obtenerReservasVigentes(): List<Reserva> =
         reservas.filter { ReglasReserva.esVigente(it) }
 
@@ -154,4 +193,6 @@ class FakeReservaRepository : ReservaRepository {
         val bloqueoMs = Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS * 24L * 60 * 60 * 1000
         return System.currentTimeMillis() - ultimaFalta <= bloqueoMs
     }
+
+
 }
