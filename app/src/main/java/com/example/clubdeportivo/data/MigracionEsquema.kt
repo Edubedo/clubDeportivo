@@ -144,7 +144,7 @@ object MigracionEsquema {
             )
         }
 
-        resumen["notificaciones"] = completar(db.collection("notificaciones"), leer(db, "notificaciones")) { doc ->
+        resumen["com/example/clubdeportivo/data/notificaciones"] = completar(db.collection("com/example/clubdeportivo/data/notificaciones"), leer(db, "com/example/clubdeportivo/data/notificaciones")) { doc ->
             val tipo = doc.getString("tipo").orEmpty()
             mapOf(
                 "leida" to doc.getBoolean("leido"),
@@ -312,7 +312,7 @@ object MigracionEsquema {
     private suspend fun auditar(db: FirebaseFirestore) {
         listOf(
             "areas", "checkins", "herramientas", "inscripcionesTorneo", "integrantesFamiliares",
-            "materialAsignado", "membresias", "miembros", "notificaciones", "pagos", "precios", "reservas",
+            "materialAsignado", "membresias", "miembros", "com/example/clubdeportivo/data/notificaciones", "pagos", "precios", "reservas",
             "restriccionesHorario", "torneos", "usuarios"
         ).forEach { nombre ->
             val docs = leer(db, nombre)
