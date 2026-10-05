@@ -1,8 +1,10 @@
 package com.example.clubdeportivo.ui.personal
 
 import android.util.Patterns
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -24,8 +27,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.example.clubdeportivo.data.model.DatosPersonal
@@ -33,6 +38,7 @@ import com.example.clubdeportivo.data.model.Personal
 import com.example.clubdeportivo.data.model.ROLES_DE_PERSONAL
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.nombreLegible
+import com.example.clubdeportivo.data.notificaciones.Notificacion
 import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.BotonSecundario
 import com.example.clubdeportivo.ui.components.CampoTexto
@@ -44,15 +50,22 @@ import com.example.clubdeportivo.ui.components.FullScreenLoading
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.VerdeMarca
 import com.example.clubdeportivo.util.FotoPerfilManager
+import java.text.SimpleDateFormat
+import java.util.*
 
-/** Tipos de personal que se pueden dar de alta por ahora. */
 private val TIPOS_DE_ALTA = listOf("Instructor")
 private val TURNOS = listOf("Matutino", "Vespertino")
 private val ESTADOS = listOf("ACTIVO", "INACTIVO")
 private const val SIN_AREA = "Sin área asignada"
 
+private val TextoOscuro = Color(0xFF111827)
+private val TextoGris = Color(0xFF64748B)
+
 @Composable
-fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
+fun PersonalScreen(
+    onIrPerfil: () -> Unit = {},
+    viewModel: PersonalViewModel = viewModel()
+) {
     val personal by viewModel.personal.observeAsState(emptyList())
     val areas by viewModel.areas.observeAsState(emptyList())
     val cargando by viewModel.cargando.observeAsState(true)
@@ -63,6 +76,7 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
 
     var mostrarFormulario by remember { mutableStateOf(false) }
     var enEdicion by remember { mutableStateOf<Personal?>(null) }
+    var mostrarNotificaciones by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(mensaje) {
@@ -100,13 +114,42 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                "Personal",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF1E293B),
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Personal",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF1E293B)
+                )
+
+                // Botón de Notificaciones con el diseño azulito exacto del Dashboard
+                Surface(
+                    onClick = { mostrarNotificaciones = true },
+                    shape = RoundedCornerShape(50.dp),
+                    color = Color(0xFFE3F2FD),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("📢", fontSize = 14.sp)
+                        Text(
+                            text = "Notif.",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E88E5)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             when {
                 cargando && personal.isEmpty() -> FullScreenLoading()
@@ -143,12 +186,14 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
             }
         )
     }
+
+    if (mostrarNotificaciones) {
+        HojaNotificacionesPersonal(
+            onCerrar = { mostrarNotificaciones = false }
+        )
+    }
 }
 
-/**
- * Formulario de alta/edición de personal. Al crear, genera la cuenta de acceso (correo + contraseña); al editar,
- * el correo no cambia y la contraseña se restablece por correo.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormularioPersonalDialog(
@@ -169,7 +214,6 @@ fun FormularioPersonalDialog(
     var estado by remember { mutableStateOf(personaAEditar?.estado ?: "ACTIVO") }
     var rol by remember {
         mutableStateOf(
-            // Los roles heredados (Superadmin, Admin de área) se muestran como los dos actuales.
             personaAEditar?.rol?.let { if (it == Rol.SUPERADMIN) Rol.ADMIN else if (it in ROLES_DE_PERSONAL) it else Rol.AYUDANTE_AREA }
                 ?: Rol.AYUDANTE_AREA
         )
@@ -178,8 +222,7 @@ fun FormularioPersonalDialog(
     var confirmarContrasena by remember { mutableStateOf("") }
     var mensajeError by remember { mutableStateOf<String?>(null) }
 
-    // La cuenta (y su uid) todavía no existe al dar de alta: la foto se guarda con un id temporal.
-    val idFoto = remember { personaAEditar?.id ?: java.util.UUID.randomUUID().toString() }
+    val idFoto = remember { personaAEditar?.id ?: UUID.randomUUID().toString() }
     var fotoPath by remember {
         mutableStateOf<String?>(
             personaAEditar?.let { FotoPerfilManager.obtenerFoto(context, it.id)?.absolutePath ?: it.fotoUrl }
@@ -191,7 +234,6 @@ fun FormularioPersonalDialog(
         }
     }
 
-    // Se conserva el tipo que ya tenga la persona aunque ya no se ofrezca para altas nuevas.
     val tipos = (TIPOS_DE_ALTA + listOfNotNull(personaAEditar?.tipoPersonal?.takeIf { it.isNotBlank() })).distinct()
     var tipo by remember { mutableStateOf(personaAEditar?.tipoPersonal?.takeIf { it.isNotBlank() } ?: tipos[0]) }
     var turno by remember { mutableStateOf(personaAEditar?.turno?.takeIf { it in TURNOS } ?: TURNOS[0]) }
@@ -497,6 +539,385 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
                     colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF1E88E5))
                 ) {
                     Text(text = "Editar", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HojaNotificacionesPersonal(
+    onCerrar: () -> Unit,
+    viewModel: PersonalNotificacionesViewModel = viewModel()
+) {
+    val notificaciones by viewModel.notificaciones.collectAsState()
+    val leidas by viewModel.leidas.collectAsState()
+
+    var pestanaSeleccionada by remember { mutableIntStateOf(0) }
+    var modoRedactar by remember { mutableStateOf(false) }
+
+    var notificacionEditandoId by remember { mutableStateOf<String?>(null) }
+    var tituloEdit by remember { mutableStateOf("") }
+    var mensajeEdit by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+
+    Dialog(onDismissRequest = onCerrar) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White,
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                when {
+                    notificacionEditandoId != null -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Editar aviso",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextoOscuro
+                            )
+                            IconButton(onClick = { notificacionEditandoId = null }) {
+                                Text("✕", fontSize = 18.sp, color = TextoGris, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text("TÍTULO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = tituloEdit,
+                            onValueChange = { tituloEdit = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = VerdeMarca,
+                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                            )
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text("MENSAJE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = mensajeEdit,
+                            onValueChange = { mensajeEdit = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 4,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = VerdeMarca,
+                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                            )
+                        )
+
+                        Spacer(Modifier.height(28.dp))
+
+                        Button(
+                            onClick = {
+                                Toast.makeText(context, "Aviso actualizado correctamente ✅", Toast.LENGTH_SHORT).show()
+                                notificacionEditandoId = null
+                            },
+                            enabled = tituloEdit.isNotBlank() && mensajeEdit.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = VerdeMarca)
+                        ) {
+                            Text("Guardar cambios", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                        }
+                    }
+
+                    modoRedactar -> {
+                        var titulo by remember { mutableStateOf("") }
+                        var mensaje by remember { mutableStateOf("") }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Redactar nuevo aviso",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextoOscuro
+                            )
+                            IconButton(onClick = { modoRedactar = false }) {
+                                Text("✕", fontSize = 18.sp, color = TextoGris, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text("TIPO DE DESTINATARIO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = true,
+                                onClick = { },
+                                label = { Text("Socios") },
+                                shape = RoundedCornerShape(50.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = VerdeMarca,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text("TÍTULO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = titulo,
+                            onValueChange = { titulo = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Ej: Cancha en mantenimiento", color = Color(0xFF94A3B8)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = VerdeMarca,
+                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                            )
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text("MENSAJE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = mensaje,
+                            onValueChange = { mensaje = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Escribe los detalles del aviso...", color = Color(0xFF94A3B8)) },
+                            minLines = 4,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = VerdeMarca,
+                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                            )
+                        )
+
+                        Spacer(Modifier.height(28.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { modoRedactar = false },
+                                modifier = Modifier.weight(1f).height(52.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            ) {
+                                Text("Cancelar", color = TextoGris, fontWeight = FontWeight.SemiBold)
+                            }
+                            Button(
+                                onClick = {
+                                    viewModel.enviarAvisoASocios(titulo, mensaje) {
+                                        Toast.makeText(context, "Aviso enviado ✅", Toast.LENGTH_SHORT).show()
+                                        modoRedactar = false
+                                    }
+                                },
+                                enabled = titulo.isNotBlank() && mensaje.isNotBlank(),
+                                modifier = Modifier.weight(1f).height(52.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = VerdeMarca)
+                            ) {
+                                Text("Enviar aviso", fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                    }
+
+                    else -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Avisos y Notificaciones",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextoOscuro
+                            )
+                            IconButton(onClick = onCerrar) {
+                                Text("✕", fontSize = 18.sp, color = TextoGris, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        SecondaryTabRow(
+                            selectedTabIndex = pestanaSeleccionada,
+                            modifier = Modifier,
+                            containerColor = Color(0xFFF1F5F9),
+                            contentColor = TabRowDefaults.primaryContentColor,
+                            indicator = {},
+                            divider = {},
+                            tabs = {
+                                Tab(
+                                    selected = pestanaSeleccionada == 0,
+                                    onClick = { pestanaSeleccionada = 0 },
+                                    modifier = Modifier.clip(RoundedCornerShape(50.dp)),
+                                    text = { Text("Recibidos", fontWeight = FontWeight.SemiBold) },
+                                    selectedContentColor = Color.White,
+                                    unselectedContentColor = TextoGris
+                                )
+                                Tab(
+                                    selected = pestanaSeleccionada == 1,
+                                    onClick = { pestanaSeleccionada = 1 },
+                                    modifier = Modifier.clip(RoundedCornerShape(50.dp)),
+                                    text = { Text("Mis enviados", fontWeight = FontWeight.SemiBold) },
+                                    selectedContentColor = Color.White,
+                                    unselectedContentColor = TextoGris
+                                )
+                            })
+
+                        Spacer(Modifier.height(20.dp))
+
+                        if (notificaciones.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No hay avisos disponibles.",
+                                    color = TextoGris,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.heightIn(max = 320.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(notificaciones) { notif ->
+                                    val isLeida = leidas.contains(notif.id)
+
+                                    TarjetaNotificacionGestionable(
+                                        notif = notif,
+                                        isLeida = isLeida,
+                                        esModoEdicion = pestanaSeleccionada == 1,
+                                        onEditar = {
+                                            notificacionEditandoId = notif.id
+                                            tituloEdit = notif.titulo
+                                            mensajeEdit = notif.mensaje
+                                        },
+                                        onClick = { viewModel.marcarComoLeida(notif.id) }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Button(
+                            onClick = { modoRedactar = true },
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = VerdeMarca)
+                        ) {
+                            Text("Redactar nuevo aviso", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TarjetaNotificacionGestionable(
+    notif: Notificacion,
+    isLeida: Boolean,
+    esModoEdicion: Boolean,
+    onEditar: () -> Unit,
+    onClick: () -> Unit
+) {
+    val fechaFormat = remember(notif.fechaMillis) {
+        SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(notif.fechaMillis))
+    }
+
+    var expandida by remember { mutableStateOf(false) }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (isLeida) Color(0xFFF8FAFD) else Color.White,
+        border = BorderStroke(1.dp, if (isLeida) Color(0xFFE2E8F0) else VerdeMarca.copy(alpha = 0.4f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable {
+                expandida = !expandida
+                if (!isLeida) onClick()
+            }
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    if (!isLeida && !esModoEdicion) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(VerdeMarca, CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    Text(
+                        text = notif.titulo,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = TextoOscuro,
+                        maxLines = if (expandida) Int.MAX_VALUE else 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = fechaFormat, fontSize = 11.sp, color = TextoGris)
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = notif.mensaje,
+                fontSize = 13.sp,
+                color = Color(0xFF475569),
+                maxLines = if (expandida) Int.MAX_VALUE else 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (esModoEdicion) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onEditar,
+                        colors = ButtonDefaults.textButtonColors(contentColor = VerdeMarca)
+                    ) {
+                        Text("✏️ Modificar aviso", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

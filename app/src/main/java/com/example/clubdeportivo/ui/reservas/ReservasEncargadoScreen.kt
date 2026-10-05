@@ -13,6 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Surface
@@ -25,8 +27,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.clubdeportivo.ui.personal.PersonalNotificacionesSheet
 
 private val Fondo = Color(0xFFF8FAFD)
 private val TextoPrincipal = Color(0xFF111827)
@@ -49,6 +55,7 @@ fun ReservasEncargadoScreen(
     val asistencias by viewModel.asistencias.observeAsState(emptyMap())
 
     val areaTrabajo = viewModel.areaTrabajo
+    var mostrarNotificaciones by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -58,19 +65,38 @@ fun ReservasEncargadoScreen(
             .padding(horizontal = 16.dp, vertical = 16.dp)
     ) {
 
-        Text(
-            text = "Reservas en mi área",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextoPrincipal
-        )
+        // Cabecera con Título, Área y Botón de Notificaciones
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Reservas en mi área",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextoPrincipal
+                )
 
-        Text(
-            text = areaTrabajo.ifBlank { "Sin área asignada" },
-            fontSize = 14.sp,
-            color = TextoSecundario,
-            modifier = Modifier.padding(top = 4.dp)
-        )
+                Text(
+                    text = areaTrabajo.ifBlank { "Sin área asignada" },
+                    fontSize = 14.sp,
+                    color = TextoSecundario,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            Button(
+                onClick = { mostrarNotificaciones = true },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE0EDFF),
+                    contentColor = Color(0xFF2F80FF)
+                )
+            ) {
+                Text("📢 Notif.", fontWeight = FontWeight.SemiBold)
+            }
+        }
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -107,10 +133,7 @@ fun ReservasEncargadoScreen(
                     fecha = reserva.fecha,
                     horario = "${reserva.horaInicio}–${reserva.horaFin}",
                     area = "🎾 ${reserva.deporte} — ${reserva.areaNombre}",
-
-                    // Ya NO ponemos null
                     asistencia = asistencias[reserva.id],
-
                     onAsistio = {
                         viewModel.registrarAsistencia(
                             reservaId = reserva.id,
@@ -118,7 +141,6 @@ fun ReservasEncargadoScreen(
                             asistencia = "ASISTIO"
                         )
                     },
-
                     onNoAsistio = {
                         viewModel.registrarAsistencia(
                             reservaId = reserva.id,
@@ -131,6 +153,13 @@ fun ReservasEncargadoScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
+    }
+
+    // Modal de Notificaciones del Personal
+    if (mostrarNotificaciones) {
+        PersonalNotificacionesSheet(
+            onCerrar = { mostrarNotificaciones = false }
+        )
     }
 }
 
