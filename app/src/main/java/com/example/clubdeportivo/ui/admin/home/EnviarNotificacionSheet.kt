@@ -1,47 +1,30 @@
 package com.example.clubdeportivo.ui.admin.home
 
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.notificaciones.DestinatarioNotificacion
 
-private val Azul = Color(0xFF2F80FF)
-private val TextoOscuro = Color(0xFF111827)
-private val TextoGris = Color(0xFF64748B)
+private val TextoOscuro = Color(0xFF192338)
+private val TextoGris = Color(0xFF31487A)
+private val AzulPrimario = Color(0xFF1E2E4F)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EnviarNotificacionSheet(
     onDismiss: () -> Unit,
@@ -49,121 +32,258 @@ fun EnviarNotificacionSheet(
 ) {
     val estado by viewModel.ui.collectAsState()
     val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Cuando se envía con éxito: aviso + cerrar hoja
+    var pestanaSeleccionada by remember { mutableIntStateOf(0) }
+    var notificacionEditandoId by remember { mutableStateOf<String?>(null) }
+    var tituloEdit by remember { mutableStateOf("") }
+    var mensajeEdit by remember { mutableStateOf("") }
+
     LaunchedEffect(estado.enviada) {
         if (estado.enviada) {
-            Toast.makeText(context, "Notificación enviada ✅", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Notificación enviada correctamente", Toast.LENGTH_SHORT).show()
             viewModel.consumirEnviada()
-            onDismiss()
+            pestanaSeleccionada = 0
         }
     }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Color.White
-    ) {
-        Column(
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 20.dp)
+                .wrapContentHeight()
         ) {
-            // Encabezado
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "📢 Enviar notificación",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextoOscuro
-                )
-                TextButton(onClick = onDismiss) { Text("✕", color = TextoGris) }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // Destinatarios
-            Text("ENVIAR A", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextoGris)
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DestinatarioNotificacion.values().forEach { opcion ->
-                    FilterChip(
-                        selected = estado.destinatario == opcion,
-                        onClick = { viewModel.onDestinatario(opcion) },
-                        label = { Text(opcion.etiqueta) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Azul,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Título
-            OutlinedTextField(
-                value = estado.titulo,
-                onValueChange = viewModel::onTitulo,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Título") },
-                placeholder = { Text("Ej: Mantenimiento programado") },
-                singleLine = true,
-                isError = estado.errorTitulo != null,
-                supportingText = { estado.errorTitulo?.let { Text(it) } },
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            // Mensaje
-            OutlinedTextField(
-                value = estado.mensaje,
-                onValueChange = viewModel::onMensaje,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Mensaje") },
-                minLines = 4,
-                maxLines = 6,
-                isError = estado.errorMensaje != null,
-                supportingText = {
-                    Text(estado.errorMensaje ?: "${estado.mensaje.length}/300")
-                },
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            estado.errorGeneral?.let {
-                Text(it, color = Color(0xFFDC2626), fontSize = 13.sp)
-                Spacer(Modifier.height(8.dp))
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Button(
-                onClick = {
-                    viewModel.enviar(autorId = SesionManager.usuarioActual?.id?.toString())
-                },
-                enabled = !estado.enviando,
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Azul)
+                    .padding(24.dp)
             ) {
-                if (estado.enviando) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Enviar 🚀", fontWeight = FontWeight.SemiBold)
+                when {
+                    // 1. MODO EDITAR
+                    notificacionEditandoId != null -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Editar notificación",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextoOscuro
+                            )
+                            IconButton(onClick = { notificacionEditandoId = null }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar",
+                                    tint = TextoGris
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text("TÍTULO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = tituloEdit,
+                            onValueChange = { tituloEdit = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AzulPrimario,
+                                unfocusedBorderColor = Color(0xFFCBD5E1)
+                            )
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text("MENSAJE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = mensajeEdit,
+                            onValueChange = { mensajeEdit = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 4,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AzulPrimario,
+                                unfocusedBorderColor = Color(0xFFCBD5E1)
+                            )
+                        )
+
+                        Spacer(Modifier.height(28.dp))
+
+                        Button(
+                            onClick = {
+                                Toast.makeText(context, "Aviso actualizado correctamente", Toast.LENGTH_SHORT).show()
+                                notificacionEditandoId = null
+                            },
+                            enabled = tituloEdit.isNotBlank() && mensajeEdit.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AzulPrimario)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                Text("Guardar cambios", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                            }
+                        }
+                    }
+
+                    // 2. VISTA PRINCIPAL (CUADRO FLOTANTE)
+                    else -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Panel de Notificaciones",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextoOscuro
+                            )
+                            IconButton(onClick = onDismiss) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar",
+                                    tint = TextoGris
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        SecondaryTabRow(
+                            selectedTabIndex = pestanaSeleccionada,
+                            modifier = Modifier,
+                            containerColor = Color(0xFFEAF1F8),
+                            contentColor = TabRowDefaults.primaryContentColor,
+                            indicator = {},
+                            divider = {},
+                            tabs = {
+                                Tab(
+                                    selected = pestanaSeleccionada == 0,
+                                    onClick = { pestanaSeleccionada = 0 },
+                                    modifier = Modifier.clip(RoundedCornerShape(50.dp)),
+                                    text = { Text("Nueva", fontWeight = FontWeight.SemiBold) },
+                                    selectedContentColor = Color.Black,
+                                    unselectedContentColor = TextoGris
+                                )
+                                Tab(
+                                    selected = pestanaSeleccionada == 1,
+                                    onClick = { pestanaSeleccionada = 1 },
+                                    modifier = Modifier.clip(RoundedCornerShape(50.dp)),
+                                    text = { Text("Historial", fontWeight = FontWeight.SemiBold) },
+                                    selectedContentColor = Color.Black,
+                                    unselectedContentColor = TextoGris
+                                )
+                            }
+                        )
+
+                        Spacer(Modifier.height(20.dp))
+
+                        if (pestanaSeleccionada == 1) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No hay notificaciones registradas.",
+                                    color = TextoGris,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        } else {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text("TIPO DE DESTINATARIO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                                Spacer(Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    DestinatarioNotificacion.entries.forEach { opcion ->
+                                        FilterChip(
+                                            selected = estado.destinatario == opcion,
+                                            onClick = { viewModel.onDestinatario(opcion) },
+                                            label = { Text(opcion.etiqueta) },
+                                            shape = RoundedCornerShape(50.dp),
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = AzulPrimario,
+                                                selectedLabelColor = Color.White
+                                            )
+                                        )
+                                    }
+                                }
+
+                                Spacer(Modifier.height(16.dp))
+
+                                Text("TÍTULO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                                Spacer(Modifier.height(6.dp))
+                                OutlinedTextField(
+                                    value = estado.titulo,
+                                    onValueChange = viewModel::onTitulo,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { Text("Ej: Mantenimiento programado", color = Color(0xFF94A3B8)) },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AzulPrimario,
+                                        unfocusedBorderColor = Color(0xFFCBD5E1)
+                                    ),
+                                    isError = estado.errorTitulo != null
+                                )
+
+                                Spacer(Modifier.height(16.dp))
+
+                                Text("MENSAJE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextoGris)
+                                Spacer(Modifier.height(6.dp))
+                                OutlinedTextField(
+                                    value = estado.mensaje,
+                                    onValueChange = viewModel::onMensaje,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { Text("Escribe el contenido...", color = Color(0xFF94A3B8)) },
+                                    minLines = 4,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AzulPrimario,
+                                        unfocusedBorderColor = Color(0xFFCBD5E1)
+                                    ),
+                                    isError = estado.errorMensaje != null
+                                )
+
+                                estado.errorGeneral?.let {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(it, color = Color(0xFFDC2626), fontSize = 13.sp)
+                                }
+                            }
+
+                            Spacer(Modifier.height(24.dp))
+
+                            Button(
+                                onClick = {
+                                    viewModel.enviar(autorId = SesionManager.usuarioActual?.id?.toString())
+                                },
+                                enabled = !estado.enviando,
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AzulPrimario)
+                            ) {
+                                if (estado.enviando) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(22.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                        Text("Enviar notificación", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
