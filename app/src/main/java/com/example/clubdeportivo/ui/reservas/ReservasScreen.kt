@@ -1,7 +1,6 @@
 package com.example.clubdeportivo.ui.reservas
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -62,19 +61,17 @@ import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.FullScreenLoading
 import com.example.clubdeportivo.ui.components.PestanasPildora
-import com.example.clubdeportivo.ui.components.VerdeMarca
 import com.example.clubdeportivo.ui.torneos.TorneosScreen
 
-private val FondoPantalla = Color(0xFFF8FAFD)
-private val TextoTitulo = Color(0xFF111827)
-private val TextoSuave = Color(0xFF64748B)
-private val ColorLleno = Color(0xFFFEE2E2)
-private val ColorTorneo = Color(0xFFEDE9FE)
+private val FondoPantalla = Color(0xFFEAF1F8)
+private val TextoTitulo = Color(0xFF192338)
+private val TextoSuave = Color(0xFF31487A)
+private val ColorLleno = Color(0xFFFCE8E6)
+private val ColorTorneo = Color(0xFFD6E4FE)
 private val ColorPocos = Color(0xFFFEF3C7)
-private val ColorLibre = Color(0xFFF1F5F9)
-private val ColorPasada = Color(0xFFF8FAFC)
+private val ColorLibre = Color(0xFFFFFFFF)
+private val ColorPasada = Color(0xFFF1F5F9)
 
-/** Sección "Reservas": reservar un espacio o reservar un área para un torneo. */
 @Composable
 fun ReservasScreen() {
     var pestana by rememberSaveable { mutableIntStateOf(0) }
@@ -126,7 +123,6 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             else -> 3
         }
 
-        // Al elegir deporte o cancha la pantalla baja sola a la siguiente sección (posición medida en el contenido).
         val scroll = rememberScrollState()
         var canchaY by remember { mutableIntStateOf(0) }
         var horarioY by remember { mutableIntStateOf(0) }
@@ -152,63 +148,72 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                 .verticalScroll(scroll)
                 .padding(horizontal = 16.dp)
         ) {
-            Text("Reservar un espacio", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextoTitulo)
+            Text("Reservar un espacio", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextoTitulo)
             Spacer(modifier = Modifier.height(12.dp))
             Pasos(pasoActual = paso)
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 1. Deporte
             Seccion("SELECCIONA EL DEPORTE")
             if (deportes.isEmpty()) {
                 Text("Todavía no hay áreas registradas.", color = TextoSuave, fontSize = 14.sp)
             }
+
+            // 🌟 Grid de Deportes a pantalla completa (2 columnas simétricas con .weight(1f))
             FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                maxItemsInEachRow = 2,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 deportes.forEach { deporte ->
                     val muestra = ui.areas.first { it.tipo == deporte }
-                    TarjetaOpcion(
-                        emoji = Deportes.emojiDe(deporte, muestra.emoji),
-                        titulo = deporte,
-                        detalle = ui.areas.count { it.tipo == deporte }.let { if (it == 1) "1 área" else "$it áreas" },
-                        seleccionada = deporte == ui.deporte,
-                        habilitada = true,
-                        onClick = { viewModel.elegirDeporte(deporte) }
-                    )
-                }
-            }
-
-            // 2. Cancha
-            if (ui.deporte != null) {
-                Spacer(modifier = Modifier.height(20.dp))
-                Column(modifier = Modifier.onGloballyPositioned { canchaY = it.positionInParent().y.toInt() }) {
-                Seccion("SELECCIONA LA CANCHA")
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    areasDelDeporte.forEach { area ->
-                        val bloqueada = area.disponibilidad == DisponibilidadArea.MANTENIMIENTO ||
-                            (viewModel.esVisitanteExterno && !area.permiteExternos)
+                    Box(modifier = Modifier.weight(1f)) {
                         TarjetaOpcion(
-                            emoji = Deportes.emojiDe(area.tipo, area.emoji),
-                            titulo = area.nombre,
-                            detalle = when {
-                                area.disponibilidad == DisponibilidadArea.MANTENIMIENTO -> "En mantenimiento"
-                                bloqueada -> "No admite externos"
-                                else -> "Cupo ${area.capacidad}"
-                            },
-                            seleccionada = area.id == ui.area?.id,
-                            habilitada = !bloqueada,
-                            onClick = { viewModel.elegirArea(area) }
+                            emoji = Deportes.emojiDe(deporte, muestra.emoji),
+                            titulo = deporte,
+                            detalle = ui.areas.count { it.tipo == deporte }.let { if (it == 1) "1 área" else "$it áreas" },
+                            seleccionada = deporte == ui.deporte,
+                            habilitada = true,
+                            onClick = { viewModel.elegirDeporte(deporte) }
                         )
                     }
                 }
+            }
+
+            if (ui.deporte != null) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Column(modifier = Modifier.onGloballyPositioned { canchaY = it.positionInParent().y.toInt() }) {
+                    Seccion("SELECCIONA LA CANCHA")
+
+                    // 🌟 Grid de Canchas a pantalla completa (2 columnas simétricas con .weight(1f))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        maxItemsInEachRow = 2,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        areasDelDeporte.forEach { area ->
+                            val bloqueada = area.disponibilidad == DisponibilidadArea.MANTENIMIENTO ||
+                                    (viewModel.esVisitanteExterno && !area.permiteExternos)
+                            Box(modifier = Modifier.weight(1f)) {
+                                TarjetaOpcion(
+                                    emoji = Deportes.emojiDe(area.tipo, area.emoji),
+                                    titulo = area.nombre,
+                                    detalle = when {
+                                        area.disponibilidad == DisponibilidadArea.MANTENIMIENTO -> "En mantenimiento"
+                                        bloqueada -> "No admite externos"
+                                        else -> "Cupo ${area.capacidad}"
+                                    },
+                                    seleccionada = area.id == ui.area?.id,
+                                    habilitada = !bloqueada,
+                                    onClick = { viewModel.elegirArea(area) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            // 3. Horario
             ui.area?.let { area ->
                 Spacer(modifier = Modifier.height(20.dp))
                 Column(modifier = Modifier.onGloballyPositioned { horarioY = it.positionInParent().y.toInt() }) {
@@ -228,7 +233,6 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                     }
                 }
             }
-            // Espacio extra para que, al bajar a la siguiente sección, esta pueda llegar hasta arriba de la pantalla.
             Spacer(modifier = Modifier.height(if (ui.deporte != null) 360.dp else 24.dp))
         }
     }
@@ -255,7 +259,7 @@ private fun Pasos(pasoActual: Int) {
                 modifier = Modifier
                     .size(26.dp)
                     .clip(CircleShape)
-                    .background(if (activo) VerdeMarca else Color(0xFFE2E8F0)),
+                    .background(if (activo) Color(0xFF1E2E4F) else Color(0xFFE2E8F0)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(numero.toString(), color = if (activo) Color.White else TextoSuave, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -287,13 +291,14 @@ private fun TarjetaOpcion(
     Surface(
         onClick = onClick,
         enabled = habilitada,
-        modifier = Modifier.width(150.dp),
+        // 🌟 Se ajusta a fillMaxWidth para que abarque todo el espacio disponible en la celda
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         color = if (habilitada) Color.White else Color(0xFFF1F5F9),
-        border = BorderStroke(if (seleccionada) 2.dp else 1.dp, if (seleccionada) VerdeMarca else Color(0xFFE2E8F0))
+        border = BorderStroke(if (seleccionada) 2.dp else 1.dp, if (seleccionada) Color(0xFF1E2E4F) else Color(0xFFE2E8F0))
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(emoji, fontSize = 26.sp)
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(emoji, fontSize = 28.sp)
             Text(
                 text = titulo,
                 fontSize = 14.sp,
@@ -333,7 +338,8 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     Surface(
                         onClick = { viewModel.elegirFecha(fecha) },
                         shape = RoundedCornerShape(12.dp),
-                        color = if (activa) VerdeMarca else ColorLibre
+                        color = if (activa) Color(0xFF1E2E4F) else ColorLibre,
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                     ) {
                         Text(
                             text = etiqueta,
@@ -348,7 +354,6 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
 
             Text(ui.horarioTexto, fontSize = 13.sp, color = TextoSuave, modifier = Modifier.padding(top = 14.dp))
 
-            // Resumen de la selección
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -436,7 +441,7 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, modifier: Modifier, onCli
     val estado = celda.estado
     val parcial = estado.ocupadas > 0 && !estado.lleno
     val fondo = when {
-        elegida -> VerdeMarca
+        elegida -> Color(0xFF1E2E4F)
         estado.torneo != null -> ColorTorneo
         estado.lleno -> ColorLleno
         celda.pasada -> ColorPasada
@@ -445,8 +450,8 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, modifier: Modifier, onCli
     }
     val texto = when {
         elegida -> Color.White
-        estado.torneo != null -> Color(0xFF7C3AED)
-        estado.lleno -> Color(0xFFDC2626)
+        estado.torneo != null -> Color(0xFF31487A)
+        estado.lleno -> Color(0xFFC5221F)
         celda.pasada -> Color(0xFFCBD5E1)
         else -> TextoTitulo
     }
@@ -456,7 +461,8 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, modifier: Modifier, onCli
         enabled = celda.seleccionable,
         modifier = modifier.height(52.dp),
         shape = RoundedCornerShape(10.dp),
-        color = fondo
+        color = fondo,
+        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text(numero, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = texto, maxLines = 1)
@@ -515,7 +521,8 @@ private fun BotonCirculo(texto: String, habilitado: Boolean, onClick: () -> Unit
         enabled = habilitado,
         modifier = Modifier.size(40.dp),
         shape = RoundedCornerShape(12.dp),
-        color = ColorLibre
+        color = ColorLibre,
+        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(texto, fontSize = 20.sp, color = if (habilitado) TextoSuave else Color(0xFFD1D5DB))
@@ -526,11 +533,16 @@ private fun BotonCirculo(texto: String, habilitado: Boolean, onClick: () -> Unit
 @Composable
 private fun TarjetaReserva(reserva: ReservaListada, onCancelar: () -> Unit) {
     val pendiente = reserva.estado == EstadoReserva.PENDIENTE_APROBACION
+
+    // 🎨 Tonos consistentes: Verde elegante para Confirmada, Ámbar/Rojo suave para Pendiente
+    val colorFondoEstado = if (!pendiente) Color(0xFFE6F4EA) else Color(0xFFFEF3C7)
+    val colorTextoEstado = if (!pendiente) Color(0xFF137333) else Color(0xFFB45309)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.5.dp, if (pendiente) Color(0xFFFDE68A) else Color(0xFFBBF7D0)),
+        border = BorderStroke(1.5.dp, if (pendiente) Color(0xFFFDE68A) else Color(0xFFD6E4FE)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -560,9 +572,9 @@ private fun TarjetaReserva(reserva: ReservaListada, onCancelar: () -> Unit) {
                     text = if (pendiente) "Pendiente" else "Confirmada",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (pendiente) Color(0xFFD97706) else Color(0xFF16A34A),
+                    color = colorTextoEstado,
                     modifier = Modifier
-                        .background(if (pendiente) Color(0xFFFEF3C7) else Color(0xFFDCFCE7), RoundedCornerShape(50))
+                        .background(colorFondoEstado, RoundedCornerShape(50))
                         .padding(horizontal = 10.dp, vertical = 5.dp)
                 )
             }

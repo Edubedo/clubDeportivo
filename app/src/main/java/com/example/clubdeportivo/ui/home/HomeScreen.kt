@@ -2,6 +2,7 @@ package com.example.clubdeportivo.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -29,148 +29,91 @@ fun HomeScreen(
     onIrCanchas: () -> Unit,
     onIrInventario: () -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFD))
+            .background(Color(0xFFEAF1F8))
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-
-        // Encabezado
-        Text(
-            text = "Club Deportivo",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(Color(0xFF192338))
         )
 
-        Text(
-            text = "Admin",
-            fontSize = 14.sp,
-            color = Color(0xFF94A3B8)
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Título del dashboard
-        Text(
-            text = "Dashboard",
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Primera fila
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-
-            DashboardCard(
-                emoji = "🏟️",
-                cantidad = "9",
-                titulo = "Áreas",
-                backgroundColor = Color(0xFFEFF6FF),
-                modifier = Modifier.weight(1f)
+            Text(
+                text = "Club Deportivo",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF192338)
             )
 
-            DashboardCard(
-                emoji = "👥",
-                cantidad = "3",
-                titulo = "Personal",
-                backgroundColor = Color(0xFFFAF5FF),
-                modifier = Modifier.weight(1f)
+            Text(
+                text = "Admin",
+                fontSize = 13.sp,
+                color = Color(0xFF31487A),
+                fontWeight = FontWeight.Medium
             )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Text(
+                text = "Dashboard",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF192338)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DashboardCard(emoji = "🏟️", cantidad = "9", titulo = "Áreas", backgroundColor = Color.White, modifier = Modifier.weight(1f))
+                DashboardCard(emoji = "👥", cantidad = "3", titulo = "Personal", backgroundColor = Color.White, modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DashboardCard(emoji = "👤", cantidad = "3", titulo = "Miembros", backgroundColor = Color.White, modifier = Modifier.weight(1f))
+                DashboardCard(emoji = "🗓️", cantidad = "2", titulo = "Reservas hoy", backgroundColor = Color.White, modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Text(
+                text = "Reservas recientes",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF192338)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ReservaCard(emoji = "🎾", nombre = "Ana García", detalle = "Tenis · 09:00–11:00", estado = "Confirmada", confirmada = true)
+            Spacer(modifier = Modifier.height(10.dp))
+            ReservaCard(emoji = "🎾", nombre = "Luis Pérez", detalle = "Tenis · 11:00–12:00", estado = "Confirmada", confirmada = true)
+            Spacer(modifier = Modifier.height(10.dp))
+            ReservaCard(emoji = "🏊", nombre = "Luis Pérez", detalle = "Natación · 08:00–09:00", estado = "Confirmada", confirmada = true)
+            Spacer(modifier = Modifier.height(10.dp))
+            ReservaCard(emoji = "🏀", nombre = "Ana García", detalle = "Baloncesto · 14:00–16:00", estado = "Pendiente", confirmada = false)
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Segunda fila
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-
-            DashboardCard(
-                emoji = "👤",
-                cantidad = "3",
-                titulo = "Miembros",
-                backgroundColor = Color(0xFFFFFBEB),
-                modifier = Modifier.weight(1f)
-            )
-
-            DashboardCard(
-                emoji = "🗓️",
-                cantidad = "2",
-                titulo = "Reservas hoy",
-                backgroundColor = Color(0xFFECFDF5),
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Reservas recientes
-        Text(
-            text = "Reservas recientes",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ReservaCard(
-            emoji = "🎾",
-            nombre = "Ana García",
-            detalle = "Tenis · 09:00–11:00",
-            estado = "Confirmada",
-            confirmada = true
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ReservaCard(
-            emoji = "🎾",
-            nombre = "Luis Pérez",
-            detalle = "Tenis · 11:00–12:00",
-            estado = "Confirmada",
-            confirmada = true
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ReservaCard(
-            emoji = "🏊",
-            nombre = "Luis Pérez",
-            detalle = "Natación · 08:00–09:00",
-            estado = "Confirmada",
-            confirmada = true
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ReservaCard(
-            emoji = "🏀",
-            nombre = "Ana García",
-            detalle = "Baloncesto · 14:00–16:00",
-            estado = "Pendiente",
-            confirmada = false
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
-
-/*
- * Tarjeta utilizada para mostrar las estadísticas
- * del Dashboard.
- */
 @Composable
 fun DashboardCard(
     emoji: String,
@@ -182,47 +125,36 @@ fun DashboardCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(140.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp
-        )
+        modifier = modifier.height(130.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(18.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = emoji,
-                fontSize = 26.sp
-            )
-
+            Text(text = emoji, fontSize = 24.sp)
             Column {
                 Text(
                     text = cantidad,
-                    fontSize = 32.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
+                    color = Color(0xFF192338)
                 )
-
                 Text(
                     text = titulo,
-                    fontSize = 14.sp,
-                    color = Color(0xFF64748B)
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF31487A)
                 )
             }
         }
     }
 }
 
-/*
- * Tarjeta para mostrar una reserva reciente.
- */
 @Composable
 fun ReservaCard(
     emoji: String,
@@ -231,99 +163,61 @@ fun ReservaCard(
     estado: String,
     confirmada: Boolean
 ) {
-
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        )
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
-            Row(
-                modifier = Modifier.weight(1f)
-            ) {
-
-                Text(
-                    text = emoji,
-                    fontSize = 24.sp
-                )
-
-                Column(
-                    modifier = Modifier.padding(start = 12.dp)
-                ) {
-
+            Row(modifier = Modifier.weight(1f)) {
+                Text(text = emoji, fontSize = 22.sp)
+                Column(modifier = Modifier.padding(start = 12.dp)) {
                     Text(
                         text = nombre,
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1F2937)
+                        color = Color(0xFF192338)
                     )
-
                     Text(
                         text = detalle,
-                        fontSize = 13.sp,
-                        color = Color(0xFF94A3B8)
+                        fontSize = 12.sp,
+                        color = Color(0xFF31487A)
                     )
                 }
             }
 
-            EstadoReserva(
-                estado = estado,
-                confirmada = confirmada
-            )
+            EstadoReserva(estado = estado, confirmada = confirmada)
         }
     }
 }
 
-
-/*
- * Etiqueta que indica si la reserva está
- * confirmada o pendiente.
- */
 @Composable
 fun EstadoReserva(
     estado: String,
     confirmada: Boolean
 ) {
-
-    val colorFondo =
-        if (confirmada) {
-            Color(0xFFDCFCE7)
-        } else {
-            Color(0xFFFEF3C7)
-        }
-
-    val colorTexto =
-        if (confirmada) {
-            Color(0xFF16A34A)
-        } else {
-            Color(0xFFD97706)
-        }
+    val colorFondo = if (confirmada) Color(0xFFD6E4FE) else Color(0xFFFFF3DB)
+    val colorTexto = if (confirmada) Color(0xFF1E2E4F) else Color(0xFFB45309)
 
     Text(
         text = estado,
         fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
         color = colorTexto,
         modifier = Modifier
             .background(
                 color = colorFondo,
-                shape = RoundedCornerShape(50.dp)
+                shape = RoundedCornerShape(6.dp)
             )
             .padding(
                 horizontal = 10.dp,
-                vertical = 5.dp
+                vertical = 4.dp
             )
     )
 }

@@ -70,21 +70,16 @@ import com.example.clubdeportivo.ui.components.EspacioCampos
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.FullScreenLoading
 import com.example.clubdeportivo.ui.components.PestanasPildora
-import com.example.clubdeportivo.ui.components.VerdeMarca
 
-/** Colores (borde, burbuja) por deporte, para que cada tarjeta se distinga como en el mockup. */
 private val paleta = listOf(
-    Color(0xFFFDBA74) to Color(0xFFFFEDD5),
-    Color(0xFFC4B5FD) to Color(0xFFEDE9FE),
-    Color(0xFFF9A8D4) to Color(0xFFFCE7F3),
-    Color(0xFF93C5FD) to Color(0xFFDBEAFE),
-    Color(0xFF6EE7B7) to Color(0xFFD1FAE5),
-    Color(0xFFFCD34D) to Color(0xFFFEF3C7)
+    Color(0xFF8FB3E2) to Color(0xFFD6E4FE),
+    Color(0xFF31487A) to Color(0xFFEAF1F8),
+    Color(0xFF1E2E4F) to Color(0xFFD6E4FE),
+    Color(0xFF192338) to Color(0xFFEAF1F8)
 )
 
 private fun colorDeDeporte(tipo: String): Pair<Color, Color> = paleta[(tipo.hashCode() and Int.MAX_VALUE) % paleta.size]
 
-/** Gestión de áreas: lista, alta, edición y baja (mockup "Gestión de Áreas"). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
@@ -107,8 +102,9 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = Color(0xFFF8FAFD),
+        containerColor = Color(0xFFEAF1F8),
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        // 🚀 Botón flotante unificado y posicionado correctamente por encima de la barra de navegación
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
@@ -117,19 +113,16 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                 },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Agregar área", fontWeight = FontWeight.Bold) },
-                containerColor = VerdeMarca,
-                contentColor = Color.White
+                containerColor = Color(0xFF1E2E4F),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
             )
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            Text(
-                text = "Gestión de áreas",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF111827),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-            )
+
+            // Se elimina cualquier texto duplicado de "Club Deportivo" de este nivel,
+            // ya que la barra superior principal (TopAppBar) de la app ya se encarga de mostrarlo.
 
             PullToRefreshBox(
                 isRefreshing = cargando && areas.isNotEmpty(),
@@ -141,7 +134,8 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                     areas.isEmpty() -> EmptyState("No hay áreas registradas. Agrega la primera con \"Agregar área\".")
                     else -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+                        // Padding inferior amplio para que el contenido no quede oculto detrás del FAB ni de la barra inferior
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(areas, key = { it.id }) { area ->
@@ -165,7 +159,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
         AreaFormDialog(
             areaExistente = areaEnEdicion,
             deportesExistentes = (areas.map { it.tipo to Deportes.emojiDe(it.tipo, it.emoji) } +
-                Deportes.predefinidos.map { it to Deportes.emojiDe(it) }).distinctBy { it.first.lowercase() },
+                    Deportes.predefinidos.map { it to Deportes.emojiDe(it) }).distinctBy { it.first.lowercase() },
             nombreRepetido = { nombre, tipo -> viewModel.nombreRepetido(nombre, tipo, areaEnEdicion?.id) },
             onCerrar = { mostrarFormulario = false },
             onGuardar = { nombre, tipo, capacidad, emoji ->
@@ -201,12 +195,12 @@ private fun AreaCard(area: Area, reservasHoy: Int, onEditar: () -> Unit, onElimi
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.5.dp, borde),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier.size(46.dp).clip(CircleShape).background(burbuja),
                 contentAlignment = Alignment.Center
@@ -217,16 +211,16 @@ private fun AreaCard(area: Area, reservasHoy: Int, onEditar: () -> Unit, onElimi
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = Deportes.titulo(area.tipo, area.nombre),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF192338),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "$reservasHoy reservas hoy · cupo ${area.capacidad}",
-                    fontSize = 13.sp,
-                    color = Color(0xFF64748B),
+                    fontSize = 12.sp,
+                    color = Color(0xFF31487A),
                     modifier = Modifier.padding(top = 2.dp)
                 )
                 if (enMantenimiento) {
@@ -234,14 +228,14 @@ private fun AreaCard(area: Area, reservasHoy: Int, onEditar: () -> Unit, onElimi
                         text = "EN MANTENIMIENTO",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFD97706),
+                        color = Color(0xFFB45309),
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
             Box {
                 IconButton(onClick = { menuAbierto = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = Color(0xFF64748B))
+                    Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = Color(0xFF31487A))
                 }
                 DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
                     DropdownMenuItem(
@@ -260,7 +254,6 @@ private fun AreaCard(area: Area, reservasHoy: Int, onEditar: () -> Unit, onElimi
     }
 }
 
-/** Formulario de alta/edición de área (mockup "+ Agregar Área": deporte existente o nuevo). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AreaFormDialog(
@@ -282,7 +275,7 @@ private fun AreaFormDialog(
     val tipo = if (modoNuevo) deporteNuevo.trim() else deporteElegido
     val repetido = nombre.isNotBlank() && tipo.isNotBlank() && nombreRepetido(nombre, tipo)
     val puedeGuardar = tipo.isNotBlank() && nombre.isNotBlank() && !repetido &&
-        (!modoNuevo || emojiNuevo.isNotBlank()) && (capacidad.toIntOrNull() ?: 0) > 0
+            (!modoNuevo || emojiNuevo.isNotBlank()) && (capacidad.toIntOrNull() ?: 0) > 0
 
     DialogoFormulario(
         titulo = if (esEdicion) "Editar área" else "Agregar área",

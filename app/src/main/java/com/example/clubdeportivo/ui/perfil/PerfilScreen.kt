@@ -1,9 +1,8 @@
 package com.example.clubdeportivo.ui.perfil
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,14 +14,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,9 +44,7 @@ import com.example.clubdeportivo.ui.components.InitialsAvatar
 import androidx.compose.material3.TextButton
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
@@ -61,14 +54,15 @@ import coil3.compose.AsyncImage
 import com.example.clubdeportivo.util.FotoPerfilManager
 import com.example.clubdeportivo.data.SesionManager
 
+private val TextoPrincipal = Color(0xFF192338)
+private val TextoSecundario = Color(0xFF31487A)
+
 @Composable
 fun PerfilScreen(
     onCerrarSesion: () -> Unit,
     viewModel: PerfilViewModel = viewModel()
 ) {
-
     val usuario by viewModel.usuario.observeAsState()
-
     val context = LocalContext.current
 
     var fotoPerfil by remember(usuario?.id) {
@@ -82,27 +76,20 @@ fun PerfilScreen(
     val selectorFoto = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-
         if (uri != null && usuario != null) {
-
             val nuevaFoto = FotoPerfilManager.guardarFoto(
                 context = context,
                 uri = uri,
                 usuarioId = usuario!!.id
             )
-
             fotoPerfil = nuevaFoto
-
             SesionManager.notificarCambioFoto()
         }
     }
 
-
-
     var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
 
-    // Cuando cargue el usuario, llenamos el formulario
     LaunchedEffect(usuario) {
         nombre = usuario?.nombre.orEmpty()
         correo = usuario?.correo.orEmpty()
@@ -111,218 +98,173 @@ fun PerfilScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFD))
+            .background(Color(0xFFEAF1F8))
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        // Avatar
-        Box(
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            if (fotoPerfil != null) {
-
-                AsyncImage(
-                    model = fotoPerfil,
-                    contentDescription = "Foto de perfil",
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .clickable {
-                            selectorFoto.launch("image/*")
-                        },
-                    contentScale = ContentScale.Crop
+            Box(contentAlignment = Alignment.Center) {
+                if (fotoPerfil != null) {
+                    AsyncImage(
+                        model = fotoPerfil,
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier
+                            .size(90.dp)
+                            .clip(CircleShape)
+                            .clickable { selectorFoto.launch("image/*") },
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(modifier = Modifier.clickable { selectorFoto.launch("image/*") }) {
+                        InitialsAvatar(nombre = usuario?.nombre ?: "?", size = 90.dp)
+                    }
+                }
+            }
+            TextButton(onClick = { selectorFoto.launch("image/*") }) {
+                Text(
+                    text = if (fotoPerfil == null) "Agregar foto" else "Cambiar foto",
+                    color = TextoSecundario,
+                    fontWeight = FontWeight.Medium
                 )
-
-            } else {
-
-                Box(
-                    modifier = Modifier.clickable {
-                        selectorFoto.launch("image/*")
+            }
+            if (fotoPerfil != null) {
+                TextButton(
+                    onClick = {
+                        usuario?.let { usuarioActual ->
+                            FotoPerfilManager.eliminarFoto(context = context, usuarioId = usuarioActual.id)
+                            fotoPerfil = null
+                            SesionManager.notificarCambioFoto()
+                        }
                     }
                 ) {
-                    InitialsAvatar(
-                        nombre = usuario?.nombre ?: "?",
-                        size = 100.dp
+                    Text(text = "Quitar foto", color = MaterialTheme.colorScheme.error)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = usuario?.nombre ?: "Administrador",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextoPrincipal
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = usuario?.rol?.nombreLegible() ?: "Administrador",
+                fontSize = 13.sp,
+                color = TextoSecundario,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "Información personal",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextoPrincipal
+                    )
+
+                    Text(
+                        text = "Actualiza los datos de tu perfil",
+                        fontSize = 12.sp,
+                        color = TextoSecundario,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    EtiquetaCampo("NOMBRE")
+                    CampoTexto(
+                        value = nombre,
+                        onValueChange = { nombre = it },
+                        placeholder = "Nombre",
+                        leadingIcon = { Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = TextoSecundario) }
+                    )
+
+                    EspacioCampos()
+
+                    EtiquetaCampo("CORREO ELECTRÓNICO")
+                    CampoTexto(
+                        value = correo,
+                        onValueChange = { correo = it },
+                        placeholder = "correo@clubdeportivo.com",
+                        tipoTeclado = KeyboardType.Email,
+                        leadingIcon = { Icon(imageVector = Icons.Filled.Email, contentDescription = null, tint = TextoSecundario) }
+                    )
+
+                    EspacioCampos()
+
+                    EtiquetaCampo("ROL")
+                    CampoTexto(
+                        value = usuario?.rol?.nombreLegible() ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        leadingIcon = { Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = TextoSecundario) }
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    BotonPrimario(
+                        texto = "Guardar cambios",
+                        // Nota: Si tu función en el ViewModel acepta también correo, lo pasamos aquí.
+                        // Si solo acepta nombre, asegúrate de que tu PerfilViewModel actualice ambos en la BD.
+                        onClick = { viewModel.actualizarPerfil(nombre = nombre) }
                     )
                 }
             }
-        }
-        TextButton(
-            onClick = {
-                selectorFoto.launch("image/*")
-            }
-        ) {
-            Text(
-                if (fotoPerfil == null)
-                    "Agregar foto"
-                else
-                    "Cambiar foto"
-            )
-        }
-        if (fotoPerfil != null) {
 
-            TextButton(
-                onClick = {
+            Spacer(modifier = Modifier.height(16.dp))
 
-                    usuario?.let { usuarioActual ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "Sesión",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextoPrincipal
+                    )
 
-                        FotoPerfilManager.eliminarFoto(
-                            context = context,
-                            usuarioId = usuarioActual.id
-                        )
+                    Text(
+                        text = "Cierra tu sesión en este dispositivo.",
+                        fontSize = 12.sp,
+                        color = TextoSecundario,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
 
-                        fotoPerfil = null
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                        SesionManager.notificarCambioFoto()
-                    }
+                    BotonSecundario(
+                        texto = "Cerrar sesión",
+                        colorTexto = MaterialTheme.colorScheme.error,
+                        onClick = {
+                            viewModel.cerrarSesion()
+                            onCerrarSesion()
+                        }
+                    )
                 }
-            ) {
-                Text(
-                    text = "Quitar foto",
-                    color = MaterialTheme.colorScheme.error
-                )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Nombre
-        Text(
-            text = usuario?.nombre ?: "Administrador",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Rol
-        Text(
-            text = usuario?.rol?.nombreLegible() ?: "Administrador",
-            fontSize = 14.sp,
-            color = Color(0xFF64748B)
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Tarjeta con información editable
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 2.dp
-            )
-        ) {
-
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
-
-                Text(
-                    text = "Información personal",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
-                )
-
-                Text(
-                    text = "Actualiza los datos de tu perfil",
-                    fontSize = 13.sp,
-                    color = Color(0xFF94A3B8),
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                EtiquetaCampo("NOMBRE")
-                CampoTexto(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    placeholder = "Nombre del administrador",
-                    leadingIcon = { Icon(imageVector = Icons.Filled.Person, contentDescription = null) }
-                )
-
-                EspacioCampos()
-
-                EtiquetaCampo("CORREO ELECTRÓNICO")
-                CampoTexto(
-                    value = correo,
-                    onValueChange = { correo = it },
-                    placeholder = "correo@clubdeportivo.com",
-                    tipoTeclado = KeyboardType.Email,
-                    leadingIcon = { Icon(imageVector = Icons.Filled.Email, contentDescription = null) }
-                )
-
-                EspacioCampos()
-
-                EtiquetaCampo("ROL")
-                CampoTexto(
-                    value = usuario?.rol?.nombreLegible() ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    leadingIcon = { Icon(imageVector = Icons.Filled.Person, contentDescription = null) }
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                BotonPrimario(
-                    texto = "Guardar cambios",
-                    onClick = { viewModel.actualizarPerfil(nombre = nombre) }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Sesión
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 2.dp
-            )
-        ) {
-
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
-
-                Text(
-                    text = "Sesión",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
-                )
-
-                Text(
-                    text = "Cierra tu sesión en este dispositivo.",
-                    fontSize = 13.sp,
-                    color = Color(0xFF94A3B8),
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                BotonSecundario(
-                    texto = "Cerrar sesión",
-                    colorTexto = MaterialTheme.colorScheme.error,
-                    onClick = {
-                        viewModel.cerrarSesion()
-                        onCerrarSesion()
-                    }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }

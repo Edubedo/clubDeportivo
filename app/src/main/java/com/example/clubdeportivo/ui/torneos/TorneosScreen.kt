@@ -21,30 +21,23 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
@@ -72,7 +65,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.SesionManager
@@ -90,8 +82,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-private val fondoPantalla = Color(0xFFF8FAFD)
-private val colorVerde = Color(0xFF10B981)
+private val fondoPantalla = Color(0xFFEAF1F8)
 private val rolesDeAdministracion = setOf(Rol.SUPERADMIN, Rol.ADMIN, Rol.ADMIN_AREA, Rol.AYUDANTE_AREA)
 
 @Composable
@@ -118,13 +109,13 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = if (esAdministrador) fondoPantalla else MaterialTheme.colorScheme.background,
+        containerColor = fondoPantalla,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (esAdministrador) {
                 FloatingActionButton(
                     onClick = { viewModel.abrirModalCrear() },
-                    containerColor = colorVerde
+                    containerColor = Color(0xFF1E2E4F)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -138,22 +129,28 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
             }
         }
     ) { innerPadding ->
-        when {
-            cargando && torneos.isEmpty() -> FullScreenLoading(modifier = Modifier.padding(innerPadding))
-            torneos.isEmpty() && !esAdministrador -> EmptyState(
-                mensaje = "No hay torneos disponibles.",
-                modifier = Modifier.padding(innerPadding)
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .background(Color(0xFF192338))
             )
-            esAdministrador -> TorneosAdminContent(
-                torneos = torneos,
-                modifier = Modifier.padding(innerPadding),
-                onEditar = { viewModel.abrirModalEditar(it) }
-            )
-            else -> TorneosSocioContent(
-                torneos = torneos,
-                modifier = Modifier.padding(innerPadding),
-                onInscribirse = { viewModel.inscribirse(it) }
-            )
+
+            when {
+                cargando && torneos.isEmpty() -> FullScreenLoading(modifier = Modifier.fillMaxSize())
+                torneos.isEmpty() && !esAdministrador -> EmptyState(
+                    mensaje = "No hay torneos disponibles."
+                )
+                esAdministrador -> TorneosAdminContent(
+                    torneos = torneos,
+                    onEditar = { viewModel.abrirModalEditar(it) }
+                )
+                else -> TorneosSocioContent(
+                    torneos = torneos,
+                    onInscribirse = { viewModel.inscribirse(it) }
+                )
+            }
         }
     }
 
@@ -170,15 +167,14 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
     }
 }
 
-/** Vista de administración: encabezado de marca + tarjetas con cupo y avance, sin botón de inscripción. */
 @Composable
 private fun TorneosAdminContent(torneos: List<Torneo>, modifier: Modifier = Modifier, onEditar: (Torneo) -> Unit) {
     Column(modifier = modifier.fillMaxSize()) {
         Text(
             text = "Torneos",
-            fontSize = 26.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827),
+            color = Color(0xFF192338),
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
         )
 
@@ -187,7 +183,7 @@ private fun TorneosAdminContent(torneos: List<Torneo>, modifier: Modifier = Modi
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(torneos, key = { it.id }) { torneo ->
@@ -206,20 +202,21 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = torneo.nombre,
-                    fontSize = 16.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1F2937),
+                    color = Color(0xFF192338),
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp)
@@ -227,23 +224,23 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
                 EtiquetaDisciplina(estilo = estilo, disciplina = torneo.disciplina)
                 IconButton(
                     onClick = onEditar,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Editar torneo",
-                        tint = Color(0xFF94A3B8),
+                        tint = Color(0xFF31487A),
                         modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = textoRangoFecha(torneo),
-                fontSize = 13.sp,
-                color = Color(0xFF94A3B8)
+                fontSize = 12.sp,
+                color = Color(0xFF31487A)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -254,9 +251,9 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
             ) {
                 Text(
                     text = "${torneo.inscritos}/${torneo.cupoMaximo} participantes",
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF374151),
+                    color = Color(0xFF192338),
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp)
@@ -264,9 +261,9 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
                 Text(
                     text = "$libres libres",
                     maxLines = 1,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = colorVerde
+                    color = Color(0xFF1E2E4F)
                 )
             }
 
@@ -278,17 +275,13 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(50)),
-                color = colorVerde,
-                trackColor = Color(0xFFE5E7EB)
+                color = Color(0xFF1E2E4F),
+                trackColor = Color(0xFFD6E4FE)
             )
         }
     }
 }
 
-/**
- * "2026-10-05 – 2026-10-20 · 09:00–18:00": el torneo ocupa el área en ese horario CADA día del rango.
- * Sin horas (torneos creados antes de este campo) se muestra solo el rango de fechas.
- */
 private fun textoRangoFecha(torneo: Torneo): String {
     val fechas = if (torneo.fechaInicio == torneo.fechaFin) torneo.fechaInicio else "${torneo.fechaInicio} – ${torneo.fechaFin}"
     val horas = if (torneo.horaInicio.isNotBlank() && torneo.horaFin.isNotBlank()) " · ${torneo.horaInicio}–${torneo.horaFin}" else ""
@@ -298,29 +291,28 @@ private fun textoRangoFecha(torneo: Torneo): String {
 private data class EstiloDisciplina(val emoji: String, val fondo: Color, val texto: Color)
 
 private fun estiloDisciplina(disciplina: String): EstiloDisciplina = when (disciplina) {
-    "Tenis" -> EstiloDisciplina("🎾", Color(0xFFFCE7F3), Color(0xFFDB2777))
-    "Fútbol" -> EstiloDisciplina("⚽", Color(0xFFEFF6FF), Color(0xFF2563EB))
-    "Básquetbol", "Baloncesto" -> EstiloDisciplina("🏀", Color(0xFFFFFBEB), Color(0xFFD97706))
-    "Natación" -> EstiloDisciplina("🏊", Color(0xFFECFEFF), Color(0xFF0891B2))
-    "Voleibol" -> EstiloDisciplina("🏐", Color(0xFFFAF5FF), Color(0xFF7C3AED))
-    else -> EstiloDisciplina("🏆", Color(0xFFF3F4F6), Color(0xFF6B7280))
+    "Tenis" -> EstiloDisciplina("🎾", Color(0xFFD6E4FE), Color(0xFF1E2E4F))
+    "Fútbol" -> EstiloDisciplina("⚽", Color(0xFFEAF1F8), Color(0xFF192338))
+    "Básquetbol", "Baloncesto" -> EstiloDisciplina("🏀", Color(0xFFFEF3C7), Color(0xFFB45309))
+    "Natación" -> EstiloDisciplina("🏊", Color(0xFFD6E4FE), Color(0xFF31487A))
+    "Voleibol" -> EstiloDisciplina("🏐", Color(0xFFF1F5F9), Color(0xFF1E2E4F))
+    else -> EstiloDisciplina("🏆", Color(0xFFF1F5F9), Color(0xFF31487A))
 }
 
 @Composable
 private fun EtiquetaDisciplina(estilo: EstiloDisciplina, disciplina: String) {
     Surface(shape = RoundedCornerShape(50), color = estilo.fondo) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(text = estilo.emoji, fontSize = 12.sp)
-            Text(text = disciplina, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = estilo.texto)
+            Text(text = estilo.emoji, fontSize = 11.sp)
+            Text(text = disciplina, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = estilo.texto)
         }
     }
 }
 
-/** Vista para socios/visitantes: lista simple con progreso e inscripción, como antes. */
 @Composable
 private fun TorneosSocioContent(
     torneos: List<Torneo>,
@@ -329,7 +321,8 @@ private fun TorneosSocioContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 8.dp)
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(torneos, key = { it.id }) { torneo ->
             TorneoCardSocio(torneo = torneo, onInscribirse = { onInscribirse(torneo) })
@@ -345,20 +338,18 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
     val progreso = if (torneo.cupoMaximo > 0) torneo.inscritos.toFloat() / torneo.cupoMaximo.toFloat() else 0f
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = torneo.nombre,
-                    fontSize = 16.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1F2937),
+                    color = Color(0xFF192338),
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp)
@@ -366,16 +357,16 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
                 EtiquetaDisciplina(estilo = estilo, disciplina = torneo.disciplina)
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(text = textoRangoFecha(torneo), fontSize = 13.sp, color = Color(0xFF94A3B8))
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = textoRangoFecha(torneo), fontSize = 12.sp, color = Color(0xFF31487A))
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     text = "${torneo.inscritos}/${torneo.cupoMaximo} participantes",
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF374151),
+                    color = Color(0xFF192338),
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp)
@@ -383,9 +374,9 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
                 Text(
                     text = "$libres libres",
                     maxLines = 1,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = colorVerde
+                    color = Color(0xFF1E2E4F)
                 )
             }
 
@@ -396,8 +387,8 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(50)),
-                color = colorVerde,
-                trackColor = Color(0xFFE5E7EB)
+                color = Color(0xFF1E2E4F),
+                trackColor = Color(0xFFD6E4FE)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -424,7 +415,6 @@ private fun fechaAMillis(fecha: String): Long? = try {
 private fun millisAFecha(millis: Long): String =
     Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString()
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModalTorneo(
@@ -437,7 +427,6 @@ private fun ModalTorneo(
     val esEdicion = torneoExistente != null
 
     var nombre by remember { mutableStateOf(torneoExistente?.nombre ?: "") }
-    // La disciplina y el área van ligadas: solo se ofrecen las áreas del deporte elegido.
     val areaInicial = areas.find { it.id == torneoExistente?.areaId }
     var disciplina by remember {
         mutableStateOf(areaInicial?.tipo ?: torneoExistente?.disciplina ?: disciplinasDisponibles.first())
@@ -455,134 +444,133 @@ private fun ModalTorneo(
     var mostrarDropdownArea by remember { mutableStateOf(false) }
 
     val puedeGuardar = nombre.isNotBlank() && area != null && fechaInicio.isNotBlank() && fechaFin.isNotBlank() &&
-        horaInicio.isNotBlank() && horaFin.isNotBlank() && (cupoMaximo.toIntOrNull() ?: 0) > 0
+            horaInicio.isNotBlank() && horaFin.isNotBlank() && (cupoMaximo.toIntOrNull() ?: 0) > 0
 
     DialogoFormulario(
         titulo = if (esEdicion) "Editar torneo" else "Nuevo torneo",
         onCerrar = onCerrar
     ) {
         Column {
-                EtiquetaCampo("NOMBRE DEL TORNEO")
-                CampoTexto(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    placeholder = "Ej: Copa Otoño de Fútbol"
-                )
+            EtiquetaCampo("NOMBRE DEL TORNEO")
+            CampoTexto(
+                value = nombre,
+                onValueChange = { nombre = it },
+                placeholder = "Ej: Copa Otoño de Fútbol"
+            )
 
-                Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                EtiquetaCampo("DISCIPLINA")
-                DropdownSeleccionable(
-                    textoMostrado = disciplina,
-                    expandido = mostrarDropdownDisciplina,
-                    onExpandirCambiado = { mostrarDropdownDisciplina = it }
-                ) {
-                    disciplinasDisponibles.forEach { opcion ->
-                        val seleccionado = disciplina == opcion
-                        OpcionDropdown(
-                            texto = "${estiloDisciplina(opcion).emoji} $opcion",
-                            seleccionado = seleccionado,
-                            onClick = {
-                                if (opcion != disciplina) {
-                                    disciplina = opcion
-                                    area = areas.firstOrNull { it.tipo == opcion }
-                                }
-                                mostrarDropdownDisciplina = false
+            EtiquetaCampo("DISCIPLINA")
+            DropdownSeleccionable(
+                textoMostrado = disciplina,
+                expandido = mostrarDropdownDisciplina,
+                onExpandirCambiado = { mostrarDropdownDisciplina = it }
+            ) {
+                disciplinasDisponibles.forEach { opcion ->
+                    val seleccionado = disciplina == opcion
+                    OpcionDropdown(
+                        texto = "${estiloDisciplina(opcion).emoji} $opcion",
+                        seleccionado = seleccionado,
+                        onClick = {
+                            if (opcion != disciplina) {
+                                disciplina = opcion
+                                area = areas.firstOrNull { it.tipo == opcion }
                             }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                EtiquetaCampo("ÁREA")
-                DropdownSeleccionable(
-                    textoMostrado = area?.nombre ?: "Sin áreas de este deporte",
-                    expandido = mostrarDropdownArea,
-                    onExpandirCambiado = { mostrarDropdownArea = it }
-                ) {
-                    areasDeLaDisciplina.forEach { opcion ->
-                        OpcionDropdown(
-                            texto = opcion.nombre,
-                            seleccionado = area?.id == opcion.id,
-                            onClick = {
-                                area = opcion
-                                mostrarDropdownArea = false
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        EtiquetaCampo("FECHA INICIO")
-                        CampoFecha(fecha = fechaInicio, onFechaSeleccionada = { fechaInicio = it })
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        EtiquetaCampo("FECHA FIN")
-                        CampoFecha(fecha = fechaFin, onFechaSeleccionada = { fechaFin = it })
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        EtiquetaCampo("HORA INICIO")
-                        CampoHora(hora = horaInicio, onHoraSeleccionada = { horaInicio = it })
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        EtiquetaCampo("HORA FIN")
-                        CampoHora(hora = horaFin, onHoraSeleccionada = { horaFin = it })
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                EtiquetaCampo("CUPO MÁXIMO")
-                CampoTexto(
-                    value = cupoMaximo,
-                    onValueChange = { cupoMaximo = it.filter { c -> c.isDigit() }.take(4) },
-                    tipoTeclado = KeyboardType.Number
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                if (error != null) {
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                            mostrarDropdownDisciplina = false
+                        }
                     )
                 }
+            }
 
-                BotonPrimario(
-                    texto = if (esEdicion) "Guardar cambios" else "Crear torneo",
-                    onClick = {
-                        val areaSeleccionada = area ?: return@BotonPrimario
-                        onGuardar(
-                            torneoExistente?.id,
-                            nombre,
-                            disciplina,
-                            areaSeleccionada.id,
-                            fechaInicio,
-                            fechaFin,
-                            cupoMaximo.toIntOrNull() ?: 0,
-                            horaInicio,
-                            horaFin
-                        )
-                    },
-                    enabled = puedeGuardar
+            Spacer(modifier = Modifier.height(16.dp))
+
+            EtiquetaCampo("ÁREA")
+            DropdownSeleccionable(
+                textoMostrado = area?.nombre ?: "Sin áreas de este deporte",
+                expandido = mostrarDropdownArea,
+                onExpandirCambiado = { mostrarDropdownArea = it }
+            ) {
+                areasDeLaDisciplina.forEach { opcion ->
+                    OpcionDropdown(
+                        texto = opcion.nombre,
+                        seleccionado = area?.id == opcion.id,
+                        onClick = {
+                            area = opcion
+                            mostrarDropdownArea = false
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    EtiquetaCampo("FECHA INICIO")
+                    CampoFecha(fecha = fechaInicio, onFechaSeleccionada = { fechaInicio = it })
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    EtiquetaCampo("FECHA FIN")
+                    CampoFecha(fecha = fechaFin, onFechaSeleccionada = { fechaFin = it })
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    EtiquetaCampo("HORA INICIO")
+                    CampoHora(hora = horaInicio, onHoraSeleccionada = { horaInicio = it })
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    EtiquetaCampo("HORA FIN")
+                    CampoHora(hora = horaFin, onHoraSeleccionada = { horaFin = it })
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            EtiquetaCampo("CUPO MÁXIMO")
+            CampoTexto(
+                value = cupoMaximo,
+                onValueChange = { cupoMaximo = it.filter { c -> c.isDigit() }.take(4) },
+                tipoTeclado = KeyboardType.Number
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (error != null) {
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
+            }
+
+            BotonPrimario(
+                texto = if (esEdicion) "Guardar cambios" else "Crear torneo",
+                onClick = {
+                    val areaSeleccionada = area ?: return@BotonPrimario
+                    onGuardar(
+                        torneoExistente?.id,
+                        nombre,
+                        disciplina,
+                        areaSeleccionada.id,
+                        fechaInicio,
+                        fechaFin,
+                        cupoMaximo.toIntOrNull() ?: 0,
+                        horaInicio,
+                        horaFin
+                    )
+                },
+                enabled = puedeGuardar
+            )
         }
     }
 }
 
-/** Campo de fecha de solo lectura que abre un calendario; no permite elegir hoy ni fechas pasadas. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
@@ -595,7 +583,7 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
             readOnly = true,
             placeholder = "Elegir",
             trailingIcon = {
-                Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = "Elegir fecha", tint = Color(0xFF94A3B8))
+                Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = "Elegir fecha", tint = Color(0xFF31487A))
             }
         )
 
@@ -622,12 +610,12 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
                     estadoFecha.selectedDateMillis?.let { onFechaSeleccionada(millisAFecha(it)) }
                     mostrarCalendario = false
                 }) {
-                    Text("Aceptar", color = colorVerde, fontWeight = FontWeight.SemiBold)
+                    Text("Aceptar", color = Color(0xFF1E2E4F), fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { mostrarCalendario = false }) {
-                    Text("Cancelar", color = Color(0xFF94A3B8))
+                    Text("Cancelar", color = Color(0xFF31487A))
                 }
             }
         ) {
@@ -636,13 +624,10 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
     }
 }
 
-/** Horario del club: de 5:00 a.m. a 10:00 p.m. */
 private val horasClub = (5..22).toList()
 
-/** A la hora de cierre (22) solo se permite el minuto en punto. */
 private fun minutosPara(hora: Int): List<Int> = if (hora >= 22) listOf(0) else (0..55 step 5).toList()
 
-/** Campo de hora de solo lectura que abre un selector de ruedas (como poner una alarma), limitado al horario del club. */
 @Composable
 private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
     var mostrarSelector by remember { mutableStateOf(false) }
@@ -654,7 +639,7 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
             readOnly = true,
             placeholder = "Elegir",
             trailingIcon = {
-                Icon(imageVector = Icons.Filled.Schedule, contentDescription = "Elegir hora", tint = Color(0xFF94A3B8))
+                Icon(imageVector = Icons.Filled.Schedule, contentDescription = "Elegir hora", tint = Color(0xFF31487A))
             }
         )
 
@@ -680,11 +665,11 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
                         .width(240.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Elegir hora", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+                    Text("Elegir hora", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF192338))
                     Text(
                         text = "Horario del club: 5:00 a. m. – 10:00 p. m.",
                         fontSize = 12.sp,
-                        color = Color(0xFF94A3B8),
+                        color = Color(0xFF31487A),
                         modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
                     )
 
@@ -703,7 +688,7 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
                             text = ":",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF111827)
+                            color = Color(0xFF192338)
                         )
                         key(horaElegida >= 22) {
                             RuedaTiempo(
@@ -720,13 +705,13 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { mostrarSelector = false }) {
-                            Text("Cancelar", color = Color(0xFF94A3B8))
+                            Text("Cancelar", color = Color(0xFF31487A))
                         }
                         TextButton(onClick = {
                             onHoraSeleccionada(partesAHora(horaElegida, minutoElegido))
                             mostrarSelector = false
                         }) {
-                            Text("Aceptar", color = colorVerde, fontWeight = FontWeight.SemiBold)
+                            Text("Aceptar", color = Color(0xFF1E2E4F), fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -735,7 +720,6 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
     }
 }
 
-/** Columna deslizable estilo "poner una alarma": el valor centrado (resaltado) es el elegido. */
 @Composable
 private fun RuedaTiempo(
     valores: List<Int>,
@@ -766,7 +750,7 @@ private fun RuedaTiempo(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(alturaItem)
-                .background(Color(0xFFD1FAE5), RoundedCornerShape(10.dp))
+                .background(Color(0xFFD6E4FE), RoundedCornerShape(10.dp))
         )
         LazyColumn(
             state = estadoLista,
@@ -784,9 +768,9 @@ private fun RuedaTiempo(
                 ) {
                     Text(
                         text = formatear(valor),
-                        fontSize = if (seleccionado) 20.sp else 16.sp,
+                        fontSize = if (seleccionado) 18.sp else 15.sp,
                         fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
-                        color = if (seleccionado) Color(0xFF111827) else Color(0xFFB0B9C6)
+                        color = if (seleccionado) Color(0xFF192338) else Color(0xFF31487A)
                     )
                 }
             }
@@ -826,7 +810,6 @@ private fun DropdownSeleccionable(
             color = Color.Transparent
         ) {}
 
-        // Menú emergente (no una lista dentro del diálogo): no se corta y hace scroll si hay muchas áreas.
         DropdownMenu(
             expanded = expandido,
             onDismissRequest = { onExpandirCambiado(false) },
@@ -846,14 +829,14 @@ private fun OpcionDropdown(texto: String, seleccionado: Boolean, onClick: () -> 
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-        color = if (seleccionado) Color(0xFFD1FAE5) else Color.White,
+        color = if (seleccionado) Color(0xFFD6E4FE) else Color.White,
         onClick = onClick
     ) {
         Text(
             text = texto,
             fontSize = 14.sp,
             fontWeight = if (seleccionado) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (seleccionado) colorVerde else Color(0xFF111827),
+            color = if (seleccionado) Color(0xFF1E2E4F) else Color(0xFF192338),
             modifier = Modifier.padding(12.dp)
         )
     }

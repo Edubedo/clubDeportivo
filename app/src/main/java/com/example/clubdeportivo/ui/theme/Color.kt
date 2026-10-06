@@ -2,65 +2,64 @@ package com.example.clubdeportivo.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Paleta azul (tema claro), generada a partir de un color semilla #0061A4.
-// Portada 1:1 desde res/values/colors.xml para mantener la identidad visual.
-val LightPrimary = Color(0xFF0061A4)
+// Paleta de azules intensos unificada para la app
+val LightPrimary = Color(0xFF1E2E4F) // Space Cadet
 val LightOnPrimary = Color(0xFFFFFFFF)
-val LightPrimaryContainer = Color(0xFFD1E4FF)
-val LightOnPrimaryContainer = Color(0xFF001D36)
-val LightSecondary = Color(0xFF535F70)
+val LightPrimaryContainer = Color(0xFFD6E4FE) // Jordy Blue suave
+val LightOnPrimaryContainer = Color(0xFF192338) // Oxford Blue
+val LightSecondary = Color(0xFF31487A) // YinMn Blue
 val LightOnSecondary = Color(0xFFFFFFFF)
-val LightSecondaryContainer = Color(0xFFD7E3F7)
-val LightOnSecondaryContainer = Color(0xFF101C2B)
-val LightTertiary = Color(0xFF00658F)
+val LightSecondaryContainer = Color(0xFFEAF1F8) // Fondo claro unificado
+val LightOnSecondaryContainer = Color(0xFF192338)
+val LightTertiary = Color(0xFF31487A)
 val LightOnTertiary = Color(0xFFFFFFFF)
-val LightTertiaryContainer = Color(0xFFC7E7FF)
-val LightOnTertiaryContainer = Color(0xFF001E2E)
-val LightError = Color(0xFFBA1A1A)
+val LightTertiaryContainer = Color(0xFFD6E4FE)
+val LightOnTertiaryContainer = Color(0xFF192338)
+val LightError = Color(0xFFC5221F)
 val LightOnError = Color(0xFFFFFFFF)
-val LightErrorContainer = Color(0xFFFFDAD6)
+val LightErrorContainer = Color(0xFFFCE8E6)
 val LightOnErrorContainer = Color(0xFF410002)
-val LightBackground = Color(0xFFFDFCFF)
-val LightOnBackground = Color(0xFF1A1C1E)
-val LightSurface = Color(0xFFFDFCFF)
-val LightOnSurface = Color(0xFF1A1C1E)
-val LightSurfaceVariant = Color(0xFFDFE2EB)
-val LightOnSurfaceVariant = Color(0xFF43474E)
-val LightOutline = Color(0xFF73777F)
+val LightBackground = Color(0xFFEAF1F8) // Fondo general unificado
+val LightOnBackground = Color(0xFF192338)
+val LightSurface = Color(0xFFFFFFFF)
+val LightOnSurface = Color(0xFF192338)
+val LightSurfaceVariant = Color(0xFFD6E4FE)
+val LightOnSurfaceVariant = Color(0xFF31487A)
+val LightOutline = Color(0xFF8FB3E2)
 
-// Paleta azul (tema oscuro), generada a partir del mismo color semilla #0061A4.
-val DarkPrimary = Color(0xFF9ECAFF)
-val DarkOnPrimary = Color(0xFF003258)
-val DarkPrimaryContainer = Color(0xFF00497D)
-val DarkOnPrimaryContainer = Color(0xFFD1E4FF)
-val DarkSecondary = Color(0xFFBBC7DB)
-val DarkOnSecondary = Color(0xFF253140)
-val DarkSecondaryContainer = Color(0xFF3B4858)
-val DarkOnSecondaryContainer = Color(0xFFD7E3F7)
-val DarkTertiary = Color(0xFF87CEFF)
-val DarkOnTertiary = Color(0xFF00344C)
-val DarkTertiaryContainer = Color(0xFF004C6C)
-val DarkOnTertiaryContainer = Color(0xFFC7E7FF)
-val DarkError = Color(0xFFFFB4AB)
-val DarkOnError = Color(0xFF690005)
-val DarkErrorContainer = Color(0xFF93000A)
-val DarkOnErrorContainer = Color(0xFFFFDAD6)
-val DarkBackground = Color(0xFF1A1C1E)
-val DarkOnBackground = Color(0xFFE2E2E6)
-val DarkSurface = Color(0xFF1A1C1E)
-val DarkOnSurface = Color(0xFFE2E2E6)
-val DarkSurfaceVariant = Color(0xFF43474E)
-val DarkOnSurfaceVariant = Color(0xFFC3C7CF)
-val DarkOutline = Color(0xFF8D9199)
+// Paleta oscura alineada
+val DarkPrimary = Color(0xFF8FB3E2)
+val DarkOnPrimary = Color(0xFF192338)
+val DarkPrimaryContainer = Color(0xFF1E2E4F)
+val DarkOnPrimaryContainer = Color(0xFFD6E4FE)
+val DarkSecondary = Color(0xFF8FB3E2)
+val DarkOnSecondary = Color(0xFF192338)
+val DarkSecondaryContainer = Color(0xFF31487A)
+val DarkOnSecondaryContainer = Color(0xFFD6E4FE)
+val DarkTertiary = Color(0xFF8FB3E2)
+val DarkOnTertiary = Color(0xFF192338)
+val DarkTertiaryContainer = Color(0xFF31487A)
+val DarkOnTertiaryContainer = Color(0xFFD6E4FE)
+val DarkError = Color(0xFFF2B8B5)
+val DarkOnError = Color(0xFF601410)
+val DarkErrorContainer = Color(0xFF8C1D18)
+val DarkOnErrorContainer = Color(0xFFFEDDDB)
+val DarkBackground = Color(0xFF192338) // Oxford Blue
+val DarkOnBackground = Color(0xFFEAF1F8)
+val DarkSurface = Color(0xFF1E2E4F)
+val DarkOnSurface = Color(0xFFEAF1F8)
+val DarkSurfaceVariant = Color(0xFF31487A)
+val DarkOnSurfaceVariant = Color(0xFF8FB3E2)
+val DarkOutline = Color(0xFF8FB3E2)
 
 /**
- * Colores de estado para las tarjetas de áreas (mapa tipo "cine").
+ * Colores de estado para las tarjetas de áreas y reservas (mapa tipo "cine").
  * Son intencionalmente los mismos en modo claro y oscuro: son "chips"
  * de estado, no superficies del tema.
  */
-val AreaDisponibleBg = Color(0xFFD1E4FF)
-val AreaDisponibleText = Color(0xFF001D36)
-val AreaOcupadaBg = Color(0xFFFFDAD6)
-val AreaOcupadaText = Color(0xFF410002)
-val AreaMantenimientoBg = Color(0xFFE1E2E8)
-val AreaMantenimientoText = Color(0xFF1A1C1E)
+val AreaDisponibleBg = Color(0xFFD6E4FE)
+val AreaDisponibleText = Color(0xFF1E2E4F)
+val AreaOcupadaBg = Color(0xFFFCE8E6)
+val AreaOcupadaText = Color(0xFFC5221F)
+val AreaMantenimientoBg = Color(0xFFFEF3C7)
+val AreaMantenimientoText = Color(0xFFB45309)

@@ -45,10 +45,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
-// Estándar visual de formularios: todos los campos, etiquetas, botones y diálogos usan estos componentes.
-val VerdeMarca = Color(0xFF10B981)
-private val TextoCampo = Color(0xFF111827)
-private val TextoSecundario = Color(0xFF64748B)
+// 🌟 Cambiado de VerdeMarca a Azul unificado de la app
+val VerdeMarca = Color(0xFF1E2E4F) // Space Cadet (Azul principal)
+private val TextoCampo = Color(0xFF192338) // Oxford Blue
+private val TextoSecundario = Color(0xFF31487A) // YinMn Blue
 private val RadioCampo = 12.dp
 private val AlturaBoton = 52.dp
 private val RadioBoton = 14.dp
@@ -60,12 +60,12 @@ fun EtiquetaCampo(texto: String) {
         text = texto,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
-        color = Color(0xFF64748B),
+        color = Color(0xFF31487A),
         modifier = Modifier.padding(bottom = 8.dp)
     )
 }
 
-/** Campo de texto estándar de la app (mismo alto, borde, colores y forma en todos los formularios). */
+/** Campo de texto estándar de la app con enfoque y bordes en azul intenso. */
 @Composable
 fun CampoTexto(
     value: String,
@@ -101,13 +101,13 @@ fun CampoTexto(
             focusedTextColor = TextoCampo,
             unfocusedTextColor = TextoCampo,
             disabledTextColor = TextoCampo,
-            focusedBorderColor = VerdeMarca,
-            cursorColor = VerdeMarca
+            focusedBorderColor = Color(0xFF31487A),
+            cursorColor = Color(0xFF1E2E4F)
         )
     )
 }
 
-/** Botón principal de acción (Guardar, Crear, Iniciar sesión...). */
+/** Botón principal de acción en azul intenso. */
 @Composable
 fun BotonPrimario(
     texto: String,
@@ -133,7 +133,7 @@ fun BotonPrimario(
     }
 }
 
-/** Botón secundario (Cancelar, Cerrar sesión...), mismo tamaño y forma que [BotonPrimario]. */
+/** Botón secundario (Cancelar, Cerrar sesión...). */
 @Composable
 fun BotonSecundario(
     texto: String,
@@ -154,10 +154,7 @@ fun BotonSecundario(
     }
 }
 
-/**
- * Diálogo de formulario estándar: título y botón X siempre visibles arriba (no se van con el
- * scroll) y el contenido desplazable debajo.
- */
+/** Diálogo de formulario estándar. */
 @Composable
 fun DialogoFormulario(
     titulo: String,
@@ -219,15 +216,15 @@ fun EspacioCampos() {
     Spacer(modifier = Modifier.height(20.dp))
 }
 
-/** Indicador de carga centrado, usado en todas las pantallas mientras el ViewModel trae datos. */
+/** Indicador de carga centrado. */
 @Composable
 fun FullScreenLoading(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = Color(0xFF1E2E4F))
     }
 }
 
-/** Mensaje centrado para listas vacías (sin áreas, sin reservas, etc). */
+/** Mensaje centrado para listas vacías. */
 @Composable
 fun EmptyState(mensaje: String, modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -235,12 +232,12 @@ fun EmptyState(mensaje: String, modifier: Modifier = Modifier) {
             text = mensaje,
             modifier = Modifier.padding(24.dp),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = TextoSecundario
         )
     }
 }
 
-/** Avatar circular con las iniciales del nombre, usado en Home y Perfil cuando no hay foto. */
+/** Avatar circular con las iniciales del nombre. */
 @Composable
 fun InitialsAvatar(nombre: String, modifier: Modifier = Modifier, size: Dp = 56.dp) {
     val iniciales = nombre.trim().split(" ")
@@ -253,19 +250,19 @@ fun InitialsAvatar(nombre: String, modifier: Modifier = Modifier, size: Dp = 56.
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .background(Color(0xFFD6E4FE)),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = iniciales,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = Color(0xFF1E2E4F),
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.titleMedium
         )
     }
 }
 
-/** Pestañas en píldora (verde la seleccionada), como en los mockups de Canchas/Torneos. */
+/** Pestañas en píldora con el color azul intenso seleccionado. */
 @Composable
 fun PestanasPildora(
     opciones: List<String>,
@@ -295,7 +292,7 @@ fun PestanasPildora(
                         text = texto,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (activa) Color.White else Color(0xFF64748B),
+                        color = if (activa) Color.White else Color(0xFF31487A),
                         maxLines = 1
                     )
                 }

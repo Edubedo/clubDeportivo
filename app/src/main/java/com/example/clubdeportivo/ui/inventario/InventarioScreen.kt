@@ -6,11 +6,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,20 +21,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,8 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.ui.components.BotonPrimario
@@ -85,60 +79,29 @@ fun InventarioScreen(
     var articuloAEliminar by remember { mutableStateOf<ArticuloInventario?>(null) }
     var mostrarHistorial by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // 🚀 Scaffolding con el botón flotante real flotando por encima del contenido y la barra inferior
+    Scaffold(
+        containerColor = Color(0xFFEAF1F8),
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { viewModel.abrirModalAgregar() },
+                icon = { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White) },
+                text = { Text("Artículo", fontWeight = FontWeight.Bold) },
+                containerColor = Color(0xFF1E2E4F),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            )
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF8FAFD))
-                .padding(bottom = 80.dp)
+                .padding(innerPadding)
+                .background(Color(0xFFEAF1F8))
         ) {
-            // Encabezado
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
-            ) {
-                Text(
-                    text = "Club Deportivo",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
-                )
 
-                Text(
-                    text = "Admin",
-                    fontSize = 14.sp,
-                    color = Color(0xFF94A3B8)
-                )
-            }
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Título Inventario + acceso al historial de actividad
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Inventario",
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
-                )
-
-                IconButton(onClick = { mostrarHistorial = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.History,
-                        contentDescription = "Actividad reciente",
-                        tint = Color(0xFF64748B)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Tabs/Chips horizontales
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -149,15 +112,15 @@ fun InventarioScreen(
                 viewModel.obtenerDeportes().forEach { deporte ->
                     val esSeleccionado = filtroDeporte == deporte
                     val colorFondo by animateColorAsState(
-                        targetValue = if (esSeleccionado) Color(0xFFD1FAE5) else Color.White
+                        targetValue = if (esSeleccionado) Color(0xFFD6E4FE) else Color.White
                     )
                     val colorTexto by animateColorAsState(
-                        targetValue = if (esSeleccionado) Color(0xFF10B981) else Color(0xFFB0B9C6)
+                        targetValue = if (esSeleccionado) Color(0xFF1E2E4F) else Color(0xFF31487A)
                     )
-
+//CLB-J2B3KF
                     Surface(
-                        modifier = Modifier.size(width = 130.dp, height = 48.dp),
-                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier.size(width = 130.dp, height = 44.dp),
+                        shape = RoundedCornerShape(22.dp),
                         color = colorFondo,
                         onClick = { viewModel.filtrarPorDeporte(deporte) }
                     ) {
@@ -167,8 +130,8 @@ fun InventarioScreen(
                         ) {
                             Text(
                                 text = deporte,
-                                fontSize = 14.sp,
-                                fontWeight = if (esSeleccionado) FontWeight.SemiBold else FontWeight.Normal,
+                                fontSize = 13.sp,
+                                fontWeight = if (esSeleccionado) FontWeight.SemiBold else FontWeight.Medium,
                                 color = colorTexto
                             )
                         }
@@ -176,9 +139,8 @@ fun InventarioScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Lista de artículos
             if (articulosFiltrados.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -189,14 +151,14 @@ fun InventarioScreen(
                     Text(
                         text = "No hay artículos en esta categoría todavía",
                         fontSize = 14.sp,
-                        color = Color(0xFF94A3B8)
+                        color = Color(0xFF31487A)
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    // 🌟 Espacio inferior amplio (96.dp) para que la lista nunca quede oculta tras el FAB
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(articulosFiltrados, key = { it.id }) { articulo ->
@@ -210,40 +172,9 @@ fun InventarioScreen(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        // Botón flotante
-        FloatingActionButton(
-            onClick = { viewModel.abrirModalAgregar() },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp),
-            containerColor = Color(0xFF10B981)
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = "Agregar",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = "Artículo",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-            }
         }
     }
 
-    // Modal para agregar/editar artículos
     if (mostrarModal) {
         ModalArticulo(
             articuloEnEdicion = articuloEnEdicion,
@@ -260,7 +191,6 @@ fun InventarioScreen(
         )
     }
 
-    // Confirmación antes de eliminar un artículo
     articuloAEliminar?.let { articulo ->
         AlertDialog(
             onDismissRequest = { articuloAEliminar = null },
@@ -282,7 +212,6 @@ fun InventarioScreen(
         )
     }
 
-    // Historial de actividad reciente sobre el inventario
     if (mostrarHistorial) {
         ModalHistorialActividad(
             historial = historial,
@@ -303,9 +232,9 @@ fun ArticuloCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier
@@ -317,39 +246,37 @@ fun ArticuloCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Icono y nombre
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(text = articulo.icono, fontSize = 32.sp)
+                    Text(text = articulo.icono, fontSize = 28.sp)
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = articulo.nombre,
-                            fontSize = 16.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF1F2937),
+                            color = Color(0xFF192338),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
 
                         Text(
                             text = articulo.deporte,
-                            fontSize = 13.sp,
-                            color = Color(0xFF94A3B8)
+                            fontSize = 12.sp,
+                            color = Color(0xFF31487A)
                         )
                     }
                 }
 
-                // Editar / eliminar
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onEditar, modifier = Modifier.size(36.dp)) {
                         Icon(
                             imageVector = Icons.Filled.Edit,
                             contentDescription = "Editar ${articulo.nombre}",
-                            tint = Color(0xFF64748B)
+                            tint = Color(0xFF31487A)
                         )
                     }
                     IconButton(onClick = onEliminar, modifier = Modifier.size(36.dp)) {
@@ -376,7 +303,7 @@ fun ArticuloCard(
                         .padding(end = 8.dp),
                     fontSize = 12.sp,
                     fontWeight = if (stockBajo) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (stockBajo) Color(0xFFEF4444) else Color(0xFF94A3B8)
+                    color = if (stockBajo) Color(0xFFEF4444) else Color(0xFF31487A)
                 )
 
                 BotonesCantidad(
@@ -403,21 +330,21 @@ fun BotonesCantidad(
             onClick = onMenos,
             enabled = cantidad > 0,
             modifier = Modifier
-                .size(40.dp)
-                .background(Color(0xFFF3F4F6), RoundedCornerShape(12.dp))
+                .size(36.dp)
+                .background(Color(0xFFEAF1F8), RoundedCornerShape(10.dp))
         ) {
             Text(
                 text = "−",
-                fontSize = 20.sp,
-                color = if (cantidad > 0) Color(0xFF64748B) else Color(0xFFD1D5DB)
+                fontSize = 18.sp,
+                color = if (cantidad > 0) Color(0xFF192338) else Color(0xFFD1D5DB)
             )
         }
 
         Text(
             text = cantidad.toString(),
-            fontSize = 18.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827),
+            color = Color(0xFF192338),
             textAlign = TextAlign.Center,
             maxLines = 1,
             modifier = Modifier.widthIn(min = 30.dp)
@@ -426,10 +353,10 @@ fun BotonesCantidad(
         IconButton(
             onClick = onMas,
             modifier = Modifier
-                .size(40.dp)
-                .background(Color(0xFFF3F4F6), RoundedCornerShape(12.dp))
+                .size(36.dp)
+                .background(Color(0xFFEAF1F8), RoundedCornerShape(10.dp))
         ) {
-            Text(text = "+", fontSize = 20.sp, color = Color(0xFF64748B))
+            Text(text = "+", fontSize = 18.sp, color = Color(0xFF192338))
         }
     }
 }
@@ -505,7 +432,7 @@ private fun ModalArticulo(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(8.dp),
-                                color = if (esSeleccionado) Color(0xFFD1FAE5) else Color.White,
+                                color = if (esSeleccionado) Color(0xFFD6E4FE) else Color.White,
                                 onClick = {
                                     deporteSeleccionado = deporte
                                     mostrarDropdown = false
@@ -522,7 +449,7 @@ private fun ModalArticulo(
                                     Text(
                                         text = deporte,
                                         fontSize = 14.sp,
-                                        color = if (esSeleccionado) Color(0xFF10B981) else Color(0xFF111827),
+                                        color = if (esSeleccionado) Color(0xFF1E2E4F) else Color(0xFF192338),
                                         fontWeight = if (esSeleccionado) FontWeight.SemiBold else FontWeight.Normal
                                     )
                                 }
@@ -588,7 +515,7 @@ private fun ModalHistorialActividad(
             Text(
                 text = "Todavía no hay movimientos registrados en el inventario.",
                 fontSize = 14.sp,
-                color = Color(0xFF94A3B8),
+                color = Color(0xFF31487A),
                 modifier = Modifier.padding(vertical = 24.dp)
             )
         } else {
@@ -598,12 +525,12 @@ private fun ModalHistorialActividad(
                         text = actividad.descripcion,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF1F2937)
+                        color = Color(0xFF192338)
                     )
                     Text(
                         text = formato.format(Date(actividad.timestamp)),
                         fontSize = 12.sp,
-                        color = Color(0xFF94A3B8)
+                        color = Color(0xFF31487A)
                     )
                 }
             }

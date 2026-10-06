@@ -9,8 +9,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,9 +30,9 @@ import com.example.clubdeportivo.data.notificaciones.Notificacion
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val TextoOscuro = Color(0xFF111827)
-private val TextoGris = Color(0xFF64748B)
-private val Verde = Color(0xFF16A34A)
+private val TextoOscuro = Color(0xFF192338)
+private val TextoGris = Color(0xFF31487A)
+private val AzulPrimario = Color(0xFF1E2E4F)
 
 @Composable
 fun PersonalNotificacionesSheet(
@@ -39,7 +42,7 @@ fun PersonalNotificacionesSheet(
     val notificaciones by viewModel.notificaciones.collectAsState()
     val leidas by viewModel.leidas.collectAsState()
 
-    var pestanaSeleccionada by remember { mutableIntStateOf(0) } // 0: Recibidos, 1: Mis avisos
+    var pestanaSeleccionada by remember { mutableIntStateOf(0) }
     var modoRedactar by remember { mutableStateOf(false) }
 
     var notificacionEditandoId by remember { mutableStateOf<String?>(null) }
@@ -50,7 +53,7 @@ fun PersonalNotificacionesSheet(
 
     Dialog(onDismissRequest = onCerrar) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(24.dp),
             color = Color.White,
             modifier = Modifier
                 .fillMaxWidth()
@@ -76,7 +79,11 @@ fun PersonalNotificacionesSheet(
                                 color = TextoOscuro
                             )
                             IconButton(onClick = { notificacionEditandoId = null }) {
-                                Text("✕", fontSize = 18.sp, color = TextoGris, fontWeight = FontWeight.Bold)
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar",
+                                    tint = TextoGris
+                                )
                             }
                         }
 
@@ -89,10 +96,11 @@ fun PersonalNotificacionesSheet(
                             onValueChange = { tituloEdit = it },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Verde,
-                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                                focusedBorderColor = AzulPrimario,
+                                unfocusedBorderColor = Color(0xFFCBD5E1),
+                                focusedLabelColor = AzulPrimario
                             )
                         )
 
@@ -105,10 +113,11 @@ fun PersonalNotificacionesSheet(
                             onValueChange = { mensajeEdit = it },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 4,
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Verde,
-                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                                focusedBorderColor = AzulPrimario,
+                                unfocusedBorderColor = Color(0xFFCBD5E1),
+                                focusedLabelColor = AzulPrimario
                             )
                         )
 
@@ -116,15 +125,18 @@ fun PersonalNotificacionesSheet(
 
                         Button(
                             onClick = {
-                                Toast.makeText(context, "Aviso actualizado correctamente ✅", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Aviso actualizado correctamente", Toast.LENGTH_SHORT).show()
                                 notificacionEditandoId = null
                             },
                             enabled = tituloEdit.isNotBlank() && mensajeEdit.isNotBlank(),
                             modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Verde)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AzulPrimario)
                         ) {
-                            Text("Guardar cambios", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                Text("Guardar cambios", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                            }
                         }
                     }
 
@@ -145,7 +157,11 @@ fun PersonalNotificacionesSheet(
                                 color = TextoOscuro
                             )
                             IconButton(onClick = { modoRedactar = false }) {
-                                Text("✕", fontSize = 18.sp, color = TextoGris, fontWeight = FontWeight.Bold)
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar",
+                                    tint = TextoGris
+                                )
                             }
                         }
 
@@ -160,7 +176,7 @@ fun PersonalNotificacionesSheet(
                                 label = { Text("Socios") },
                                 shape = RoundedCornerShape(50.dp),
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Verde,
+                                    selectedContainerColor = AzulPrimario,
                                     selectedLabelColor = Color.White
                                 )
                             )
@@ -176,10 +192,10 @@ fun PersonalNotificacionesSheet(
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text("Ej: Cancha en mantenimiento", color = Color(0xFF94A3B8)) },
                             singleLine = true,
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Verde,
-                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                                focusedBorderColor = AzulPrimario,
+                                unfocusedBorderColor = Color(0xFFCBD5E1)
                             )
                         )
 
@@ -193,10 +209,10 @@ fun PersonalNotificacionesSheet(
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text("Escribe los detalles del aviso...", color = Color(0xFF94A3B8)) },
                             minLines = 4,
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Verde,
-                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                                focusedBorderColor = AzulPrimario,
+                                unfocusedBorderColor = Color(0xFFCBD5E1)
                             )
                         )
 
@@ -209,24 +225,27 @@ fun PersonalNotificacionesSheet(
                             OutlinedButton(
                                 onClick = { modoRedactar = false },
                                 modifier = Modifier.weight(1f).height(52.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                             ) {
                                 Text("Cancelar", color = TextoGris, fontWeight = FontWeight.SemiBold)
                             }
                             Button(
                                 onClick = {
                                     viewModel.enviarAvisoASocios(titulo, mensaje) {
-                                        Toast.makeText(context, "Aviso enviado ✅", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Aviso enviado correctamente", Toast.LENGTH_SHORT).show()
                                         modoRedactar = false
                                     }
                                 },
                                 enabled = titulo.isNotBlank() && mensaje.isNotBlank(),
                                 modifier = Modifier.weight(1f).height(52.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Verde)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AzulPrimario)
                             ) {
-                                Text("Enviar aviso", fontWeight = FontWeight.Bold, color = Color.White)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Text("Enviar aviso", fontWeight = FontWeight.Bold, color = Color.White)
+                                }
                             }
                         }
                     }
@@ -245,7 +264,11 @@ fun PersonalNotificacionesSheet(
                                 color = TextoOscuro
                             )
                             IconButton(onClick = onCerrar) {
-                                Text("✕", fontSize = 18.sp, color = TextoGris, fontWeight = FontWeight.Bold)
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar",
+                                    tint = TextoGris
+                                )
                             }
                         }
 
@@ -254,7 +277,7 @@ fun PersonalNotificacionesSheet(
                         SecondaryTabRow(
                             selectedTabIndex = pestanaSeleccionada,
                             modifier = Modifier,
-                            containerColor = Color(0xFFF1F5F9),
+                            containerColor = Color(0xFFEAF1F8),
                             contentColor = TabRowDefaults.primaryContentColor,
                             indicator = {},
                             divider = {},
@@ -275,7 +298,8 @@ fun PersonalNotificacionesSheet(
                                     selectedContentColor = Color.White,
                                     unselectedContentColor = TextoGris
                                 )
-                            })
+                            }
+                        )
 
                         Spacer(Modifier.height(20.dp))
 
@@ -318,8 +342,8 @@ fun PersonalNotificacionesSheet(
                         Button(
                             onClick = { modoRedactar = true },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Verde)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AzulPrimario)
                         ) {
                             Text("Redactar nuevo aviso", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
                         }
@@ -345,12 +369,12 @@ private fun TarjetaNotificacionGestionable(
     var expandida by remember { mutableStateOf(false) }
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = if (isLeida) Color(0xFFF8FAFD) else Color.White,
-        border = BorderStroke(1.dp, if (isLeida) Color(0xFFE2E8F0) else Verde.copy(alpha = 0.4f)),
+        border = BorderStroke(1.dp, if (isLeida) Color(0xFFCBD5E1) else AzulPrimario.copy(alpha = 0.4f)),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .clickable {
                 expandida = !expandida
                 if (!isLeida) onClick()
@@ -367,7 +391,7 @@ private fun TarjetaNotificacionGestionable(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(Verde, CircleShape)
+                                .background(AzulPrimario, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -403,9 +427,12 @@ private fun TarjetaNotificacionGestionable(
                 ) {
                     TextButton(
                         onClick = onEditar,
-                        colors = ButtonDefaults.textButtonColors(contentColor = Verde)
+                        colors = ButtonDefaults.textButtonColors(contentColor = AzulPrimario)
                     ) {
-                        Text("✏️ Modificar aviso", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Text("Modificar aviso", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
