@@ -2,16 +2,16 @@ package com.example.clubdeportivo.ui.reservas
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,8 +22,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -46,7 +50,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,38 +57,53 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
+import com.example.clubdeportivo.data.SesionManager
+import com.example.clubdeportivo.data.model.esPersonal
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
-import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.ui.components.BotonIcono
 import com.example.clubdeportivo.ui.components.BotonPrimario
-import com.example.clubdeportivo.ui.components.EmptyState
+import com.example.clubdeportivo.ui.components.EncabezadoPantalla
 import com.example.clubdeportivo.ui.components.FullScreenLoading
+import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.PestanasPildora
+import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.TituloSeccion
+import com.example.clubdeportivo.ui.theme.Alerta
+import com.example.clubdeportivo.ui.theme.AlertaSuave
+import com.example.clubdeportivo.ui.theme.Borde
+import com.example.clubdeportivo.ui.theme.BordeCampo
+import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.Marca
+import com.example.clubdeportivo.ui.theme.MarcaSuave
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.PeligroSuave
+import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.Superficie
+import com.example.clubdeportivo.ui.theme.TextoPrincipal
+import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.ui.theme.TextoTenue
 import com.example.clubdeportivo.ui.torneos.TorneosScreen
-
-private val FondoPantalla = Color(0xFFEAF1F8)
-private val TextoTitulo = Color(0xFF192338)
-private val TextoSuave = Color(0xFF31487A)
-private val ColorLleno = Color(0xFFFCE8E6)
-private val ColorTorneo = Color(0xFFD6E4FE)
-private val ColorPocos = Color(0xFFFEF3C7)
-private val ColorLibre = Color(0xFFFFFFFF)
-private val ColorPasada = Color(0xFFF1F5F9)
+import com.example.clubdeportivo.util.Fechas
 
 @Composable
 fun ReservasScreen() {
     var pestana by rememberSaveable { mutableIntStateOf(0) }
+    // Solo el personal aprueba las reservas de visitantes.
+    val puedeAprobar = SesionManager.usuarioActual?.rol?.esPersonal() == true
+    val opciones = if (puedeAprobar) listOf("Espacio", "Torneo", "Por aprobar") else listOf("Espacio", "Torneo")
 
-    Column(modifier = Modifier.fillMaxSize().background(FondoPantalla)) {
+    Column(modifier = Modifier.fillMaxSize().background(FondoApp)) {
         PestanasPildora(
-            opciones = listOf("Espacio", "Torneo"),
-            seleccionada = pestana,
+            opciones = opciones,
+            seleccionada = pestana.coerceAtMost(opciones.lastIndex),
             onSeleccion = { pestana = it }
         )
 
         when (pestana) {
             0 -> ReservarEspacioScreen()
             1 -> TorneosScreen()
+            else -> PorAprobarScreen()
         }
     }
 }
@@ -96,6 +114,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
     val ui by viewModel.ui.observeAsState(ReservaEspacioUi())
     val reservas by viewModel.reservas.observeAsState(emptyList())
     val mensaje by viewModel.mensaje.observeAsState()
+    val restriccion by viewModel.restriccion.observeAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(mensaje) {
@@ -107,8 +126,14 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = FondoPantalla,
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        containerColor = FondoApp,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            val area = ui.area
+            if (!ui.cargando && area != null) {
+                BarraConfirmacion(ui = ui, viewModel = viewModel)
+            }
+        }
     ) { innerPadding ->
         if (ui.cargando) {
             FullScreenLoading(modifier = Modifier.padding(innerPadding))
@@ -146,19 +171,35 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                 .padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(scroll)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = MargenPantalla)
         ) {
-            Text("Reservar un espacio", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextoTitulo)
-            Spacer(modifier = Modifier.height(12.dp))
+            EncabezadoPantalla(titulo = "Reservar un espacio")
+            restriccion?.let { motivo ->
+                TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = AlertaSuave) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(Icons.Filled.Warning, contentDescription = null, tint = Alerta, modifier = Modifier.size(20.dp))
+                        Text(text = motivo, style = MaterialTheme.typography.bodyMedium, color = Alerta)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
             Pasos(pasoActual = paso)
             Spacer(modifier = Modifier.height(20.dp))
 
             Seccion("SELECCIONA EL DEPORTE")
             if (deportes.isEmpty()) {
-                Text("Todavía no hay áreas registradas.", color = TextoSuave, fontSize = 14.sp)
+                Text(
+                    "Todavía no hay áreas registradas.",
+                    color = TextoSecundario,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
 
-            // 🌟 Grid de Deportes a pantalla completa (2 columnas simétricas con .weight(1f))
+            // Cuadrícula de deportes: 2 columnas simétricas
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 maxItemsInEachRow = 2,
@@ -185,7 +226,6 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                 Column(modifier = Modifier.onGloballyPositioned { canchaY = it.positionInParent().y.toInt() }) {
                     Seccion("SELECCIONA LA CANCHA")
 
-                    // 🌟 Grid de Canchas a pantalla completa (2 columnas simétricas con .weight(1f))
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         maxItemsInEachRow = 2,
@@ -222,18 +262,22 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-            Text("Reservas vigentes", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextoTitulo)
+            TituloSeccion("Reservas vigentes")
             Spacer(modifier = Modifier.height(10.dp))
             if (reservas.isEmpty()) {
-                Text("No hay reservas próximas.", color = TextoSuave, fontSize = 14.sp)
+                Text(
+                    "No hay reservas próximas.",
+                    color = TextoSecundario,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     reservas.forEach { reserva ->
-                        TarjetaReserva(reserva = reserva, onCancelar = { viewModel.cancelar(reserva) })
+                        TarjetaReservaCliente(reserva = reserva, onCancelar = { viewModel.cancelar(reserva) })
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(if (ui.deporte != null) 360.dp else 24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -244,36 +288,54 @@ private fun Seccion(texto: String) {
         text = texto,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
-        color = TextoSuave,
+        color = TextoSecundario,
+        letterSpacing = 0.4.sp,
         modifier = Modifier.padding(bottom = 8.dp)
     )
 }
 
+/** Indicador de avance: los pasos hechos llevan una palomita, el actual va resaltado y los que faltan en gris. */
 @Composable
 private fun Pasos(pasoActual: Int) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         listOf("Deporte", "Cancha", "Horario").forEachIndexed { indice, nombre ->
             val numero = indice + 1
-            val activo = numero <= pasoActual
+            val hecho = numero < pasoActual
+            val actual = numero == pasoActual
             Box(
                 modifier = Modifier
                     .size(26.dp)
                     .clip(CircleShape)
-                    .background(if (activo) Color(0xFF1E2E4F) else Color(0xFFE2E8F0)),
+                    .background(if (hecho || actual) Marca else Borde),
                 contentAlignment = Alignment.Center
             ) {
-                Text(numero.toString(), color = if (activo) Color.White else TextoSuave, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                if (hecho) {
+                    Icon(Icons.Filled.Check, contentDescription = null, tint = SobreMarca, modifier = Modifier.size(16.dp))
+                } else {
+                    Text(
+                        text = numero.toString(),
+                        color = if (actual) SobreMarca else TextoTenue,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             Text(
                 text = nombre,
-                fontSize = 13.sp,
-                fontWeight = if (numero == pasoActual) FontWeight.Bold else FontWeight.Normal,
-                color = if (activo) TextoTitulo else TextoSuave,
-                modifier = Modifier.padding(start = 6.dp, end = 10.dp)
+                fontSize = 12.sp,
+                fontWeight = if (actual) FontWeight.Bold else FontWeight.Medium,
+                color = if (hecho || actual) TextoPrincipal else TextoTenue,
+                maxLines = 1,
+                modifier = Modifier.padding(start = 6.dp)
             )
             if (numero < 3) {
-                Box(modifier = Modifier.width(16.dp).height(1.dp).background(Color(0xFFCBD5E1)))
-                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                        .height(1.dp)
+                        .background(if (hecho) Marca else BordeCampo)
+                )
             }
         }
     }
@@ -291,24 +353,30 @@ private fun TarjetaOpcion(
     Surface(
         onClick = onClick,
         enabled = habilitada,
-        // 🌟 Se ajusta a fillMaxWidth para que abarque todo el espacio disponible en la celda
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        color = if (habilitada) Color.White else Color(0xFFF1F5F9),
-        border = BorderStroke(if (seleccionada) 2.dp else 1.dp, if (seleccionada) Color(0xFF1E2E4F) else Color(0xFFE2E8F0))
+        shape = RoundedCornerShape(16.dp),
+        color = when {
+            !habilitada -> FondoApp
+            seleccionada -> MarcaSuave
+            else -> Superficie
+        },
+        border = BorderStroke(if (seleccionada) 2.dp else 1.dp, if (seleccionada) Marca else Borde)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(emoji, fontSize = 28.sp)
             Text(
                 text = titulo,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (habilitada) TextoTitulo else TextoSuave,
+                style = MaterialTheme.typography.titleSmall,
+                color = if (habilitada) TextoPrincipal else TextoTenue,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp)
             )
-            Text(detalle, fontSize = 12.sp, color = TextoSuave)
+            Text(
+                text = detalle,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (habilitada) TextoSecundario else TextoTenue
+            )
         }
     }
 }
@@ -322,13 +390,15 @@ private fun etiquetaHora(hora: Int): Pair<String, String> {
 @Composable
 private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: ReservasViewModel) {
     Seccion("HORARIO")
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("FECHA", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextoSuave)
+            Text(
+                "FECHA",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextoSecundario,
+                letterSpacing = 0.4.sp
+            )
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -338,21 +408,26 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     Surface(
                         onClick = { viewModel.elegirFecha(fecha) },
                         shape = RoundedCornerShape(12.dp),
-                        color = if (activa) Color(0xFF1E2E4F) else ColorLibre,
-                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                        color = if (activa) Marca else Superficie,
+                        border = if (activa) null else BorderStroke(1.dp, BordeCampo)
                     ) {
                         Text(
                             text = etiqueta,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (activa) Color.White else TextoSuave,
+                            color = if (activa) SobreMarca else TextoSecundario,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                         )
                     }
                 }
             }
 
-            Text(ui.horarioTexto, fontSize = 13.sp, color = TextoSuave, modifier = Modifier.padding(top = 14.dp))
+            Text(
+                ui.horarioTexto,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextoSecundario,
+                modifier = Modifier.padding(top = 14.dp)
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
@@ -367,22 +442,23 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     } else {
                         "Toca las horas que quieres reservar"
                     },
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextoTitulo,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = TextoPrincipal,
                     modifier = Modifier.weight(1f)
                 )
                 if (desde != null) {
                     TextButton(onClick = { viewModel.limpiarSeleccion() }) {
-                        Text("Limpiar", color = TextoSuave)
+                        Text("Limpiar", color = Marca, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
 
             if (ui.horas.isEmpty()) {
                 Text(
-                    "No hay horarios disponibles ese día.",
-                    color = MaterialTheme.colorScheme.error,
+                    if (ui.errorDisponibilidad) "No se pudo consultar la disponibilidad. Elige la fecha otra vez para reintentar."
+                    else "No hay horarios disponibles ese día.",
+                    color = Peligro,
+                    style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             } else {
@@ -408,11 +484,17 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("PERSONAS", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextoSuave)
+                        Text(
+                            "PERSONAS",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextoSecundario,
+                            letterSpacing = 0.4.sp
+                        )
                         Text(
                             "Lugares libres: ${ui.maxPersonas} de ${area.capacidad}",
-                            fontSize = 12.sp,
-                            color = TextoSuave
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoSecundario
                         )
                     }
                     ContadorPersonas(
@@ -425,10 +507,36 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+/** Barra fija con el resumen de lo elegido y el botón de confirmar, siempre a la vista. */
+@Composable
+private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel) {
+    val desde = ui.desde
+    val hasta = ui.hasta
+    val listo = desde != null && hasta != null
+    val etiquetaFecha = viewModel.fechas.firstOrNull { it.first == ui.fecha }?.second ?: Fechas.legible(ui.fecha)
+
+    Surface(color = Superficie, shadowElevation = 8.dp) {
+        Column(modifier = Modifier.padding(start = MargenPantalla, end = MargenPantalla, top = 12.dp, bottom = 12.dp)) {
+            Text(
+                text = if (listo) {
+                    "$etiquetaFecha · %02d:00 → %02d:00 (%dh) · %s".format(
+                        desde, hasta!! + 1, ui.horasElegidas,
+                        if (ui.personas == 1) "1 persona" else "${ui.personas} personas"
+                    )
+                } else {
+                    "Elige las horas que quieres reservar"
+                },
+                style = MaterialTheme.typography.titleSmall,
+                color = if (listo) TextoPrincipal else TextoSecundario,
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
             BotonPrimario(
                 texto = "Confirmar reserva",
-                enabled = ui.desde != null && ui.hasta != null,
+                enabled = listo,
                 cargando = ui.enviando,
                 onClick = { viewModel.confirmar() }
             )
@@ -441,36 +549,37 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, modifier: Modifier, onCli
     val estado = celda.estado
     val parcial = estado.ocupadas > 0 && !estado.lleno
     val fondo = when {
-        elegida -> Color(0xFF1E2E4F)
-        estado.torneo != null -> ColorTorneo
-        estado.lleno -> ColorLleno
-        celda.pasada -> ColorPasada
-        parcial -> ColorPocos
-        else -> ColorLibre
+        elegida -> Marca
+        estado.torneo != null -> MarcaSuave
+        estado.lleno -> PeligroSuave
+        celda.pasada -> FondoApp
+        parcial -> AlertaSuave
+        else -> Superficie
     }
     val texto = when {
-        elegida -> Color.White
-        estado.torneo != null -> Color(0xFF31487A)
-        estado.lleno -> Color(0xFFC5221F)
-        celda.pasada -> Color(0xFFCBD5E1)
-        else -> TextoTitulo
+        elegida -> SobreMarca
+        estado.torneo != null -> Marca
+        estado.lleno -> Peligro
+        celda.pasada -> TextoTenue
+        else -> TextoPrincipal
     }
     val (numero, sufijo) = etiquetaHora(celda.hora)
+    // Siempre se puede tocar: si la hora no se puede reservar, el aviso explica por qué.
     Surface(
         onClick = onClick,
-        enabled = celda.seleccionable,
         modifier = modifier.height(52.dp),
         shape = RoundedCornerShape(10.dp),
         color = fondo,
-        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+        border = BorderStroke(1.dp, if (elegida) Marca else BordeCampo)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text(numero, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = texto, maxLines = 1)
-            Text(sufijo, fontSize = 10.sp, color = texto, maxLines = 1)
+            Text(sufijo, fontSize = 12.sp, color = texto, maxLines = 1)
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Leyenda() {
     FlowRow(
@@ -479,10 +588,11 @@ private fun Leyenda() {
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         listOf(
-            "Disponible" to ColorLibre,
-            "Pocos lugares" to ColorPocos,
-            "Cupo lleno" to ColorLleno,
-            "Torneo" to ColorTorneo
+            "Disponible" to Superficie,
+            "Pocos lugares" to AlertaSuave,
+            "Cupo lleno" to PeligroSuave,
+            "Torneo" to MarcaSuave,
+            "Ya pasó" to FondoApp
         ).forEach { (nombre, color) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -490,9 +600,14 @@ private fun Leyenda() {
                         .size(12.dp)
                         .clip(CircleShape)
                         .background(color)
-                        .padding(1.dp)
+                        .border(1.dp, BordeCampo, CircleShape)
                 )
-                Text(nombre, fontSize = 12.sp, color = TextoSuave, modifier = Modifier.padding(start = 4.dp))
+                Text(
+                    nombre,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
             }
         }
     }
@@ -501,91 +616,15 @@ private fun Leyenda() {
 @Composable
 private fun ContadorPersonas(valor: Int, puedeBajar: Boolean, puedeSubir: Boolean, onMenos: () -> Unit, onMas: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        BotonCirculo("−", puedeBajar, onMenos)
+        BotonIcono(Icons.Filled.Remove, "Una persona menos", onMenos, enabled = puedeBajar)
         Text(
             text = valor.toString(),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = TextoTitulo,
+            color = TextoPrincipal,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(36.dp)
         )
-        BotonCirculo("+", puedeSubir, onMas)
-    }
-}
-
-@Composable
-private fun BotonCirculo(texto: String, habilitado: Boolean, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        enabled = habilitado,
-        modifier = Modifier.size(40.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = ColorLibre,
-        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(texto, fontSize = 20.sp, color = if (habilitado) TextoSuave else Color(0xFFD1D5DB))
-        }
-    }
-}
-
-@Composable
-private fun TarjetaReserva(reserva: ReservaListada, onCancelar: () -> Unit) {
-    val pendiente = reserva.estado == EstadoReserva.PENDIENTE_APROBACION
-
-    // 🎨 Tonos consistentes: Verde elegante para Confirmada, Ámbar/Rojo suave para Pendiente
-    val colorFondoEstado = if (!pendiente) Color(0xFFE6F4EA) else Color(0xFFFEF3C7)
-    val colorTextoEstado = if (!pendiente) Color(0xFF137333) else Color(0xFFB45309)
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.5.dp, if (pendiente) Color(0xFFFDE68A) else Color(0xFFD6E4FE)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(reserva.emoji, fontSize = 26.sp)
-                Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                    Text(
-                        reserva.titulo,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextoTitulo,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        "${reserva.fecha} · ${reserva.horaInicio}–${reserva.horaFin}",
-                        fontSize = 13.sp,
-                        color = TextoSuave
-                    )
-                    Text(
-                        if (reserva.personas == 1) "1 persona" else "${reserva.personas} personas",
-                        fontSize = 12.sp,
-                        color = TextoSuave
-                    )
-                }
-                Text(
-                    text = if (pendiente) "Pendiente" else "Confirmada",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorTextoEstado,
-                    modifier = Modifier
-                        .background(colorFondoEstado, RoundedCornerShape(50))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
-                )
-            }
-            Text(
-                text = "Cancelar reserva",
-                fontSize = 13.sp,
-                color = TextoSuave,
-                modifier = Modifier
-                    .padding(top = 10.dp)
-                    .clickable { onCancelar() }
-            )
-        }
+        BotonIcono(Icons.Filled.Add, "Una persona más", onMas, enabled = puedeSubir)
     }
 }

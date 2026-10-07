@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ClubDeportivo</string>
+    <string name="app_name">Athletic Club</string>
 
     <!-- Módulo 1: Login -->
     <string name="login_title">Iniciar sesión</string>

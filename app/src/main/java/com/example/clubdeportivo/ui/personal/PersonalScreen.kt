@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -24,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,18 +43,42 @@ import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EspacioCampos
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.FullScreenLoading
+import com.example.clubdeportivo.ui.components.BurbujaTexto
+import com.example.clubdeportivo.ui.components.EncabezadoPantalla
+import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.PestanasPildora
-import com.example.clubdeportivo.ui.components.VerdeMarca
+import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.theme.Exito
+import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.Marca
+import com.example.clubdeportivo.ui.theme.MarcaSuave
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.TextoPrincipal
+import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.ui.theme.TextoTenue
+import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.FotoPerfilManager
+import com.example.clubdeportivo.util.ReglasContrasena
+import com.example.clubdeportivo.ui.components.botonFlotanteVisible
+import com.example.clubdeportivo.ui.components.RequisitosContrasena
+import com.example.clubdeportivo.ui.components.CampoBusqueda
+import com.example.clubdeportivo.ui.components.BotonFlotanteAgregar
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.lazy.rememberLazyListState
 
 /** Tipos de personal que se pueden dar de alta por ahora. */
 private val TIPOS_DE_ALTA = listOf("Instructor")
 private val TURNOS = listOf("Matutino", "Vespertino")
 private val ESTADOS = listOf("ACTIVO", "INACTIVO")
 private const val SIN_AREA = "Sin área asignada"
-
-private val TextoPrincipal = Color(0xFF192338)
-private val TextoSecundario = Color(0xFF31487A)
 
 @Composable
 fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
@@ -66,7 +92,17 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
 
     var mostrarFormulario by remember { mutableStateOf(false) }
     var enEdicion by remember { mutableStateOf<Personal?>(null) }
+    var busqueda by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val visibles = personal.filter {
+        val texto = busqueda.trim()
+        texto.isBlank() ||
+            it.nombre.contains(texto, ignoreCase = true) ||
+            it.email.contains(texto, ignoreCase = true) ||
+            (it.areaTrabajo ?: "").contains(texto, ignoreCase = true)
+    }
 
     LaunchedEffect(mensaje) {
         mensaje?.let {
@@ -84,47 +120,46 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = Color(0xFFEAF1F8), // Fondo unificado de la app
+        containerColor = FondoApp,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            BotonFlotanteAgregar(
+                texto = "Agregar personal",
+                visible = listState.botonFlotanteVisible(),
                 onClick = {
                     enEdicion = null
                     mostrarFormulario = true
-                },
-                containerColor = Color(0xFF1E2E4F),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar Personal")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Agregar Personal", fontWeight = FontWeight.Bold)
-            }
+                }
+            )
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = MargenPantalla)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Personal",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextoPrincipal,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            EncabezadoPantalla(titulo = "Personal")
+
+            if (personal.isNotEmpty()) {
+                CampoBusqueda(
+                    value = busqueda,
+                    onValueChange = { busqueda = it },
+                    placeholder = "Buscar por nombre, correo o área"
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             when {
                 cargando && personal.isEmpty() -> FullScreenLoading()
                 personal.isEmpty() -> EmptyState("Todavía no hay personal registrado.")
+                visibles.isEmpty() -> EmptyState("Nadie coincide con la búsqueda.", icono = Icons.Default.Search)
                 else -> LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    items(personal, key = { it.id }) { persona ->
+                    items(visibles, key = { it.id }) { persona ->
                         PersonalCard(
                             persona = persona,
                             onEditClick = {
@@ -202,16 +237,60 @@ fun FormularioPersonalDialog(
     var area by remember { mutableStateOf(personaAEditar?.areaTrabajo ?: SIN_AREA) }
     var areaExpandida by remember { mutableStateOf(false) }
 
+    var contrasenaVisible by remember { mutableStateOf(false) }
+
     DialogoFormulario(
         titulo = if (esEdicion) "Editar personal" else "Agregar personal",
-        onCerrar = onCerrar
+        onCerrar = onCerrar,
+        pie = {
+            (mensajeError ?: aviso)?.let {
+                Text(
+                    text = it,
+                    color = if (mensajeError == null && it.startsWith("Enviamos")) Exito else Peligro,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
+
+            BotonPrimario(
+                texto = if (esEdicion) "Guardar cambios" else "Agregar personal",
+                cargando = guardando,
+                onClick = {
+                    val error = when {
+                        nombre.isBlank() -> "Escribe el nombre."
+                        telefono.isNotBlank() && telefono.count { it.isDigit() } < 10 -> "El teléfono debe tener al menos 10 dígitos."
+                        !esEdicion && !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() -> "Escribe un correo válido."
+                        !esEdicion && ReglasContrasena.primerError(contrasena) != null -> ReglasContrasena.primerError(contrasena)
+                        !esEdicion && contrasena != confirmarContrasena -> "Las contraseñas no coinciden."
+                        else -> null
+                    }
+                    mensajeError = error
+                    if (error == null) {
+                        onGuardar(
+                            DatosPersonal(
+                                nombre = nombre,
+                                email = correo,
+                                telefono = telefono,
+                                estado = estado,
+                                rol = rol,
+                                tipoPersonal = tipo,
+                                turno = turno,
+                                areaTrabajo = area.takeIf { it != SIN_AREA },
+                                fotoUrl = fotoPath,
+                                contrasena = contrasena
+                            )
+                        )
+                    }
+                }
+            )
+        }
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE2E8F0))
+                    .background(FondoApp)
                     .clickable { selectorFoto.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
@@ -223,15 +302,15 @@ fun FormularioPersonalDialog(
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Icon(Icons.Default.Person, contentDescription = "Foto", tint = Color(0xFF94A3B8))
+                    Icon(Icons.Default.Person, contentDescription = "Foto", tint = TextoTenue)
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
             TextButton(onClick = { selectorFoto.launch("image/*") }) {
                 Text(
                     text = if (fotoPath == null) "Subir foto de perfil" else "Cambiar foto",
-                    color = TextoSecundario,
-                    fontWeight = FontWeight.Bold,
+                    color = Marca,
+                    fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp
                 )
             }
@@ -240,7 +319,12 @@ fun FormularioPersonalDialog(
         EspacioCampos()
 
         EtiquetaCampo("NOMBRE COMPLETO")
-        CampoTexto(value = nombre, onValueChange = { nombre = it }, placeholder = "Juan Pérez")
+        CampoTexto(
+            value = nombre,
+            onValueChange = { nombre = it },
+            placeholder = "Juan Pérez",
+            capitalizacion = KeyboardCapitalization.Words
+        )
 
         EspacioCampos()
 
@@ -260,7 +344,8 @@ fun FormularioPersonalDialog(
             onValueChange = { correo = it },
             placeholder = "correo@gmail.com",
             tipoTeclado = KeyboardType.Email,
-            readOnly = esEdicion
+            readOnly = esEdicion,
+            imeAction = if (esEdicion) ImeAction.Done else ImeAction.Next
         )
 
         EspacioCampos()
@@ -273,10 +358,10 @@ fun FormularioPersonalDialog(
             margenHorizontal = 0.dp
         )
         Text(
-            text = if (rol == Rol.ADMIN) "Acceso total: dashboard, personal, áreas, reservas y membresías."
-            else "Acceso a reservas, áreas y membresías.",
-            fontSize = 12.sp,
-            color = Color(0xFF94A3B8)
+            text = if (rol == Rol.ADMIN) "Acceso total: dashboard, personal, áreas, reservas, membresías y precios."
+            else "Ve las reservas de su área, las áreas y las membresías; no cambia precios ni administra personal.",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextoSecundario
         )
 
         EspacioCampos()
@@ -343,9 +428,20 @@ fun FormularioPersonalDialog(
             CampoTexto(
                 value = contrasena,
                 onValueChange = { contrasena = it },
-                placeholder = "Mín. 8 caracteres, 1 mayúscula, 1 número",
-                esContrasena = true
+                placeholder = "Crea una contraseña segura",
+                esContrasena = !contrasenaVisible,
+                trailingIcon = {
+                    IconButton(onClick = { contrasenaVisible = !contrasenaVisible }) {
+                        Icon(
+                            imageVector = if (contrasenaVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                            contentDescription = if (contrasenaVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                        )
+                    }
+                }
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            RequisitosContrasena(contrasena = contrasena)
 
             EspacioCampos()
 
@@ -353,56 +449,14 @@ fun FormularioPersonalDialog(
             CampoTexto(
                 value = confirmarContrasena,
                 onValueChange = { confirmarContrasena = it },
-                placeholder = "********",
-                esContrasena = true
+                placeholder = "Repite la contraseña",
+                esContrasena = !contrasenaVisible,
+                imeAction = ImeAction.Done,
+                isError = confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena,
+                mensajeError = if (confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena) "Las contraseñas no coinciden" else null
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        (mensajeError ?: aviso)?.let {
-            Text(
-                text = it,
-                color = if (mensajeError == null && it.startsWith("Enviamos")) Color(0xFF137333) else MaterialTheme.colorScheme.error,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-        }
-
-        BotonPrimario(
-            texto = if (esEdicion) "Guardar cambios" else "Agregar personal",
-            cargando = guardando,
-            onClick = {
-                val error = when {
-                    nombre.isBlank() -> "Escribe el nombre."
-                    telefono.isNotBlank() && telefono.count { it.isDigit() } < 10 -> "El teléfono debe tener al menos 10 dígitos."
-                    !esEdicion && !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() -> "Escribe un correo válido."
-                    !esEdicion && contrasena.length < 8 -> "La contraseña debe tener al menos 8 caracteres."
-                    !esEdicion && contrasena.none { it.isUpperCase() } -> "La contraseña debe incluir al menos una letra mayúscula."
-                    !esEdicion && contrasena.none { it.isDigit() } -> "La contraseña debe incluir al menos un número."
-                    !esEdicion && contrasena != confirmarContrasena -> "Las contraseñas no coinciden."
-                    else -> null
-                }
-                mensajeError = error
-                if (error == null) {
-                    onGuardar(
-                        DatosPersonal(
-                            nombre = nombre,
-                            email = correo,
-                            telefono = telefono,
-                            estado = estado,
-                            rol = rol,
-                            tipoPersonal = tipo,
-                            turno = turno,
-                            areaTrabajo = area.takeIf { it != SIN_AREA },
-                            fotoUrl = fotoPath,
-                            contrasena = contrasena
-                        )
-                    )
-                }
-            }
-        )
     }
 }
 
@@ -414,25 +468,16 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
     }
     val activo = persona.estado.uppercase() == "ACTIVO"
 
-    // 🎨 Tonos estandarizados: Verde elegante para ACTIVO, Ámbar/Naranja para INACTIVO
-    val colorFondoEstado = if (activo) Color(0xFFE6F4EA) else Color(0xFFFEF3C7)
-    val colorTextoEstado = if (activo) Color(0xFF137333) else Color(0xFFB45309)
+    val detalle = listOf(persona.tipoPersonal, persona.turno).filter { it.isNotBlank() }.joinToString(" · ")
 
-    val detalle = listOf(persona.tipoPersonal, persona.turno).filter { it.isNotBlank() }.joinToString(" • ")
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFD6E4FE)),
+                        .background(MarcaSuave),
                     contentAlignment = Alignment.Center
                 ) {
                     if (fotoPerfil != null) {
@@ -445,31 +490,47 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
                     } else {
                         Text(
                             text = persona.nombre.take(1).uppercase().ifEmpty { "?" },
-                            color = Color(0xFF1E2E4F),
+                            color = Marca,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 18.sp
                         )
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = persona.nombre, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextoPrincipal)
-                    if (detalle.isNotEmpty()) Text(text = detalle, fontSize = 13.sp, color = TextoSecundario)
-                    Text(text = persona.email, fontSize = 12.sp, color = TextoSecundario)
-                    if (persona.telefono.isNotBlank()) Text(text = persona.telefono, fontSize = 12.sp, color = TextoSecundario)
-                    if (persona.fechaIngreso.isNotBlank()) Text(text = "Ingreso: ${persona.fechaIngreso}", fontSize = 12.sp, color = TextoSecundario)
+                    Text(
+                        text = persona.nombre,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextoPrincipal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (detalle.isNotEmpty()) {
+                        Text(text = detalle, style = MaterialTheme.typography.bodyMedium, color = TextoSecundario)
+                    }
+                    Text(
+                        text = persona.email,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (persona.telefono.isNotBlank()) {
+                        Text(text = persona.telefono, style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+                    }
+                    if (persona.fechaIngreso.isNotBlank()) {
+                        Text(
+                            text = "Ingreso: ${Fechas.legible(persona.fechaIngreso)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoSecundario
+                        )
+                    }
                 }
 
-                // Insignia de Estado Actualizada (Verde / Ámbar)
-                Surface(shape = RoundedCornerShape(50.dp), color = colorFondoEstado) {
-                    Text(
-                        text = persona.estado.uppercase(),
-                        color = colorTextoEstado,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
+                Insignia(
+                    texto = if (activo) "Activo" else "Inactivo",
+                    tipo = if (activo) TipoInsignia.EXITO else TipoInsignia.ALERTA
+                )
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(
@@ -478,33 +539,21 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFEAF1F8)) {
-                        Text(
-                            text = "📍 ${persona.areaTrabajo ?: SIN_AREA}",
-                            color = TextoSecundario,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
-                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFEAF1F8)) {
-                        Text(
-                            text = persona.rol.nombreLegible(),
-                            color = TextoSecundario,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
+                    Insignia(
+                        texto = persona.areaTrabajo ?: SIN_AREA,
+                        tipo = TipoInsignia.NEUTRO,
+                        icono = Icons.Default.Place,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Insignia(
+                        texto = persona.rol.nombreLegible(),
+                        tipo = TipoInsignia.NEUTRO,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
                 }
 
-                TextButton(
-                    onClick = onEditClick,
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF1E2E4F))
-                ) {
-                    Text(text = "Editar", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                TextButton(onClick = onEditClick) {
+                    Text(text = "Editar", color = Marca, fontWeight = FontWeight.Bold)
                 }
             }
         }

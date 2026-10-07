@@ -32,16 +32,27 @@ service cloud.firestore {
     function esDeCliente(rol) {
       return rol in ['SOCIO', 'VISITANTE_EXTERNO'];
     }
+    // Un miembro se registra con su código. El registro es válido si el código ya fue "reclamado" por esta misma
+    // cuenta (registroCodigos/{código}.usuarioNuevo) y el rol pedido es el que el personal le dio al dar de alta
+    // al miembro (el de su cuenta interna, cuyo uid guarda registroCodigos/{código}.usuarioId).
+    function reclamoValido(codigo, rolPedido) {
+      return exists(/databases/$(database)/documents/registroCodigos/$(codigo))
+          && get(/databases/$(database)/documents/registroCodigos/$(codigo)).data.get('usuarioNuevo', '') == request.auth.uid
+          && get(/databases/$(database)/documents/registroCodigos/$(codigo)).data.get('cuentaCreada', false) == true
+          && get(/databases/$(database)/documents/usuarios/$(get(/databases/$(database)/documents/registroCodigos/$(codigo)).data.usuarioId)).data.rol == rolPedido;
+    }
 
     // ---------- Personas ----------
     match /usuarios/{uid} {
       allow read: if firmado() && (request.auth.uid == uid || esPersonal());
 
-      // Registro propio (solo como socio o visitante), alta de personal por un administrador, o alta de un
-      // miembro con código por el personal.
+      // Registro propio de un miembro (solo con un código válido que ya reclamó), alta de personal por un
+      // administrador, o alta de un miembro con código por el personal. Ya no se puede crear un perfil "a secas".
       allow create: if (firmado() && request.auth.uid == uid
                         && esDeCliente(request.resource.data.rol)
-                        && request.resource.data.get('estado', 'ACTIVO') == 'ACTIVO')
+                        && request.resource.data.get('estado', 'ACTIVO') == 'ACTIVO'
+                        && request.resource.data.get('codigoMiembro', '') != ''
+                        && reclamoValido(request.resource.data.codigoMiembro, request.resource.data.rol))
                     || esAdmin()
                     || (esPersonal() && esDeCliente(request.resource.data.rol));
 
@@ -57,7 +68,24 @@ service cloud.firestore {
 
     match /miembros/{codigo} {
       allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
-      allow write: if esPersonal();
+      allow create, delete: if esPersonal();
+      // Al registrarse con su código, la persona (entrando con la cuenta interna del código) apunta el miembro a su
+      // cuenta real y lo marca como registrado; no puede tocar nada más.
+      allow update: if esPersonal()
+                    || (firmado() && resource.data.usuarioId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['usuarioId', 'cuentaCreada', 'correoCuenta', 'actualizadoEn']));
+    }
+
+    // Permite saber si un código existe y si ya tiene cuenta ANTES de iniciar sesión. Solo se puede consultar un
+    // código a la vez (get); no se puede listar. No guarda datos personales: únicamente banderas y uids.
+    match /registroCodigos/{codigo} {
+      allow get: if true;
+      allow create, delete: if esPersonal();
+      allow update: if esPersonal()
+                    || (firmado() && resource.data.usuarioId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['cuentaCreada', 'usuarioNuevo', 'activadaEn']));
     }
 
     match /membresias/{id} {
@@ -81,7 +109,8 @@ service cloud.firestore {
 
     match /precios/{id} {
       allow read: if firmado();
-      allow write: if esPersonal();
+      // Los precios los cambia solo un administrador.
+      allow write: if esAdmin();
     }
 
     // ---------- Áreas, material y horarios ----------
@@ -133,6 +162,15 @@ service cloud.firestore {
     match /checkins/{id} {
       allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
       allow write: if esPersonal();
+    }
+
+    // Avisos del club. El personal ve todos; socios y visitantes solo los dirigidos a "SOCIOS" o a "TODOS".
+    // Cada quien modifica o borra solo los suyos (el administrador, cualquiera).
+    match /avisos/{id} {
+      allow read: if esPersonal()
+                  || (firmado() && resource.data.destinatario in ['SOCIOS', 'TODOS']);
+      allow create: if esPersonal() && request.resource.data.autorId == request.auth.uid;
+      allow update, delete: if esAdmin() || (esPersonal() && resource.data.autorId == request.auth.uid);
     }
 
     match /notificaciones/{id} {

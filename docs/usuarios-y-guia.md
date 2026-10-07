@@ -1,87 +1,69 @@
-# ClubDeportivo — Usuarios de prueba y guía de trabajo
+# Athletic Club — Roles, acceso y guía de trabajo
 
-> Ver también: [`README.md`](README.md) (índice), [`arquitectura.md`](arquitectura.md) y
-> [`modelo-de-datos.md`](modelo-de-datos.md).
+> Ver también: [`README.md`](README.md) (índice), [`arquitectura.md`](arquitectura.md),
+> [`modelo-de-datos.md`](modelo-de-datos.md) y [`produccion.md`](produccion.md) (pasos antes de publicar).
 
 ## ¿Qué es esta app?
 
-**ClubDeportivo** es una app Android (Kotlin, arquitectura MVVM con `ViewModel` + `LiveData`) para
-gestionar un club deportivo. Permite a los usuarios:
+**Athletic Club** es una app Android (Kotlin, Jetpack Compose, MVVM) para gestionar un club deportivo:
+reservas de áreas, membresías y cobros, torneos, inventario, personal y avisos. El backend es Firebase
+(Authentication + Firestore).
 
-- Iniciar sesión y ver un inicio con accesos según su rol.
-- Ver las **áreas** del club y **reservar** turnos en ellas.
-- Consultar **"Mis reservas"**.
-- Ver planes de **membresía** (individuales y paquetes familiares) y sus precios.
-- Ver **torneos**.
-- Administrar su **perfil**.
+## Roles
 
-La app maneja distintos **roles** (`Rol.kt`), de mayor a menor alcance:
-
-| Rol | Alcance |
+| Rol | Qué ve y qué hace |
 |---|---|
-| `SUPERADMIN` | Nivel sistema, controla todo. |
-| `ADMIN` | Administrador. Único con dashboard y Personal (crea las cuentas del personal). |
-| `ADMIN_AREA` | Heredado; se trata como Encargado de área. |
-| `AYUDANTE_AREA` | Encargado de área. Solo reservas, áreas y membresías. |
-| `SOCIO` | Elige área y reserva turnos. |
-| `VISITANTE_EXTERNO` | Acceso limitado, requiere aprobación para reservar. |
+| `SUPERADMIN` / `ADMIN` | **Administrador.** Dashboard (ingresos y membresías), Personal, Áreas e inventario, Reservas (con torneos y aprobaciones) y Membresías (incluye cambiar precios). Es el único que crea cuentas de personal y avisa a empleados. |
+| `AYUDANTE_AREA` (y `ADMIN_AREA`, heredado) | **Empleado de apoyo.** Reservas de su área (asistencia y aprobaciones), Áreas, Membresías (alta de miembros, renovaciones, suspensiones) y Perfil. No cambia precios ni administra personal. |
+| `SOCIO` | Reserva espacios, ve sus reservas, su membresía y los avisos del club. |
+| `VISITANTE_EXTERNO` | Igual que el socio, pero sus reservas esperan la aprobación del personal y solo puede reservar en áreas que admiten visitantes. |
 
-La app está conectada a **Firebase** (Authentication + Firestore) — ver
-[`arquitectura.md`](arquitectura.md#conectado-a-firebase) para el detalle. El login es real: hace
-falta una cuenta de verdad, no cualquier correo/contraseña como en una versión anterior de este
-proyecto.
+## Cómo se crea cada tipo de cuenta
 
-## Usuarios de prueba
+- **Empleados (administrador o apoyo):** el administrador los da de alta en *Personal → Agregar personal*. La
+  contraseña debe tener mínimo 8 caracteres, mayúscula, minúscula, número y un carácter especial.
+- **Miembros del club (socios y visitantes):** el personal los da de alta en *Membresías → Registrar miembro*. El
+  sistema genera un **código único por persona** (ej. `CLB-7K3M9Q`) y registra el cobro con su método de pago.
+  - La persona abre la app → **Regístrate con tu código** → escribe el código → si es un código real que aún no se
+    usó, la app le pide nombre, correo y contraseña. Si el código ya tiene cuenta, le avisa que ya tiene una cuenta
+    creada y la manda a iniciar sesión.
+  - Si alguien se equivocó de correo o perdió el acceso, el personal puede usar **Restablecer acceso** (en la edición
+    de la membresía) para que vuelva a registrarse con el mismo código.
+  - Entrar a la app siempre es con **correo y contraseña**; el código solo sirve una vez, para registrarse.
 
-Ya existen 6 cuentas reales, una por rol (creadas el 2026-09-08 desde la propia pantalla
-"Registrate", igual que haría cualquiera). Todas usan la contraseña **`123456`**:
+## Membresías
 
-| Correo | Rol |
-|---|---|
-| `superadmin@clubdeportivo.com` | Superadministrador |
-| `admin@clubdeportivo.com` | Administrador |
-| `areadmin@clubdeportivo.com` | Administrador de área |
-| `ayudante@clubdeportivo.com` | Encargado de área |
-| `socio@prueba.com` | Socio |
-| `externo@clubdeportivo.com` | Visitante externo |
+- Suspender una membresía **siempre pide un motivo** (falta de pago, incumplimiento del reglamento, conducta, a
+  solicitud del miembro, documentación, motivo médico u otro con texto). El motivo se guarda y el miembro lo ve en su
+  membresía y al intentar reservar.
+- Renovar suma un mes, **cobra** (con método de pago) y registra el pago.
+- Una membresía suspendida, vencida o inexistente **no puede reservar** (la app avisa por qué).
 
-La cuenta **Socio** (`socio@prueba.com`) es la más completa para probar: tiene una membresía
-familiar activa (con 2 integrantes), 3 reservas en distintos estados (confirmada, pendiente de
-aprobación y finalizada con check-in), y una inscripción a un torneo — ver
-[`arquitectura.md`](arquitectura.md#datos-de-ejemplo-ya-cargados) para el detalle completo de qué
-se cargó y cómo.
+## Dashboard del administrador
 
-Si necesitás una cuenta nueva (para otro nombre, u otro rol de prueba), se crea igual: pantalla de
-login → **"¿No tenés cuenta? Registrate"** → nombre, correo, contraseña de 6+ caracteres, y el rol
-de la lista. Queda guardada de verdad en Firebase (Authentication tiene el correo/contraseña;
-Firestore, en la colección `usuarios`, tiene el nombre y el rol elegido) — pero arranca sin
-reservas ni membresía, esas hay que crearlas usando la app o a mano en la consola.
+Ingresos del mes (contra el mes anterior), gráfica de seis meses, ingreso mensual esperado, membresías activas,
+altas del mes, vencimientos de la semana, vencidas y suspendidas, cobros por método y la operación del día (reservas,
+reservas por aprobar, áreas, stock bajo, personal, torneos). **Los ingresos salen de los cobros que registra la app
+desde que se estrenó esta versión**; no se inventan cobros anteriores.
 
 ## Cómo trabajar en este proyecto
 
 ### Requisitos
-- Android Studio (versión reciente, compatible con Kotlin DSL de Gradle).
-- JDK indicado por `gradle/gradle-daemon-jvm.properties`.
+- Android Studio reciente. El JDK que trae Android Studio sirve (`Contents/jbr`).
+- `app/google-services.json` de tu proyecto de Firebase.
 
 ### Poner el proyecto en marcha
-1. Cloná el repo y abrilo con Android Studio (`File > Open`, seleccioná la carpeta raíz).
-2. Conseguí el archivo `app/google-services.json` de tu proyecto de Firebase (no está en el
-   repo — cada quien usa el suyo) y ponelo en esa ruta exacta.
-3. Dejá que Gradle sincronice (`./gradlew` ya trae el wrapper, no hace falta instalar Gradle aparte).
-4. Corré la app en un emulador o dispositivo con el botón ▶️, o desde terminal:
-   ```
-   ./gradlew installDebug
-   ```
-5. En la pantalla de login, tocá "Registrate" y creá una cuenta (ver "Usuarios de prueba" arriba).
+1. Abre la carpeta raíz con Android Studio y deja que Gradle sincronice.
+2. Corre la app (▶️) o `./gradlew installDebug`.
+3. Pruebas unitarias: `./gradlew testDebugUnitTest`.
+4. Pruebas de las reglas de seguridad: ver [`../tools/pruebas-reglas/README.md`](../tools/pruebas-reglas/README.md).
 
 ### Estructura del código
-- `data/model/` — modelos de datos (`Usuario`, `Reserva`, `Membresia`, `Torneo`, `Pago`, etc).
-- `data/repository/` — interfaces de repositorio + implementaciones Firebase (`Firebase...Repository`).
-- `data/Catalogos.kt` — precios y reglas de negocio centralizados (planes, paquetes familiares,
-  reglas de reservas e inasistencias) para no repetir números "mágicos" en el código.
-- `ui/<pantalla>/` — cada pantalla tiene su `Screen` (la UI, en Jetpack Compose) + `ViewModel`
-  (patrón MVVM), navegadas desde `ui/ClubDeportivoApp.kt` + `ui/navigation/Destinations.kt`.
-- `util/` — helpers (`Fechas`, `Resultado` para éxito/error).
-
-Ver [`arquitectura.md`](arquitectura.md) para una explicación más completa, pensada para alguien
-sin experiencia previa en Android/Kotlin.
+- `data/model/` — modelos (`Usuario`, `Reserva`, `Membresia`, `PagoClub`, `ArticuloInventario`...).
+- `data/repository/` — interfaces y su implementación con Firebase (`Firebase...Repository`).
+- `data/Catalogos.kt` — precios y reglas del club.
+- `ui/theme/` — **sistema de diseño**: un solo naranja de marca, grises cálidos, blanco y tres colores de estado
+  (`Color.kt`); tipografía Plus Jakarta Sans (`Type.kt`). Usa los componentes de `ui/components/` (tarjetas, botones,
+  insignias, diálogos) en lugar de crear estilos nuevos.
+- `ui/<pantalla>/` — cada pantalla con su `Screen` y su `ViewModel`.
+- `util/` — reglas de negocio puras con pruebas (`ReglasMembresia`, `ReglasReserva`, `ReglasContrasena`, `ResumenAdmin`...).

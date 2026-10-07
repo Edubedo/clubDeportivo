@@ -3,16 +3,13 @@ package com.example.clubdeportivo.ui.inventario
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.Deportes
-
-data class ArticuloInventario(
-    val id: String,
-    val nombre: String,
-    val deporte: String,
-    val cantidad: Int,
-    val icono: String,
-    val stockMinimo: Int
-)
+import com.example.clubdeportivo.data.model.ArticuloInventario
+import com.example.clubdeportivo.data.repository.InventarioRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 data class ActividadInventario(
     val id: String,
@@ -23,20 +20,31 @@ data class ActividadInventario(
 /** Cuántas entradas de [ActividadInventario] se conservan como máximo en el historial. */
 private const val MAX_ACTIVIDADES = 50
 
-class InventarioViewModel : ViewModel() {
+/**
+ * Inventario del club. Los cambios se ven al instante en pantalla y se guardan en Firestore; si el guardado falla,
+ * se vuelve a leer el inventario real para no mostrar algo que no quedó guardado.
+ *
+ * [alcance] permite a las pruebas ejecutar todo de forma inmediata; en la app se usa el del ViewModel.
+ */
+class InventarioViewModel(
+    private val repositorio: InventarioRepository = AppContainer.inventarioRepository,
+    private val alcance: CoroutineScope? = null,
+    /** Deportes de las áreas del club (para ofrecer también los que se dieron de alta después). */
+    private val deportesDelClub: suspend () -> List<String> = {
+        runCatching { AppContainer.areaRepository.obtenerAreas().map { it.tipo.trim() } }.getOrDefault(emptyList())
+    }
+) : ViewModel() {
 
-    private val _articulos = MutableLiveData<List<ArticuloInventario>>(
-        listOf(
-            ArticuloInventario("1", "Raquetas de Tenis", "Tenis", 12, "🎾", 5),
-            ArticuloInventario("2", "Pelotas de Tenis", "Tenis", 48, "🎾", 20),
-            ArticuloInventario("4", "Balones de Básquetbol", "Básquetbol", 6, "🏀", 4),
-            ArticuloInventario("5", "Balones de Fútbol", "Fútbol", 10, "⚽", 5),
-            ArticuloInventario("6", "Gorros de Natación", "Natación", 20, "🏊", 10),
-            ArticuloInventario("7", "Tablas de Natación", "Natación", 15, "🏊", 8),
-            ArticuloInventario("8", "Redes de Básquetbol", "Básquetbol", 4, "🏀", 2)
-        )
-    )
+    private val scope: CoroutineScope get() = alcance ?: viewModelScope
+
+    private val _articulos = MutableLiveData<List<ArticuloInventario>>(emptyList())
     val articulos: LiveData<List<ArticuloInventario>> = _articulos
+
+    private val _cargando = MutableLiveData(true)
+    val cargando: LiveData<Boolean> = _cargando
+
+    private val _mensaje = MutableLiveData<String?>()
+    val mensaje: LiveData<String?> = _mensaje
 
     private val _filtroDeporte = MutableLiveData("Todos")
     val filtroDeporte: LiveData<String> = _filtroDeporte
@@ -51,9 +59,33 @@ class InventarioViewModel : ViewModel() {
     private val _historial = MutableLiveData<List<ActividadInventario>>(emptyList())
     val historial: LiveData<List<ActividadInventario>> = _historial
 
-    private val _deportes = listOf("Todos") + Deportes.predefinidos
+    private val _deportes = MutableLiveData(listOf("Todos") + Deportes.predefinidos)
+    val deportes: LiveData<List<String>> = _deportes
 
-    fun obtenerDeportes(): List<String> = _deportes
+    init {
+        cargar()
+    }
+
+    fun cargar() {
+        scope.launch {
+            _cargando.value = true
+            try {
+                _articulos.value = repositorio.obtenerArticulos()
+                val propios = _articulos.value.orEmpty().map { it.deporte }
+                _deportes.value = listOf("Todos") +
+                    (Deportes.predefinidos + deportesDelClub() + propios).filter { it.isNotBlank() }.distinct()
+            } catch (e: Exception) {
+                _mensaje.value = "No se pudo cargar el inventario. Revisa tu conexión."
+            }
+            _cargando.value = false
+        }
+    }
+
+    fun onMensajeMostrado() {
+        _mensaje.value = null
+    }
+
+    fun obtenerDeportes(): List<String> = _deportes.value.orEmpty()
 
     fun filtrarPorDeporte(deporte: String) {
         _filtroDeporte.value = deporte
@@ -92,21 +124,18 @@ class InventarioViewModel : ViewModel() {
     /** @return false (sin guardar nada) si el nombre ya existe en el inventario. */
     fun agregarArticulo(nombre: String, deporte: String, cantidadInicial: Int, stockMinimo: Int): Boolean {
         if (existeNombre(nombre)) return false
-        val iconoDeporte = mapearIconoDeporte(deporte)
-        val nuevoArticulo = ArticuloInventario(
-            id = System.currentTimeMillis().toString(),
-            nombre = nombre.trim(),
-            deporte = deporte,
-            cantidad = cantidadInicial,
-            icono = iconoDeporte,
-            stockMinimo = stockMinimo
-        )
-        val listaActual = _articulos.value?.toMutableList() ?: mutableListOf()
-        listaActual.add(nuevoArticulo)
-        _articulos.value = listaActual
-        registrarActividad("Se agregó \"$nombre\" ($cantidadInicial uds.)")
+        val icono = mapearIconoDeporte(deporte)
         _mostrarModal.value = false
         _articuloEnEdicion.value = null
+        scope.launch {
+            try {
+                val creado = repositorio.crear(nombre.trim(), deporte, cantidadInicial, stockMinimo, icono)
+                _articulos.value = (_articulos.value.orEmpty() + creado)
+                registrarActividad("Se agregó \"${nombre.trim()}\" ($cantidadInicial uds.)")
+            } catch (e: Exception) {
+                _mensaje.value = "No se pudo agregar el artículo. Intenta de nuevo."
+            }
+        }
         return true
     }
 
@@ -121,15 +150,17 @@ class InventarioViewModel : ViewModel() {
         val listaActual = _articulos.value?.toMutableList() ?: return false
         val indice = listaActual.indexOfFirst { it.id == id }
         if (indice != -1) {
-            listaActual[indice] = listaActual[indice].copy(
+            val editado = listaActual[indice].copy(
                 nombre = nombre.trim(),
                 deporte = deporte,
                 cantidad = cantidad,
                 icono = mapearIconoDeporte(deporte),
                 stockMinimo = stockMinimo
             )
+            listaActual[indice] = editado
             _articulos.value = listaActual
-            registrarActividad("Se editó \"$nombre\"")
+            registrarActividad("Se editó \"${nombre.trim()}\"")
+            guardar { repositorio.actualizar(editado) }
         }
         _mostrarModal.value = false
         _articuloEnEdicion.value = null
@@ -141,6 +172,7 @@ class InventarioViewModel : ViewModel() {
         if (listaActual.removeAll { it.id == articulo.id }) {
             _articulos.value = listaActual
             registrarActividad("Se eliminó \"${articulo.nombre}\" del inventario")
+            guardar { repositorio.eliminar(articulo.id) }
         }
     }
 
@@ -162,6 +194,21 @@ class InventarioViewModel : ViewModel() {
             _articulos.value = listaActual
             val signo = if (nuevaCantidad > articulo.cantidad) "+1" else "-1"
             registrarActividad("${articulo.nombre}: $signo (ahora $nuevaCantidad uds.)")
+            guardar { repositorio.actualizarCantidad(articulo.id, nuevaCantidad) }
+        }
+    }
+
+    /** Guarda en Firestore lo que ya se ve en pantalla; si falla, avisa y vuelve a leer lo que realmente quedó guardado. */
+    private fun guardar(operacion: suspend () -> Unit) {
+        scope.launch {
+            try {
+                operacion()
+            } catch (e: Exception) {
+                _mensaje.value = "No se pudo guardar el cambio. Se restauró el inventario."
+                try {
+                    _articulos.value = repositorio.obtenerArticulos()
+                } catch (_: Exception) { }
+            }
         }
     }
 

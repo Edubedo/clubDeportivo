@@ -1,0 +1,14 @@
+{
+  "name": "pruebas-reglas-firestore",
+  "private": true,
+  "type": "module",
+  "description": "Pruebas de las reglas de seguridad de firestore.rules con el emulador de Firestore",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-athletic \"node prueba.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.0.0",
+    "firebase-tools": "^15.32.1"
+  }
+}

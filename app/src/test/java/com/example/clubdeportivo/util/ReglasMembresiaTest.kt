@@ -55,6 +55,12 @@ class ReglasMembresiaTest {
     }
 
     @Test
+    fun `normalizarCodigo acepta los 6 caracteres sin el prefijo`() {
+        assertEquals("CLB-7K3M9Q", ReglasMembresia.normalizarCodigo("7k3m9q"))
+        assertTrue(ReglasMembresia.esCodigo("7K3M9Q"))
+    }
+
+    @Test
     fun `un correo o un texto cualquiera no es un codigo`() {
         assertFalse(ReglasMembresia.esCodigo("admin@clubdeportivo.com"))
         assertFalse(ReglasMembresia.esCodigo("CLB-123"))

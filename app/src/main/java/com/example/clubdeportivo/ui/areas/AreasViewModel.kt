@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.model.Area
+import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import com.example.clubdeportivo.data.repository.TorneoRepository
@@ -61,7 +62,14 @@ class AreasViewModel(
                 it.nombre.trim().equals(nombre.trim(), ignoreCase = true)
         }
 
-    fun guardarArea(existente: Area?, nombre: String, tipo: String, capacidad: Int, emoji: String) {
+    fun guardarArea(
+        existente: Area?,
+        nombre: String,
+        tipo: String,
+        capacidad: Int,
+        emoji: String,
+        disponibilidad: DisponibilidadArea = DisponibilidadArea.DISPONIBLE
+    ) {
         if (nombreRepetido(nombre, tipo, existente?.id)) {
             _mensaje.value = "Ya existe \"${nombre.trim()}\" en $tipo."
             return
@@ -69,7 +77,10 @@ class AreasViewModel(
         viewModelScope.launch {
             try {
                 if (existente == null) {
-                    areaRepository.crearArea(nombre.trim(), tipo.trim(), capacidad, emoji.trim())
+                    val creada = areaRepository.crearArea(nombre.trim(), tipo.trim(), capacidad, emoji.trim())
+                    if (disponibilidad != creada.disponibilidad) {
+                        areaRepository.actualizarArea(creada.copy(disponibilidad = disponibilidad))
+                    }
                     _mensaje.value = "Área agregada: ${nombre.trim()}"
                 } else {
                     val hoy = Fechas.hoy()
@@ -80,13 +91,37 @@ class AreasViewModel(
                         return@launch
                     }
                     areaRepository.actualizarArea(
-                        existente.copy(nombre = nombre.trim(), tipo = tipo.trim(), capacidad = capacidad, emoji = emoji.trim())
+                        existente.copy(
+                            nombre = nombre.trim(),
+                            tipo = tipo.trim(),
+                            capacidad = capacidad,
+                            emoji = emoji.trim(),
+                            disponibilidad = disponibilidad
+                        )
                     )
                     _mensaje.value = "Área actualizada: ${nombre.trim()}"
                 }
                 cargarAreas()
             } catch (e: Exception) {
                 _mensaje.value = "No se pudo guardar el área."
+            }
+        }
+    }
+
+    /** Cambia solo el estatus del área (acción rápida del menú de la tarjeta). */
+    fun cambiarDisponibilidad(area: Area, nueva: DisponibilidadArea) {
+        if (area.disponibilidad == nueva) return
+        viewModelScope.launch {
+            try {
+                areaRepository.actualizarArea(area.copy(disponibilidad = nueva))
+                _mensaje.value = if (nueva == DisponibilidadArea.MANTENIMIENTO) {
+                    "${area.nombre} quedó en mantenimiento: ya no admite reservas nuevas. Las que ya existen se conservan."
+                } else {
+                    "${area.nombre} está disponible otra vez."
+                }
+                cargarAreas()
+            } catch (e: Exception) {
+                _mensaje.value = "No se pudo cambiar el estatus del área."
             }
         }
     }

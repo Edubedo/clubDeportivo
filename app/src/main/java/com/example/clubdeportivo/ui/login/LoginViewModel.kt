@@ -8,14 +8,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.repository.AuthRepository
-import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Resultado
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel del login. No conoce Views ni Fragments: solo recibe datos,
- * valida, le pide al repositorio que inicie sesión y expone el resultado
- * mediante LiveData para que la Vista reaccione.
+ * ViewModel del login (correo y contraseña). No conoce la pantalla: recibe datos, valida, le pide al
+ * repositorio que inicie sesión y expone el resultado mediante LiveData.
  */
 class LoginViewModel(
     private val authRepository: AuthRepository = AppContainer.authRepository
@@ -36,25 +34,39 @@ class LoginViewModel(
     private val _errorGeneral = MutableLiveData<String?>()
     val errorGeneral: LiveData<String?> = _errorGeneral
 
+    /** Avisos informativos (no son errores), como "te enviamos un correo". */
+    private val _aviso = MutableLiveData<String?>()
+    val aviso: LiveData<String?> = _aviso
+
+    /** true mientras se revisa si el teléfono todavía tiene una sesión guardada (se muestra una carga en vez del formulario). */
+    private val _restaurando = MutableLiveData(true)
+    val restaurando: LiveData<Boolean> = _restaurando
+
+    init {
+        viewModelScope.launch {
+            val usuario = authRepository.restaurarSesion()
+            if (usuario != null) {
+                SesionManager.iniciarSesion(usuario)
+                _loginExitoso.value = true
+            }
+            _restaurando.value = false
+        }
+    }
+
     fun login(email: String, password: String) {
+        if (_cargando.value == true) return
         var esValido = true
         val emailLimpio = email.trim()
 
-        // Sin "@" lo escrito es un código de miembro: entra con el código solo, sin contraseña.
-        if (!emailLimpio.contains("@")) {
-            loginConCodigo(emailLimpio)
-            return
-        }
-
-        if (emailLimpio.isBlank() || !isValidEmail(emailLimpio)) {
-            _emailError.value = "Ingresá un correo electrónico válido"
+        if (emailLimpio.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(emailLimpio).matches()) {
+            _emailError.value = "Escribe un correo electrónico válido"
             esValido = false
         } else {
             _emailError.value = null
         }
 
-        if (password.isBlank() || password.length < 6) {
-            _passwordError.value = "La contraseña debe tener al menos 6 caracteres"
+        if (password.isEmpty()) {
+            _passwordError.value = "Escribe tu contraseña"
             esValido = false
         } else {
             _passwordError.value = null
@@ -78,30 +90,30 @@ class LoginViewModel(
         }
     }
 
-    private fun loginConCodigo(codigo: String) {
-        _passwordError.value = null
-        if (!ReglasMembresia.esCodigo(codigo)) {
-            _emailError.value = "Escribe tu correo o tu código de miembro (ej. CLB-7K3M9Q)"
+    /** Manda el correo para cambiar la contraseña; el aviso de éxito o error sale en el snackbar. */
+    fun olvideContrasena(email: String) {
+        val emailLimpio = email.trim()
+        if (emailLimpio.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(emailLimpio).matches()) {
+            _emailError.value = "Escribe tu correo para enviarte el enlace"
             return
         }
         _emailError.value = null
-
         viewModelScope.launch {
             _cargando.value = true
-            when (val resultado = authRepository.loginConCodigo(codigo)) {
-                is Resultado.Exito -> {
-                    SesionManager.iniciarSesion(resultado.datos)
-                    _errorGeneral.value = null
-                    _loginExitoso.value = true
-                }
-                is Resultado.Error -> _errorGeneral.value = resultado.mensaje
+            _aviso.value = when (val resultado = authRepository.enviarRestablecimiento(emailLimpio)) {
+                is Resultado.Exito -> "Te enviamos un correo a $emailLimpio para cambiar tu contraseña."
+                is Resultado.Error -> resultado.mensaje
             }
             _cargando.value = false
         }
     }
 
-    private fun isValidEmail(email: String): Boolean {
-        return email.contains("@") && email.contains(".") && email.length >= 5
+    fun onAvisoMostrado() {
+        _aviso.value = null
+    }
+
+    fun onErrorMostrado() {
+        _errorGeneral.value = null
     }
 
     fun onNavegacionCompletada() {

@@ -1,6 +1,5 @@
 package com.example.clubdeportivo.data.repository
 
-import com.example.clubdeportivo.data.FirebaseSeeder
 import com.example.clubdeportivo.data.model.InscripcionTorneo
 import com.example.clubdeportivo.data.model.Torneo
 import com.example.clubdeportivo.util.Fechas
@@ -47,7 +46,6 @@ class FirebaseTorneoRepository(
         db.collection("areas").document(areaId).get().await().getString("nombre") ?: ""
 
     override suspend fun obtenerTorneos(): List<Torneo> {
-        FirebaseSeeder.asegurarTorneos(db)
         return torneos.get().await().documents.mapNotNull { it.toTorneo() }
     }
 

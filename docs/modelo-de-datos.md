@@ -51,7 +51,8 @@ data class RestriccionHorario(val id: String, val areaId: String, val diaSemana:
 ## Miembros, códigos y precios (`Miembro.kt`, `Precios.kt`)
 
 Cada persona del club (titular o integrante de un paquete familiar) tiene un **código único** del tipo
-`CLB-7K3M9Q` y con él entra al sistema, sin contraseña. Se registran desde Membresías → Miembros.
+`CLB-7K3M9Q`. El código **no es una contraseña**: sirve una sola vez, para que la persona cree su cuenta (correo y
+contraseña propios) con *Regístrate con tu código*. Se dan de alta desde Membresías → Registrar miembro.
 
 - Colección `miembros/{codigo}`: el código es el id del documento, así que no puede repetirse. Guarda
   nombre, teléfono, correo, `membresiaId`, parentesco y `usuarioId`.
