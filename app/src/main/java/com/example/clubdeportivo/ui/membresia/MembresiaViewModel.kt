@@ -94,7 +94,15 @@ class MembresiaViewModel(
                 EstadoMembresia.SUSPENDIDA -> "Suspendida"
             }
             _mensaje.value = "$estadoTexto · ${dinero(membresia.precio)} al mes"
-            _detalle.value = "Vigente del ${membresia.fechaInicio} al ${membresia.fechaVencimiento}"
+            _detalle.value = when (estadoActual) {
+                EstadoMembresia.ACTIVA ->
+                    "Vigente del ${Fechas.legible(membresia.fechaInicio)} al ${Fechas.legible(membresia.fechaVencimiento)}"
+                EstadoMembresia.VENCIDA ->
+                    "Venció el ${Fechas.legible(membresia.fechaVencimiento)}. Renuévala en recepción para volver a reservar."
+                EstadoMembresia.SUSPENDIDA ->
+                    "Motivo: ${membresia.motivoSuspension.ifBlank { "sin especificar" }}. " +
+                        "Habla con recepción para reactivarla."
+            }
             _cargando.value = false
         }
     }

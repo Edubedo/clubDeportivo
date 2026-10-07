@@ -5,12 +5,27 @@ import com.example.clubdeportivo.data.model.Usuario
 import com.example.clubdeportivo.util.Resultado
 import kotlinx.coroutines.delay
 
+enum class EstadoCodigo { DISPONIBLE, YA_REGISTRADO }
+
 interface AuthRepository {
     suspend fun login(correo: String, password: String): Resultado<Usuario>
-    suspend fun registrar(nombre: String, correo: String, password: String, rol: Rol): Resultado<Usuario>
 
-    /** Entrada con el código único de miembro (sin contraseña): solo funciona con una membresía activa y vigente. */
-    suspend fun loginConCodigo(codigo: String): Resultado<Usuario>
+    /**
+     * Dice si [codigo] pertenece a un miembro real y si ya tiene cuenta. No pide sesión ni expone datos personales.
+     * Devuelve error si el código no existe.
+     */
+    suspend fun consultarCodigo(codigo: String): Resultado<EstadoCodigo>
+
+    /** Crea la cuenta (correo y contraseña propios) de un miembro que se registra con su código. */
+    suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String): Resultado<Usuario>
+
+    /** Si el teléfono todavía recuerda una sesión de Firebase, la recupera para no pedir la contraseña cada vez. */
+    suspend fun restaurarSesion(): Usuario?
+
+    fun cerrarSesion()
+
+    /** Envía al correo un enlace para elegir una contraseña nueva. */
+    suspend fun enviarRestablecimiento(correo: String): Resultado<Unit>
 }
 
 /**
@@ -58,11 +73,15 @@ class FakeAuthRepository : AuthRepository {
         return Resultado.Exito(usuario)
     }
 
-    override suspend fun registrar(nombre: String, correo: String, password: String, rol: Rol): Resultado<Usuario> {
-        delay(400)
-        return Resultado.Exito(Usuario(id = correo, nombre = nombre, correo = correo, rol = rol))
-    }
+    override suspend fun consultarCodigo(codigo: String): Resultado<EstadoCodigo> =
+        Resultado.Error("El registro por código solo está disponible con la base de datos real.")
 
-    override suspend fun loginConCodigo(codigo: String): Resultado<Usuario> =
-        Resultado.Error("El acceso por código solo está disponible con la base de datos real.")
+    override suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String): Resultado<Usuario> =
+        Resultado.Error("El registro por código solo está disponible con la base de datos real.")
+
+    override suspend fun restaurarSesion(): Usuario? = null
+
+    override fun cerrarSesion() = Unit
+
+    override suspend fun enviarRestablecimiento(correo: String): Resultado<Unit> = Resultado.Exito(Unit)
 }

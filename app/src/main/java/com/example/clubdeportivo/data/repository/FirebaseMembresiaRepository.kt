@@ -20,7 +20,8 @@ internal fun DocumentSnapshot.toMembresia(): Membresia? {
         precio = getDouble("precio") ?: 0.0,
         estado = EstadoMembresia.valueOf(getString("estado") ?: "ACTIVA"),
         fechaInicio = getString("fechaInicio") ?: "",
-        fechaVencimiento = getString("fechaVencimiento") ?: ""
+        fechaVencimiento = getString("fechaVencimiento") ?: "",
+        motivoSuspension = getString("motivoSuspension") ?: ""
     )
 }
 

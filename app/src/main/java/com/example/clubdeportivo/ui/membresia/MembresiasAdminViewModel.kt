@@ -8,6 +8,7 @@ import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.ClavesPrecio
 import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.MembresiaDetalle
+import com.example.clubdeportivo.data.model.MetodoPago
 import com.example.clubdeportivo.data.model.PersonaForm
 import com.example.clubdeportivo.data.model.PlanIndividual
 import com.example.clubdeportivo.data.model.TipoMembresia
@@ -71,7 +72,13 @@ class MembresiasAdminViewModel(
     private suspend fun preciosActuales(): Map<String, Double> =
         try { preciosRepository.obtenerEditados() } catch (e: Exception) { emptyMap() }
 
-    fun registrar(tipo: TipoMembresia, plan: PlanIndividual?, paqueteId: Int?, personas: List<PersonaForm>) {
+    fun registrar(
+        tipo: TipoMembresia,
+        plan: PlanIndividual?,
+        paqueteId: Int?,
+        personas: List<PersonaForm>,
+        metodoPago: MetodoPago
+    ) {
         val error = ReglasMembresia.validarPersonas(tipo, paqueteId, personas)
         if (error != null) {
             _errorFormulario.value = error
@@ -82,7 +89,7 @@ class MembresiasAdminViewModel(
             _errorFormulario.value = null
             try {
                 val precio = ClavesPrecio.deMembresia(tipo, plan, paqueteId, preciosActuales())
-                _registroReciente.value = repositorio.registrar(tipo, plan, paqueteId, precio, personas)
+                _registroReciente.value = repositorio.registrar(tipo, plan, paqueteId, precio, personas, metodoPago)
                 _guardadoExitoso.value = (_guardadoExitoso.value ?: 0) + 1
                 cargar()
             } catch (e: Exception) {
@@ -97,9 +104,14 @@ class MembresiasAdminViewModel(
         plan: PlanIndividual?,
         paqueteId: Int?,
         personas: List<PersonaForm>,
-        estado: EstadoMembresia?
+        estado: EstadoMembresia?,
+        motivoSuspension: String?
     ) {
         val membresia = detalle.membresia
+        if (estado == EstadoMembresia.SUSPENDIDA && membresia.estado != EstadoMembresia.SUSPENDIDA && motivoSuspension.isNullOrBlank()) {
+            _errorFormulario.value = "Elige por qué se suspende la membresía."
+            return
+        }
         val anteriorALosCodigos = detalle.personas.any { it.codigo.isBlank() }
         if (!anteriorALosCodigos) {
             val error = ReglasMembresia.validarPersonas(membresia.tipo, paqueteId, personas)
@@ -124,7 +136,7 @@ class MembresiasAdminViewModel(
                 } else {
                     repositorio.actualizar(membresia.id, plan, paqueteId, precio, personas)
                 }
-                if (estado != null && estado != membresia.estado) repositorio.cambiarEstado(membresia.id, estado)
+                if (estado != null && estado != membresia.estado) repositorio.cambiarEstado(membresia.id, estado, motivoSuspension)
                 _mensaje.value = "Cambios guardados."
                 _guardadoExitoso.value = (_guardadoExitoso.value ?: 0) + 1
                 cargar()
@@ -135,11 +147,15 @@ class MembresiasAdminViewModel(
         }
     }
 
-    fun cambiarEstado(detalle: MembresiaDetalle, estado: EstadoMembresia) {
+    fun cambiarEstado(detalle: MembresiaDetalle, estado: EstadoMembresia, motivo: String? = null) {
         viewModelScope.launch {
             try {
-                repositorio.cambiarEstado(detalle.membresia.id, estado)
-                _mensaje.value = if (estado == EstadoMembresia.SUSPENDIDA) "Membresía suspendida: sus códigos no pueden entrar." else "Membresía reactivada."
+                repositorio.cambiarEstado(detalle.membresia.id, estado, motivo)
+                _mensaje.value = if (estado == EstadoMembresia.SUSPENDIDA) {
+                    "Membresía suspendida. Mientras lo esté, no podrán reservar."
+                } else {
+                    "Membresía reactivada."
+                }
                 cargar()
             } catch (e: Exception) {
                 _mensaje.value = "No se pudo cambiar el estado."
@@ -147,17 +163,34 @@ class MembresiasAdminViewModel(
         }
     }
 
-    fun renovar(detalle: MembresiaDetalle) {
+    fun renovar(detalle: MembresiaDetalle, metodoPago: MetodoPago) {
         val membresia = detalle.membresia
         viewModelScope.launch {
             try {
                 val precio = ClavesPrecio.deMembresia(membresia.tipo, membresia.plan, membresia.paqueteFamiliarId, preciosActuales())
-                repositorio.renovar(membresia.id, precio)
-                _mensaje.value = "Membresía renovada un mes (hasta el ${ReglasMembresia.fechasDeRenovacion(membresia, Fechas.hoy()).second})."
+                repositorio.renovar(membresia.id, precio, metodoPago)
+                _mensaje.value = "Cobro de ${dinero(precio)} registrado. Membresía renovada hasta el " +
+                    "${Fechas.legible(ReglasMembresia.fechasDeRenovacion(membresia, Fechas.hoy()).second)}."
                 cargar()
             } catch (e: Exception) {
                 _mensaje.value = "No se pudo renovar la membresía."
             }
+        }
+    }
+
+    /** Libera el código de [codigo] para que su dueño pueda volver a registrarse (por ejemplo, si se equivocó de correo). */
+    fun restablecerAcceso(codigo: String) {
+        viewModelScope.launch {
+            _guardando.value = true
+            try {
+                repositorio.restablecerAcceso(codigo)
+                _mensaje.value = "Listo: $codigo ya puede volver a registrarse."
+                _guardadoExitoso.value = (_guardadoExitoso.value ?: 0) + 1
+                cargar()
+            } catch (e: Exception) {
+                _mensaje.value = e.message ?: "No se pudo restablecer el acceso."
+            }
+            _guardando.value = false
         }
     }
 

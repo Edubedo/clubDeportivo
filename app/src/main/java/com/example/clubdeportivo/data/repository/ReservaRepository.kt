@@ -34,6 +34,12 @@ interface ReservaRepository {
     /** true si se pudo cancelar sin penalización (fue con 4+ horas de anticipación). */
     suspend fun cancelarReserva(reservaId: String): Boolean
     suspend fun registrarNoShow(usuarioId: String)
+
+    /** Confirma una reserva que estaba pendiente de aprobación (visitantes externos) y le aparta su material. */
+    suspend fun aprobarReserva(reservaId: String)
+
+    /** Rechaza una reserva pendiente de aprobación: queda cancelada y libera su lugar. */
+    suspend fun rechazarReserva(reservaId: String)
     suspend fun estaBloqueadoPorInasistencias(usuarioId: String): Boolean
 
 }
@@ -176,6 +182,14 @@ class FakeReservaRepository : ReservaRepository {
 
         reservas[indice] = reserva.copy(estado = EstadoReserva.CANCELADA)
         return sinPenalizacion
+    }
+
+    override suspend fun aprobarReserva(reservaId: String) {
+        reservas.replaceAll { if (it.id == reservaId) it.copy(estado = EstadoReserva.CONFIRMADA) else it }
+    }
+
+    override suspend fun rechazarReserva(reservaId: String) {
+        reservas.replaceAll { if (it.id == reservaId) it.copy(estado = EstadoReserva.CANCELADA) else it }
     }
 
     override suspend fun registrarNoShow(usuarioId: String) {

@@ -1,32 +1,45 @@
 package com.example.clubdeportivo.ui.areas
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.sp
+import com.example.clubdeportivo.ui.theme.BordeCampo
+import com.example.clubdeportivo.ui.theme.MarcaSuave
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import com.example.clubdeportivo.ui.components.botonFlotanteVisible
+import com.example.clubdeportivo.ui.components.BotonFlotanteAgregar
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,7 +53,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,34 +63,34 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.BurbujaTexto
 import com.example.clubdeportivo.ui.components.CampoTexto
+import com.example.clubdeportivo.ui.components.DialogoConfirmacion
 import com.example.clubdeportivo.ui.components.DialogoFormulario
 import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EspacioCampos
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.FullScreenLoading
+import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.PestanasPildora
-
-private val paleta = listOf(
-    Color(0xFF8FB3E2) to Color(0xFFD6E4FE),
-    Color(0xFF31487A) to Color(0xFFEAF1F8),
-    Color(0xFF1E2E4F) to Color(0xFFD6E4FE),
-    Color(0xFF192338) to Color(0xFFEAF1F8)
-)
-
-private fun colorDeDeporte(tipo: String): Pair<Color, Color> = paleta[(tipo.hashCode() and Int.MAX_VALUE) % paleta.size]
+import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.Marca
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.TextoPrincipal
+import com.example.clubdeportivo.ui.theme.TextoSecundario
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,6 +103,11 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
     var areaEnEdicion by remember { mutableStateOf<Area?>(null) }
     var mostrarFormulario by remember { mutableStateOf(false) }
     var areaAEliminar by remember { mutableStateOf<Area?>(null) }
+    var filtroDeporte by remember { mutableStateOf<String?>(null) }
+    val listState = rememberLazyListState()
+
+    val deportes = areas.map { it.tipo }.distinct()
+    val areasVisibles = areas.filter { filtroDeporte == null || it.tipo == filtroDeporte }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(mensaje) {
@@ -102,28 +119,28 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = Color(0xFFEAF1F8),
+        containerColor = FondoApp,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        // 🚀 Botón flotante unificado y posicionado correctamente por encima de la barra de navegación
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            BotonFlotanteAgregar(
+                texto = "Agregar área",
+                visible = listState.botonFlotanteVisible(),
                 onClick = {
                     areaEnEdicion = null
                     mostrarFormulario = true
-                },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Agregar área", fontWeight = FontWeight.Bold) },
-                containerColor = Color(0xFF1E2E4F),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
+                }
             )
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-
-            // Se elimina cualquier texto duplicado de "Club Deportivo" de este nivel,
-            // ya que la barra superior principal (TopAppBar) de la app ya se encarga de mostrarlo.
-
+            if (deportes.size > 1) {
+                val opciones = listOf("Todos") + deportes
+                PestanasPildora(
+                    opciones = opciones,
+                    seleccionada = opciones.indexOf(filtroDeporte ?: "Todos").coerceAtLeast(0),
+                    onSeleccion = { filtroDeporte = if (it == 0) null else opciones[it] }
+                )
+            }
             PullToRefreshBox(
                 isRefreshing = cargando && areas.isNotEmpty(),
                 onRefresh = { viewModel.cargarAreas() },
@@ -131,14 +148,17 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
             ) {
                 when {
                     cargando && areas.isEmpty() -> FullScreenLoading()
-                    areas.isEmpty() -> EmptyState("No hay áreas registradas. Agrega la primera con \"Agregar área\".")
+                    areas.isEmpty() -> EmptyState(
+                        mensaje = "No hay áreas registradas. Agrega la primera con \"Agregar área\".",
+                        icono = Icons.Default.Place
+                    )
                     else -> LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        // Padding inferior amplio para que el contenido no quede oculto detrás del FAB ni de la barra inferior
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
+                        contentPadding = PaddingValues(start = MargenPantalla, end = MargenPantalla, top = 8.dp, bottom = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(areas, key = { it.id }) { area ->
+                        items(areasVisibles, key = { it.id }) { area ->
                             AreaCard(
                                 area = area,
                                 reservasHoy = reservasHoy[area.id] ?: 0,
@@ -146,6 +166,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                                     areaEnEdicion = area
                                     mostrarFormulario = true
                                 },
+                                onCambiarEstatus = { viewModel.cambiarDisponibilidad(area, it) },
                                 onEliminar = { areaAEliminar = area }
                             )
                         }
@@ -162,80 +183,87 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                     Deportes.predefinidos.map { it to Deportes.emojiDe(it) }).distinctBy { it.first.lowercase() },
             nombreRepetido = { nombre, tipo -> viewModel.nombreRepetido(nombre, tipo, areaEnEdicion?.id) },
             onCerrar = { mostrarFormulario = false },
-            onGuardar = { nombre, tipo, capacidad, emoji ->
-                viewModel.guardarArea(areaEnEdicion, nombre, tipo, capacidad, emoji)
+            onGuardar = { nombre, tipo, capacidad, emoji, disponibilidad ->
+                viewModel.guardarArea(areaEnEdicion, nombre, tipo, capacidad, emoji, disponibilidad)
                 mostrarFormulario = false
             }
         )
     }
 
     areaAEliminar?.let { area ->
-        AlertDialog(
-            onDismissRequest = { areaAEliminar = null },
-            title = { Text("Eliminar área") },
-            text = { Text("¿Seguro que quieres eliminar \"${Deportes.titulo(area.tipo, area.nombre)}\"? Esta acción no se puede deshacer.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.eliminarArea(area)
-                    areaAEliminar = null
-                }) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                }
+        DialogoConfirmacion(
+            titulo = "Eliminar área",
+            mensaje = "¿Seguro que quieres eliminar \"${Deportes.titulo(area.tipo, area.nombre)}\"? Esta acción no se puede deshacer.",
+            textoConfirmar = "Eliminar",
+            textoCancelar = "Cancelar",
+            onConfirmar = {
+                viewModel.eliminarArea(area)
+                areaAEliminar = null
             },
-            dismissButton = { TextButton(onClick = { areaAEliminar = null }) { Text("Cancelar") } }
+            onCancelar = { areaAEliminar = null }
         )
     }
 }
 
 @Composable
-private fun AreaCard(area: Area, reservasHoy: Int, onEditar: () -> Unit, onEliminar: () -> Unit) {
-    val (borde, burbuja) = colorDeDeporte(area.tipo)
+private fun AreaCard(
+    area: Area,
+    reservasHoy: Int,
+    onEditar: () -> Unit,
+    onCambiarEstatus: (DisponibilidadArea) -> Unit,
+    onEliminar: () -> Unit
+) {
     var menuAbierto by remember { mutableStateOf(false) }
     val enMantenimiento = area.disponibilidad == DisponibilidadArea.MANTENIMIENTO
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.5.dp, borde),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(46.dp).clip(CircleShape).background(burbuja),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = Deportes.emojiDe(area.tipo, area.emoji), fontSize = 22.sp)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
+    TarjetaClub(modifier = Modifier.fillMaxWidth(), onClick = onEditar) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            BurbujaTexto(
+                texto = Deportes.emojiDe(area.tipo, area.emoji),
+                tamano = 48.dp,
+                tamanoTexto = 24,
+                modifier = Modifier.padding(top = 4.dp)
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = Deportes.titulo(area.tipo, area.nombre),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF192338),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = TextoPrincipal,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "$reservasHoy reservas hoy · cupo ${area.capacidad}",
-                    fontSize = 12.sp,
-                    color = Color(0xFF31487A),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-                if (enMantenimiento) {
-                    Text(
-                        text = "EN MANTENIMIENTO",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFB45309),
-                        modifier = Modifier.padding(top = 4.dp)
+                when (area.disponibilidad) {
+                    DisponibilidadArea.MANTENIMIENTO -> Insignia(
+                        texto = "En mantenimiento",
+                        tipo = TipoInsignia.ALERTA,
+                        icono = Icons.Default.Warning,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                    DisponibilidadArea.OCUPADA -> Insignia(
+                        texto = "Ocupada",
+                        tipo = TipoInsignia.NEUTRO,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                    DisponibilidadArea.DISPONIBLE -> Insignia(
+                        texto = "Disponible",
+                        tipo = TipoInsignia.EXITO,
+                        modifier = Modifier.padding(top = 6.dp)
                     )
                 }
             }
             Box {
                 IconButton(onClick = { menuAbierto = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = Color(0xFF31487A))
+                    Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = TextoSecundario)
                 }
                 DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
                     DropdownMenuItem(
@@ -244,8 +272,21 @@ private fun AreaCard(area: Area, reservasHoy: Int, onEditar: () -> Unit, onElimi
                         onClick = { menuAbierto = false; onEditar() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Eliminar") },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                        text = { Text(if (enMantenimiento) "Marcar disponible" else "Poner en mantenimiento") },
+                        leadingIcon = {
+                            Icon(
+                                if (enMantenimiento) Icons.Default.CheckCircle else Icons.Default.Build,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            menuAbierto = false
+                            onCambiarEstatus(if (enMantenimiento) DisponibilidadArea.DISPONIBLE else DisponibilidadArea.MANTENIMIENTO)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Eliminar", color = Peligro) },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Peligro) },
                         onClick = { menuAbierto = false; onEliminar() }
                     )
                 }
@@ -261,16 +302,17 @@ private fun AreaFormDialog(
     deportesExistentes: List<Pair<String, String>>,
     nombreRepetido: (nombre: String, tipo: String) -> Boolean,
     onCerrar: () -> Unit,
-    onGuardar: (nombre: String, tipo: String, capacidad: Int, emoji: String) -> Unit
+    onGuardar: (nombre: String, tipo: String, capacidad: Int, emoji: String, disponibilidad: DisponibilidadArea) -> Unit
 ) {
     val esEdicion = areaExistente != null
     var modoNuevo by remember { mutableStateOf(false) }
     var deporteElegido by remember { mutableStateOf(areaExistente?.tipo ?: "") }
     var dropdownAbierto by remember { mutableStateOf(false) }
     var deporteNuevo by remember { mutableStateOf("") }
-    var emojiNuevo by remember { mutableStateOf("") }
+    var emojiNuevo by remember { mutableStateOf(Deportes.emojisSugeridos.first()) }
     var nombre by remember { mutableStateOf(areaExistente?.nombre ?: "") }
     var capacidad by remember { mutableStateOf((areaExistente?.capacidad ?: 10).toString()) }
+    var enMantenimiento by remember { mutableStateOf(areaExistente?.disponibilidad == DisponibilidadArea.MANTENIMIENTO) }
 
     val tipo = if (modoNuevo) deporteNuevo.trim() else deporteElegido
     val repetido = nombre.isNotBlank() && tipo.isNotBlank() && nombreRepetido(nombre, tipo)
@@ -279,7 +321,23 @@ private fun AreaFormDialog(
 
     DialogoFormulario(
         titulo = if (esEdicion) "Editar área" else "Agregar área",
-        onCerrar = onCerrar
+        onCerrar = onCerrar,
+        pie = {
+            BotonPrimario(
+                texto = if (esEdicion) "Guardar cambios" else "Agregar área",
+                enabled = puedeGuardar,
+                onClick = {
+                    val emoji = if (modoNuevo) emojiNuevo.trim() else areaExistente?.emoji.orEmpty()
+                    onGuardar(
+                        nombre.trim(),
+                        tipo,
+                        capacidad.toIntOrNull() ?: 1,
+                        emoji,
+                        if (enMantenimiento) DisponibilidadArea.MANTENIMIENTO else DisponibilidadArea.DISPONIBLE
+                    )
+                }
+            )
+        }
     ) {
         PestanasPildora(
             opciones = listOf("Deporte existente", "Nuevo deporte"),
@@ -298,7 +356,7 @@ private fun AreaFormDialog(
                         ?.let { "${it.second} ${it.first}" } ?: "",
                     onValueChange = {},
                     readOnly = true,
-                    placeholder = "—",
+                    placeholder = "Elige un deporte",
                     modifier = Modifier.menuAnchor(),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownAbierto) }
                 )
@@ -315,16 +373,13 @@ private fun AreaFormDialog(
                 }
             }
         } else {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(modifier = Modifier.weight(2f)) {
-                    EtiquetaCampo("NOMBRE DEL DEPORTE")
-                    CampoTexto(value = deporteNuevo, onValueChange = { deporteNuevo = it }, placeholder = "Ej: Pádel")
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    EtiquetaCampo("EMOJI")
-                    CampoTexto(value = emojiNuevo, onValueChange = { emojiNuevo = it.take(4) }, placeholder = "🏆")
-                }
-            }
+            EtiquetaCampo("NOMBRE DEL DEPORTE")
+            CampoTexto(value = deporteNuevo, onValueChange = { deporteNuevo = it }, placeholder = "Ej: Pádel")
+
+            EspacioCampos()
+
+            EtiquetaCampo("EMOJI")
+            SelectorEmoji(seleccionado = emojiNuevo, onSeleccion = { emojiNuevo = it })
         }
 
         EspacioCampos()
@@ -334,6 +389,7 @@ private fun AreaFormDialog(
             value = nombre,
             onValueChange = { nombre = it },
             placeholder = "Ej: Cancha C",
+            capitalizacion = KeyboardCapitalization.Sentences,
             isError = repetido,
             mensajeError = if (repetido) "Ya existe un área con ese nombre en este deporte" else null
         )
@@ -344,18 +400,50 @@ private fun AreaFormDialog(
         CampoTexto(
             value = capacidad,
             onValueChange = { capacidad = it.filter(Char::isDigit).take(4) },
-            tipoTeclado = KeyboardType.Number
+            tipoTeclado = KeyboardType.Number,
+            imeAction = ImeAction.Done
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        EspacioCampos()
 
-        BotonPrimario(
-            texto = if (esEdicion) "Guardar cambios" else "Agregar área",
-            enabled = puedeGuardar,
-            onClick = {
-                val emoji = if (modoNuevo) emojiNuevo.trim() else areaExistente?.emoji.orEmpty()
-                onGuardar(nombre.trim(), tipo, capacidad.toIntOrNull() ?: 1, emoji)
+        EtiquetaCampo("ESTATUS")
+        PestanasPildora(
+            opciones = listOf("Disponible", "En mantenimiento"),
+            seleccionada = if (enMantenimiento) 1 else 0,
+            onSeleccion = { enMantenimiento = it == 1 },
+            margenHorizontal = 0.dp
+        )
+        Text(
+            text = if (enMantenimiento) "No se aceptan reservas nuevas en esta área. Las que ya existen se conservan."
+            else "El área acepta reservas con normalidad.",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextoSecundario
+        )
+    }
+}
+
+
+/** Cuadrícula de emojis para elegir el del deporte nuevo. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SelectorEmoji(seleccionado: String, onSeleccion: (String) -> Unit) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Deportes.emojisSugeridos.forEach { emoji ->
+            val elegido = emoji == seleccionado
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (elegido) MarcaSuave else Color.Transparent)
+                    .border(if (elegido) 2.dp else 1.dp, if (elegido) Marca else BordeCampo, RoundedCornerShape(12.dp))
+                    .selectable(selected = elegido, role = Role.RadioButton, onClick = { onSeleccion(emoji) }),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = emoji, fontSize = 22.sp)
             }
-        )
+        }
     }
 }

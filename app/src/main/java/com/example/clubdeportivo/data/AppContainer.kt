@@ -8,7 +8,13 @@ import com.example.clubdeportivo.data.repository.FirebaseAuthRepository
 import com.example.clubdeportivo.data.repository.FirebaseGestionMembresiasRepository
 import com.example.clubdeportivo.data.repository.FirebaseMembresiaRepository
 import com.example.clubdeportivo.data.repository.FirebasePreciosRepository
+import com.example.clubdeportivo.data.repository.AvisosRepository
+import com.example.clubdeportivo.data.repository.FirebaseAvisosRepository
+import com.example.clubdeportivo.data.repository.FirebaseInventarioRepository
+import com.example.clubdeportivo.data.repository.FirebasePagosRepository
 import com.example.clubdeportivo.data.repository.GestionMembresiasRepository
+import com.example.clubdeportivo.data.repository.InventarioRepository
+import com.example.clubdeportivo.data.repository.PagosRepository
 import com.example.clubdeportivo.data.repository.PreciosRepository
 import com.example.clubdeportivo.data.repository.FirebaseReservaRepository
 import com.example.clubdeportivo.data.repository.FirebaseTorneoRepository
@@ -42,6 +48,9 @@ object AppContainer {
     val preciosRepository: PreciosRepository = FirebasePreciosRepository()
     val torneoRepository: TorneoRepository = FirebaseTorneoRepository()
     val personalRepository: PersonalRepository = FirebasePersonalRepository()
+    val inventarioRepository: InventarioRepository = FirebaseInventarioRepository()
+    val pagosRepository: PagosRepository = FirebasePagosRepository()
+    val avisosRepository: AvisosRepository = FirebaseAvisosRepository()
 
     val usuarioRepository: UsuarioRepository = FirebaseUsuarioRepository()
 }

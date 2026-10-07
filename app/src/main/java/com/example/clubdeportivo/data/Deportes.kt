@@ -13,6 +13,12 @@ object Deportes {
         "Natación" to "🏊"
     )
 
+    /** Emojis que se ofrecen al dar de alta un deporte nuevo; el primero es el que viene preseleccionado. */
+    val emojisSugeridos = listOf(
+        "🏆", "⚽", "🏀", "🎾", "🏊", "🏐", "🏈", "⚾", "🏓", "🏸",
+        "🥊", "🏋️", "🧘", "🚴", "🏃", "⛳", "🏒", "🎱", "🤸", "🧗"
+    )
+
     fun emojiDe(tipo: String, emojiPropio: String = ""): String =
         emojiPropio.ifBlank { emojis[tipo] ?: "🏆" }
 

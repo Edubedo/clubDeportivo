@@ -1,7 +1,9 @@
 package com.example.clubdeportivo.data.repository
 
 import com.example.clubdeportivo.data.SesionManager
+import com.example.clubdeportivo.data.model.ConceptoPago
 import com.example.clubdeportivo.data.model.EstadoMembresia
+import com.example.clubdeportivo.data.model.MetodoPago
 import com.example.clubdeportivo.data.model.MembresiaDetalle
 import com.example.clubdeportivo.data.model.Membresia
 import com.example.clubdeportivo.data.model.MiembroClub
@@ -25,7 +27,8 @@ private fun DocumentSnapshot.toMiembro(): MiembroClub = MiembroClub(
     correo = getString("correo") ?: "",
     membresiaId = getString("membresiaId") ?: "",
     parentesco = getString("parentesco") ?: if (getBoolean("esTitular") == false) "Integrante" else MiembroClub.PARENTESCO_TITULAR,
-    usuarioId = getString("usuarioId") ?: ""
+    usuarioId = getString("usuarioId") ?: "",
+    cuentaCreada = getBoolean("cuentaCreada") == true
 )
 
 /**
@@ -43,6 +46,8 @@ class FirebaseGestionMembresiasRepository(
     private val miembros = db.collection("miembros")
     private val usuarios = db.collection("usuarios")
     private val integrantesAnteriores = db.collection("integrantesFamiliares")
+    private val registroCodigos = db.collection("registroCodigos")
+    private val pagos = db.collection("pagos")
 
     private data class Cuenta(val codigo: String, val uid: String)
 
@@ -109,7 +114,8 @@ class FirebaseGestionMembresiasRepository(
         plan: PlanIndividual?,
         paqueteId: Int?,
         precio: Double,
-        personas: List<PersonaForm>
+        personas: List<PersonaForm>,
+        metodoPago: MetodoPago
     ): MembresiaDetalle {
         val cuentas = personas.map { crearCuenta() }
         val hoy = Fechas.hoy()
@@ -142,13 +148,56 @@ class FirebaseGestionMembresiasRepository(
             val parentesco = if (indice == 0) MiembroClub.PARENTESCO_TITULAR else persona.parentesco.ifBlank { "Integrante" }
             batch.set(miembros.document(cuenta.codigo), datosPersona(persona, membresiaId, parentesco, cuenta.uid, hoy))
             batch.set(usuarios.document(cuenta.uid), datosUsuarioDeMiembro(persona, cuenta.codigo, rol.name, hoy))
+            batch.set(registroCodigos.document(cuenta.codigo), datosRegistro(cuenta.uid))
             MiembroClub(cuenta.codigo, persona.nombre.trim(), persona.telefono.trim(), persona.correo.trim(), membresiaId, parentesco, cuenta.uid)
         }
+        // El cobro queda registrado en la misma operación que el alta: si una falla, fallan las dos.
+        batch.set(
+            pagos.document(),
+            datosPago(
+                membresiaId = membresiaId,
+                uid = cuentas.first().uid,
+                titular = personas.first().nombre.trim(),
+                concepto = if (tipo == TipoMembresia.VISITA) ConceptoPago.VISITA else ConceptoPago.ALTA,
+                monto = precio,
+                metodo = metodoPago,
+                hoy = hoy
+            )
+        )
         batch.commit().await()
 
         val membresia = membresias.document(membresiaId).get().await().toMembresia() ?: error("No se pudo leer la membresía creada.")
         return MembresiaDetalle(membresia, registradas)
     }
+
+    /** Documento público mínimo que permite saber si un código existe y si ya tiene cuenta, sin exponer datos personales. */
+    private fun datosRegistro(uidInterno: String) = mapOf(
+        "usuarioId" to uidInterno,
+        "cuentaCreada" to false,
+        "creadoEn" to FieldValue.serverTimestamp()
+    )
+
+    private fun datosPago(
+        membresiaId: String,
+        uid: String,
+        titular: String,
+        concepto: ConceptoPago,
+        monto: Double,
+        metodo: MetodoPago,
+        hoy: String
+    ) = mapOf(
+        "usuarioId" to uid,
+        "membresiaId" to membresiaId,
+        "titularNombre" to titular,
+        "concepto" to concepto.name,
+        "monto" to monto,
+        "moneda" to "MXN",
+        "fechaPago" to hoy,
+        "metodoPago" to metodo.name,
+        "estado" to "PAGADO",
+        "registradoPor" to (SesionManager.usuarioActual?.id ?: ""),
+        "creadoEn" to FieldValue.serverTimestamp()
+    )
 
     private fun datosPersona(persona: PersonaForm, membresiaId: String, parentesco: String, uid: String, hoy: String) = mapOf(
         "nombre" to persona.nombre.trim(),
@@ -229,6 +278,7 @@ class FirebaseGestionMembresiasRepository(
         // Quien se quita de la membresía pierde el acceso: sin su documento de miembro el código ya no entra.
         actuales.filter { it.codigo.isNotBlank() && it.codigo !in conservadas && !it.esTitular }.forEach { quitado ->
             batch.delete(miembros.document(quitado.codigo))
+            batch.delete(registroCodigos.document(quitado.codigo))
             if (quitado.usuarioId.isNotBlank()) {
                 batch.update(
                     usuarios.document(quitado.usuarioId),
@@ -239,6 +289,7 @@ class FirebaseGestionMembresiasRepository(
         nuevas.forEach { (persona, cuenta) ->
             batch.set(miembros.document(cuenta.codigo), datosPersona(persona, membresiaId, persona.parentesco.ifBlank { "Integrante" }, cuenta.uid, hoy))
             batch.set(usuarios.document(cuenta.uid), datosUsuarioDeMiembro(persona, cuenta.codigo, rol.name, hoy))
+            batch.set(registroCodigos.document(cuenta.codigo), datosRegistro(cuenta.uid))
         }
         batch.commit().await()
     }
@@ -250,26 +301,103 @@ class FirebaseGestionMembresiasRepository(
         membresias.document(membresiaId).update(cambios).await()
     }
 
-    override suspend fun cambiarEstado(membresiaId: String, estado: EstadoMembresia) {
-        membresias.document(membresiaId).update(
-            mapOf("estado" to estado.name, "actualizadoEn" to FieldValue.serverTimestamp())
-        ).await()
+    override suspend fun cambiarEstado(membresiaId: String, estado: EstadoMembresia, motivo: String?) {
+        val cambios = mutableMapOf<String, Any>("estado" to estado.name, "actualizadoEn" to FieldValue.serverTimestamp())
+        if (estado == EstadoMembresia.SUSPENDIDA) {
+            require(!motivo.isNullOrBlank()) { "Indica por qué se suspende la membresía." }
+            cambios["motivoSuspension"] = motivo
+            cambios["suspendidaEn"] = Fechas.hoy()
+            cambios["suspendidaPor"] = SesionManager.usuarioActual?.id ?: ""
+        } else {
+            cambios["motivoSuspension"] = FieldValue.delete()
+            cambios["suspendidaEn"] = FieldValue.delete()
+            cambios["suspendidaPor"] = FieldValue.delete()
+        }
+        membresias.document(membresiaId).update(cambios).await()
     }
 
-    override suspend fun renovar(membresiaId: String, precio: Double) {
-        val membresia = membresias.document(membresiaId).get().await().toMembresia() ?: error("La membresía ya no existe.")
-        val (inicio, vence) = ReglasMembresia.fechasDeRenovacion(membresia, Fechas.hoy())
-        membresias.document(membresiaId).update(
+    override suspend fun renovar(membresiaId: String, precio: Double, metodoPago: MetodoPago) {
+        val documento = membresias.document(membresiaId).get().await()
+        val membresia = documento.toMembresia() ?: error("La membresía ya no existe.")
+        val hoy = Fechas.hoy()
+        val (inicio, vence) = ReglasMembresia.fechasDeRenovacion(membresia, hoy)
+        val batch = db.batch()
+        batch.update(
+            membresias.document(membresiaId),
             mapOf(
                 "estado" to EstadoMembresia.ACTIVA.name,
                 "fechaInicio" to inicio,
                 "fechaVencimiento" to vence,
                 "precio" to precio,
                 "renovaciones" to FieldValue.increment(1),
-                "ultimaRenovacion" to Fechas.hoy(),
+                "ultimaRenovacion" to hoy,
+                "motivoSuspension" to FieldValue.delete(),
                 "actualizadoEn" to FieldValue.serverTimestamp()
             )
-        ).await()
+        )
+        batch.set(
+            pagos.document(),
+            datosPago(
+                membresiaId = membresiaId,
+                uid = membresia.usuarioId,
+                titular = documento.getString("titularNombre") ?: "",
+                concepto = ConceptoPago.MENSUALIDAD,
+                monto = precio,
+                metodo = metodoPago,
+                hoy = hoy
+            )
+        )
+        batch.commit().await()
+    }
+
+    override suspend fun restablecerAcceso(codigo: String) {
+        val miembro = miembros.document(codigo).get().await()
+        if (!miembro.exists()) error("Ese miembro ya no existe.")
+        if (miembro.getBoolean("cuentaCreada") != true) error("Este miembro todavía no se registra: no hay nada que restablecer.")
+
+        val membresiaId = miembro.getString("membresiaId").orEmpty()
+        val tipo = membresias.document(membresiaId).get().await().toMembresia()?.tipo ?: TipoMembresia.INDIVIDUAL
+        val cuentaAnterior = miembro.getString("usuarioId").orEmpty()
+        val persona = PersonaForm(
+            codigo = codigo,
+            nombre = miembro.getString("nombre").orEmpty(),
+            telefono = miembro.getString("telefono").orEmpty(),
+            correo = miembro.getString("correo").orEmpty(),
+            parentesco = miembro.getString("parentesco").orEmpty()
+        )
+
+        // Cuenta interna nueva: el correo interno quedó libre cuando la persona se registró.
+        val auth = authSecundaria()
+        val uidNuevo = try {
+            auth.createUserWithEmailAndPassword(ReglasMembresia.emailDeCodigo(codigo), codigo).await().user?.uid
+                ?: error("No se pudo preparar el código, inténtalo de nuevo.")
+        } catch (e: FirebaseAuthUserCollisionException) {
+            error("Este código todavía conserva su acceso original; no hace falta restablecerlo.")
+        }
+        auth.signOut()
+
+        val batch = db.batch()
+        batch.update(
+            miembros.document(codigo),
+            mapOf(
+                "usuarioId" to uidNuevo,
+                "cuentaCreada" to false,
+                "correoCuenta" to FieldValue.delete(),
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        )
+        batch.set(
+            registroCodigos.document(codigo),
+            mapOf("usuarioId" to uidNuevo, "cuentaCreada" to false, "creadoEn" to FieldValue.serverTimestamp())
+        )
+        batch.set(usuarios.document(uidNuevo), datosUsuarioDeMiembro(persona, codigo, ReglasMembresia.rolDeAcceso(tipo).name, Fechas.hoy()))
+        if (cuentaAnterior.isNotBlank()) {
+            batch.update(
+                usuarios.document(cuentaAnterior),
+                mapOf("estado" to "INACTIVO", "actualizadoEn" to FieldValue.serverTimestamp())
+            )
+        }
+        batch.commit().await()
     }
 
     private companion object {

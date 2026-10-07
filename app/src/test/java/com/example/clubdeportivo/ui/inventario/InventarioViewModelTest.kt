@@ -1,6 +1,10 @@
 package com.example.clubdeportivo.ui.inventario
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import com.example.clubdeportivo.data.model.ArticuloInventario
+import com.example.clubdeportivo.data.repository.InventarioRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -8,6 +12,42 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+
+/** Inventario en memoria con los mismos artículos de ejemplo de siempre: así las pruebas no dependen de Firebase. */
+private class InventarioFalso : InventarioRepository {
+    private var siguiente = 100
+    val guardado = mutableListOf(
+        ArticuloInventario("1", "Raquetas de Tenis", "Tenis", 12, "🎾", 5),
+        ArticuloInventario("2", "Pelotas de Tenis", "Tenis", 48, "🎾", 20),
+        ArticuloInventario("4", "Balones de Básquetbol", "Básquetbol", 6, "🏀", 4),
+        ArticuloInventario("5", "Balones de Fútbol", "Fútbol", 10, "⚽", 5),
+        ArticuloInventario("6", "Gorros de Natación", "Natación", 20, "🏊", 10),
+        ArticuloInventario("7", "Tablas de Natación", "Natación", 15, "🏊", 8),
+        ArticuloInventario("8", "Redes de Básquetbol", "Básquetbol", 4, "🏀", 2)
+    )
+
+    override suspend fun obtenerArticulos() = guardado.toList()
+
+    override suspend fun crear(nombre: String, deporte: String, cantidad: Int, stockMinimo: Int, icono: String): ArticuloInventario {
+        val nuevo = ArticuloInventario("${siguiente++}", nombre, deporte, cantidad, icono, stockMinimo)
+        guardado.add(nuevo)
+        return nuevo
+    }
+
+    override suspend fun actualizar(articulo: ArticuloInventario) {
+        val i = guardado.indexOfFirst { it.id == articulo.id }
+        if (i != -1) guardado[i] = articulo
+    }
+
+    override suspend fun actualizarCantidad(id: String, cantidad: Int) {
+        val i = guardado.indexOfFirst { it.id == id }
+        if (i != -1) guardado[i] = guardado[i].copy(cantidad = cantidad)
+    }
+
+    override suspend fun eliminar(id: String) {
+        guardado.removeAll { it.id == id }
+    }
+}
 
 class InventarioViewModelTest {
 
@@ -17,10 +57,13 @@ class InventarioViewModelTest {
     val instantTaskExecutorRule = InstantTaskExecutorRule()
 
     private lateinit var viewModel: InventarioViewModel
+    private lateinit var repositorio: InventarioFalso
 
     @Before
     fun setUp() {
-        viewModel = InventarioViewModel()
+        repositorio = InventarioFalso()
+        // Dispatchers.Unconfined ejecuta todo al instante, como si el guardado fuera síncrono.
+        viewModel = InventarioViewModel(repositorio, CoroutineScope(Dispatchers.Unconfined)) { emptyList() }
     }
 
     @Test
@@ -201,5 +244,18 @@ class InventarioViewModelTest {
         val primero = viewModel.articulos.value!![0]
 
         assertTrue(viewModel.editarArticulo(primero.id, primero.nombre, primero.deporte, 99, primero.stockMinimo))
+    }
+
+    @Test
+    fun `los cambios tambien se guardan en el repositorio`() {
+        val articulo = viewModel.articulos.value!!.first()
+
+        viewModel.incrementarCantidad(articulo)
+        viewModel.agregarArticulo("Conos", "Fútbol", 10, 4)
+        viewModel.eliminarArticulo(viewModel.articulos.value!!.first { it.id == "2" })
+
+        assertEquals(articulo.cantidad + 1, repositorio.guardado.first { it.id == articulo.id }.cantidad)
+        assertTrue(repositorio.guardado.any { it.nombre == "Conos" })
+        assertTrue(repositorio.guardado.none { it.id == "2" })
     }
 }

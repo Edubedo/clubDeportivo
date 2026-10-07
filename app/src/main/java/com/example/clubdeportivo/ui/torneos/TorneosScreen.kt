@@ -18,6 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.example.clubdeportivo.ui.components.botonFlotanteVisible
+import com.example.clubdeportivo.ui.components.BotonFlotanteAgregar
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -26,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,7 +39,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -76,13 +82,28 @@ import com.example.clubdeportivo.ui.components.CampoTexto
 import com.example.clubdeportivo.ui.components.DialogoFormulario
 import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
+import com.example.clubdeportivo.ui.components.EncabezadoPantalla
 import com.example.clubdeportivo.ui.components.FullScreenLoading
+import com.example.clubdeportivo.ui.components.IconoDesplegable
+import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.MargenPantalla
+import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.theme.Borde
+import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.Marca
+import com.example.clubdeportivo.ui.theme.MarcaSuave
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.Superficie
+import com.example.clubdeportivo.ui.theme.TextoPrincipal
+import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.util.Fechas
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-private val fondoPantalla = Color(0xFFEAF1F8)
 private val rolesDeAdministracion = setOf(Rol.SUPERADMIN, Rol.ADMIN, Rol.ADMIN_AREA, Rol.AYUDANTE_AREA)
 
 @Composable
@@ -99,6 +120,7 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
     LaunchedEffect(mensaje) {
         mensaje?.let {
@@ -109,41 +131,28 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = fondoPantalla,
+        containerColor = FondoApp,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (esAdministrador) {
-                FloatingActionButton(
-                    onClick = { viewModel.abrirModalCrear() },
-                    containerColor = Color(0xFF1E2E4F)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(imageVector = Icons.Filled.Add, contentDescription = "Nuevo torneo", tint = Color.White)
-                        Text("Nuevo torneo", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                }
+                BotonFlotanteAgregar(
+                    texto = "Nuevo torneo",
+                    visible = listState.botonFlotanteVisible(),
+                    onClick = { viewModel.abrirModalCrear() }
+                )
             }
         }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .background(Color(0xFF192338))
-            )
-
             when {
                 cargando && torneos.isEmpty() -> FullScreenLoading(modifier = Modifier.fillMaxSize())
                 torneos.isEmpty() && !esAdministrador -> EmptyState(
-                    mensaje = "No hay torneos disponibles."
+                    mensaje = "No hay torneos disponibles.",
+                    icono = Icons.Filled.EmojiEvents
                 )
                 esAdministrador -> TorneosAdminContent(
                     torneos = torneos,
+                    listState = listState,
                     onEditar = { viewModel.abrirModalEditar(it) }
                 )
                 else -> TorneosSocioContent(
@@ -168,22 +177,25 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
 }
 
 @Composable
-private fun TorneosAdminContent(torneos: List<Torneo>, modifier: Modifier = Modifier, onEditar: (Torneo) -> Unit) {
+private fun TorneosAdminContent(
+    torneos: List<Torneo>,
+    listState: LazyListState,
+    modifier: Modifier = Modifier,
+    onEditar: (Torneo) -> Unit
+) {
     Column(modifier = modifier.fillMaxSize()) {
-        Text(
-            text = "Torneos",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF192338),
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
-        )
+        EncabezadoPantalla(titulo = "Torneos", modifier = Modifier.padding(horizontal = MargenPantalla))
 
         if (torneos.isEmpty()) {
-            EmptyState(mensaje = "No hay torneos todavía. Crea el primero con \"Nuevo torneo\".")
+            EmptyState(
+                mensaje = "No hay torneos todavía. Crea el primero con \"Nuevo torneo\".",
+                icono = Icons.Filled.EmojiEvents
+            )
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(start = MargenPantalla, end = MargenPantalla, top = 4.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(torneos, key = { it.id }) { torneo ->
@@ -196,16 +208,7 @@ private fun TorneosAdminContent(torneos: List<Torneo>, modifier: Modifier = Modi
 
 @Composable
 private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
-    val estilo = estiloDisciplina(torneo.disciplina)
-    val libres = (torneo.cupoMaximo - torneo.inscritos).coerceAtLeast(0)
-    val progreso = if (torneo.cupoMaximo > 0) torneo.inscritos.toFloat() / torneo.cupoMaximo.toFloat() else 0f
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -214,103 +217,92 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
             ) {
                 Text(
                     text = torneo.nombre,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF192338),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = TextoPrincipal,
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp)
                 )
-                EtiquetaDisciplina(estilo = estilo, disciplina = torneo.disciplina)
+                EtiquetaDisciplina(disciplina = torneo.disciplina)
                 IconButton(
                     onClick = onEditar,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Editar torneo",
-                        tint = Color(0xFF31487A),
-                        modifier = Modifier.size(18.dp)
+                        tint = TextoSecundario,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = textoRangoFecha(torneo),
-                fontSize = 12.sp,
-                color = Color(0xFF31487A)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "${torneo.inscritos}/${torneo.cupoMaximo} participantes",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF192338),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                )
-                Text(
-                    text = "$libres libres",
-                    maxLines = 1,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1E2E4F)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LinearProgressIndicator(
-                progress = { progreso },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(50)),
-                color = Color(0xFF1E2E4F),
-                trackColor = Color(0xFFD6E4FE)
-            )
+            DatosTorneo(torneo)
         }
     }
 }
 
+/** Fechas, cupo y barra de avance de inscripciones; igual en la vista del personal y en la del socio. */
+@Composable
+private fun DatosTorneo(torneo: Torneo) {
+    val libres = (torneo.cupoMaximo - torneo.inscritos).coerceAtLeast(0)
+    val progreso = if (torneo.cupoMaximo > 0) torneo.inscritos.toFloat() / torneo.cupoMaximo.toFloat() else 0f
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    Text(
+        text = textoRangoFecha(torneo),
+        style = MaterialTheme.typography.bodySmall,
+        color = TextoSecundario
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "${torneo.inscritos}/${torneo.cupoMaximo} participantes",
+            style = MaterialTheme.typography.labelMedium,
+            color = TextoPrincipal,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp)
+        )
+        Text(
+            text = "$libres libres",
+            maxLines = 1,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Marca
+        )
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    LinearProgressIndicator(
+        progress = { progreso },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(50)),
+        color = Marca,
+        trackColor = Borde
+    )
+}
+
 private fun textoRangoFecha(torneo: Torneo): String {
-    val fechas = if (torneo.fechaInicio == torneo.fechaFin) torneo.fechaInicio else "${torneo.fechaInicio} – ${torneo.fechaFin}"
+    val fechas = if (torneo.fechaInicio == torneo.fechaFin) Fechas.legible(torneo.fechaInicio)
+    else "${Fechas.legible(torneo.fechaInicio)} – ${Fechas.legible(torneo.fechaFin)}"
     val horas = if (torneo.horaInicio.isNotBlank() && torneo.horaFin.isNotBlank()) " · ${torneo.horaInicio}–${torneo.horaFin}" else ""
     return fechas + horas
 }
 
-private data class EstiloDisciplina(val emoji: String, val fondo: Color, val texto: Color)
-
-private fun estiloDisciplina(disciplina: String): EstiloDisciplina = when (disciplina) {
-    "Tenis" -> EstiloDisciplina("🎾", Color(0xFFD6E4FE), Color(0xFF1E2E4F))
-    "Fútbol" -> EstiloDisciplina("⚽", Color(0xFFEAF1F8), Color(0xFF192338))
-    "Básquetbol", "Baloncesto" -> EstiloDisciplina("🏀", Color(0xFFFEF3C7), Color(0xFFB45309))
-    "Natación" -> EstiloDisciplina("🏊", Color(0xFFD6E4FE), Color(0xFF31487A))
-    "Voleibol" -> EstiloDisciplina("🏐", Color(0xFFF1F5F9), Color(0xFF1E2E4F))
-    else -> EstiloDisciplina("🏆", Color(0xFFF1F5F9), Color(0xFF31487A))
-}
-
+/** Todas las disciplinas se ven igual: lo que las distingue es el emoji, no el color. */
 @Composable
-private fun EtiquetaDisciplina(estilo: EstiloDisciplina, disciplina: String) {
-    Surface(shape = RoundedCornerShape(50), color = estilo.fondo) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(text = estilo.emoji, fontSize = 11.sp)
-            Text(text = disciplina, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = estilo.texto)
-        }
-    }
+private fun EtiquetaDisciplina(disciplina: String) {
+    Insignia(texto = "${Deportes.emojiDe(disciplina)} $disciplina", tipo = TipoInsignia.MARCA)
 }
 
 @Composable
@@ -321,7 +313,7 @@ private fun TorneosSocioContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = MargenPantalla, end = MargenPantalla, top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(torneos, key = { it.id }) { torneo ->
@@ -333,63 +325,22 @@ private fun TorneosSocioContent(
 @Composable
 private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
     val cupoLleno = torneo.inscritos >= torneo.cupoMaximo
-    val estilo = estiloDisciplina(torneo.disciplina)
-    val libres = (torneo.cupoMaximo - torneo.inscritos).coerceAtLeast(0)
-    val progreso = if (torneo.cupoMaximo > 0) torneo.inscritos.toFloat() / torneo.cupoMaximo.toFloat() else 0f
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = torneo.nombre,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF192338),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = TextoPrincipal,
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp)
                 )
-                EtiquetaDisciplina(estilo = estilo, disciplina = torneo.disciplina)
+                EtiquetaDisciplina(disciplina = torneo.disciplina)
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = textoRangoFecha(torneo), fontSize = 12.sp, color = Color(0xFF31487A))
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = "${torneo.inscritos}/${torneo.cupoMaximo} participantes",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF192338),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                )
-                Text(
-                    text = "$libres libres",
-                    maxLines = 1,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1E2E4F)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { progreso },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(50)),
-                color = Color(0xFF1E2E4F),
-                trackColor = Color(0xFFD6E4FE)
-            )
+            DatosTorneo(torneo)
 
             Spacer(modifier = Modifier.height(16.dp))
             BotonPrimario(
@@ -401,7 +352,6 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
     }
 }
 
-private val disciplinasDisponibles = Deportes.predefinidos
 
 private fun manianaEnMillis(): Long =
     LocalDate.now().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
@@ -428,6 +378,8 @@ private fun ModalTorneo(
 
     var nombre by remember { mutableStateOf(torneoExistente?.nombre ?: "") }
     val areaInicial = areas.find { it.id == torneoExistente?.areaId }
+    // Los deportes de las áreas del club (incluidos los que se dieron de alta después) más los de siempre.
+    val disciplinasDisponibles = remember(areas) { (Deportes.predefinidos + areas.map { it.tipo.trim() }).filter { it.isNotBlank() }.distinct() }
     var disciplina by remember {
         mutableStateOf(areaInicial?.tipo ?: torneoExistente?.disciplina ?: disciplinasDisponibles.first())
     }
@@ -448,14 +400,44 @@ private fun ModalTorneo(
 
     DialogoFormulario(
         titulo = if (esEdicion) "Editar torneo" else "Nuevo torneo",
-        onCerrar = onCerrar
+        onCerrar = onCerrar,
+        pie = {
+            if (error != null) {
+                Text(
+                    text = error,
+                    color = Peligro,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
+
+            BotonPrimario(
+                texto = if (esEdicion) "Guardar cambios" else "Crear torneo",
+                onClick = {
+                    val areaSeleccionada = area ?: return@BotonPrimario
+                    onGuardar(
+                        torneoExistente?.id,
+                        nombre,
+                        disciplina,
+                        areaSeleccionada.id,
+                        fechaInicio,
+                        fechaFin,
+                        cupoMaximo.toIntOrNull() ?: 0,
+                        horaInicio,
+                        horaFin
+                    )
+                },
+                enabled = puedeGuardar
+            )
+        }
     ) {
         Column {
             EtiquetaCampo("NOMBRE DEL TORNEO")
             CampoTexto(
                 value = nombre,
                 onValueChange = { nombre = it },
-                placeholder = "Ej: Copa Otoño de Fútbol"
+                placeholder = "Ej: Copa Otoño de Fútbol",
+                capitalizacion = KeyboardCapitalization.Sentences
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -469,7 +451,7 @@ private fun ModalTorneo(
                 disciplinasDisponibles.forEach { opcion ->
                     val seleccionado = disciplina == opcion
                     OpcionDropdown(
-                        texto = "${estiloDisciplina(opcion).emoji} $opcion",
+                        texto = "${Deportes.emojiDe(opcion)} $opcion",
                         seleccionado = seleccionado,
                         onClick = {
                             if (opcion != disciplina) {
@@ -534,38 +516,8 @@ private fun ModalTorneo(
             CampoTexto(
                 value = cupoMaximo,
                 onValueChange = { cupoMaximo = it.filter { c -> c.isDigit() }.take(4) },
-                tipoTeclado = KeyboardType.Number
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (error != null) {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-            }
-
-            BotonPrimario(
-                texto = if (esEdicion) "Guardar cambios" else "Crear torneo",
-                onClick = {
-                    val areaSeleccionada = area ?: return@BotonPrimario
-                    onGuardar(
-                        torneoExistente?.id,
-                        nombre,
-                        disciplina,
-                        areaSeleccionada.id,
-                        fechaInicio,
-                        fechaFin,
-                        cupoMaximo.toIntOrNull() ?: 0,
-                        horaInicio,
-                        horaFin
-                    )
-                },
-                enabled = puedeGuardar
+                tipoTeclado = KeyboardType.Number,
+                imeAction = ImeAction.Done
             )
         }
     }
@@ -583,7 +535,7 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
             readOnly = true,
             placeholder = "Elegir",
             trailingIcon = {
-                Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = "Elegir fecha", tint = Color(0xFF31487A))
+                Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = "Elegir fecha", tint = TextoSecundario)
             }
         )
 
@@ -610,12 +562,12 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
                     estadoFecha.selectedDateMillis?.let { onFechaSeleccionada(millisAFecha(it)) }
                     mostrarCalendario = false
                 }) {
-                    Text("Aceptar", color = Color(0xFF1E2E4F), fontWeight = FontWeight.SemiBold)
+                    Text("Aceptar", color = Marca, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { mostrarCalendario = false }) {
-                    Text("Cancelar", color = Color(0xFF31487A))
+                    Text("Cancelar", color = TextoSecundario)
                 }
             }
         ) {
@@ -639,7 +591,7 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
             readOnly = true,
             placeholder = "Elegir",
             trailingIcon = {
-                Icon(imageVector = Icons.Filled.Schedule, contentDescription = "Elegir hora", tint = Color(0xFF31487A))
+                Icon(imageVector = Icons.Filled.Schedule, contentDescription = "Elegir hora", tint = TextoSecundario)
             }
         )
 
@@ -658,18 +610,18 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
         var minutoElegido by remember { mutableStateOf(minutoInicial) }
 
         Dialog(onDismissRequest = { mostrarSelector = false }) {
-            Surface(shape = RoundedCornerShape(20.dp), color = Color.White) {
+            Surface(shape = RoundedCornerShape(20.dp), color = Superficie) {
                 Column(
                     modifier = Modifier
                         .padding(20.dp)
                         .width(240.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Elegir hora", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF192338))
+                    Text("Elegir hora", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextoPrincipal)
                     Text(
                         text = "Horario del club: 5:00 a. m. – 10:00 p. m.",
                         fontSize = 12.sp,
-                        color = Color(0xFF31487A),
+                        color = TextoSecundario,
                         modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
                     )
 
@@ -688,7 +640,7 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
                             text = ":",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF192338)
+                            color = TextoPrincipal
                         )
                         key(horaElegida >= 22) {
                             RuedaTiempo(
@@ -705,13 +657,13 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { mostrarSelector = false }) {
-                            Text("Cancelar", color = Color(0xFF31487A))
+                            Text("Cancelar", color = TextoSecundario)
                         }
                         TextButton(onClick = {
                             onHoraSeleccionada(partesAHora(horaElegida, minutoElegido))
                             mostrarSelector = false
                         }) {
-                            Text("Aceptar", color = Color(0xFF1E2E4F), fontWeight = FontWeight.SemiBold)
+                            Text("Aceptar", color = Marca, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -750,7 +702,7 @@ private fun RuedaTiempo(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(alturaItem)
-                .background(Color(0xFFD6E4FE), RoundedCornerShape(10.dp))
+                .background(MarcaSuave, RoundedCornerShape(10.dp))
         )
         LazyColumn(
             state = estadoLista,
@@ -768,9 +720,9 @@ private fun RuedaTiempo(
                 ) {
                     Text(
                         text = formatear(valor),
-                        fontSize = if (seleccionado) 18.sp else 15.sp,
+                        fontSize = if (seleccionado) 18.sp else 16.sp,
                         fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
-                        color = if (seleccionado) Color(0xFF192338) else Color(0xFF31487A)
+                        color = if (seleccionado) TextoPrincipal else TextoSecundario
                     )
                 }
             }
@@ -799,7 +751,7 @@ private fun DropdownSeleccionable(
             value = textoMostrado,
             onValueChange = {},
             readOnly = true,
-            trailingIcon = { Text("▼") }
+            trailingIcon = { IconoDesplegable() }
         )
 
         Surface(
@@ -816,7 +768,7 @@ private fun DropdownSeleccionable(
             modifier = Modifier
                 .fillMaxWidth(0.75f)
                 .heightIn(max = 320.dp),
-            containerColor = Color.White
+            containerColor = Superficie
         ) {
             opciones()
         }
@@ -829,14 +781,14 @@ private fun OpcionDropdown(texto: String, seleccionado: Boolean, onClick: () -> 
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-        color = if (seleccionado) Color(0xFFD6E4FE) else Color.White,
+        color = if (seleccionado) MarcaSuave else Superficie,
         onClick = onClick
     ) {
         Text(
             text = texto,
             fontSize = 14.sp,
             fontWeight = if (seleccionado) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (seleccionado) Color(0xFF1E2E4F) else Color(0xFF192338),
+            color = if (seleccionado) Marca else TextoPrincipal,
             modifier = Modifier.padding(12.dp)
         )
     }

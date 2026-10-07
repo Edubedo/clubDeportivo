@@ -1,52 +1,59 @@
 package com.example.clubdeportivo.ui.reservas
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import com.example.clubdeportivo.ui.components.PestanasPildora
+import com.example.clubdeportivo.data.model.EstadoReserva
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.clubdeportivo.ui.personal.PersonalNotificacionesSheet
-
-private val TextoPrincipal = Color(0xFF192338)
-private val TextoSecundario = Color(0xFF31487A)
-
-// 🎨 Definición de colores solicitados para los estados:
-private val ColorVerdeTexto = Color(0xFF137333)
-private val ColorVerdeFondo = Color(0xFFE6F4EA)
-
-private val ColorNaranjaTexto = Color(0xFFB45309)
-private val ColorNaranjaFondo = Color(0xFFFEF3C7)
-
-private val ColorRojoTexto = Color(0xFFC5221F)
-private val ColorRojoFondo = Color(0xFFFCE8E6)
+import com.example.clubdeportivo.data.Deportes
+import com.example.clubdeportivo.ui.components.BotonTonal
+import com.example.clubdeportivo.ui.components.BurbujaTexto
+import com.example.clubdeportivo.ui.components.EmptyState
+import com.example.clubdeportivo.ui.components.EncabezadoPantalla
+import com.example.clubdeportivo.ui.components.FullScreenLoading
+import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.MargenPantalla
+import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.theme.Exito
+import com.example.clubdeportivo.ui.theme.ExitoSuave
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.PeligroSuave
+import com.example.clubdeportivo.ui.theme.TextoPrincipal
+import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.util.Fechas
 
 @Composable
 fun ReservasEncargadoScreen(
@@ -58,73 +65,45 @@ fun ReservasEncargadoScreen(
     val asistencias by viewModel.asistencias.observeAsState(emptyMap())
 
     val areaTrabajo = viewModel.areaTrabajo
-    var mostrarNotificaciones by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFEAF1F8))
-            .verticalScroll(rememberScrollState())
-    ) {
+    var pestana by rememberSaveable { mutableIntStateOf(0) }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+    Column(modifier = Modifier.fillMaxSize()) {
+        EncabezadoPantalla(
+            titulo = "Reservas en mi área",
+            subtitulo = areaTrabajo.ifBlank { "Sin área asignada" },
+            modifier = Modifier.padding(horizontal = MargenPantalla)
+        )
+        PestanasPildora(
+            opciones = listOf("Reservas", "Por aprobar"),
+            seleccionada = pestana,
+            onSeleccion = { pestana = it }
+        )
+
+        if (pestana == 1) {
+            PorAprobarScreen()
+        } else Column(modifier = Modifier.fillMaxSize().padding(horizontal = MargenPantalla)) {
+        when {
+            cargando -> FullScreenLoading()
+            error != null -> EmptyState(mensaje = error.orEmpty(), icono = Icons.Outlined.EventBusy)
+            reservas.isEmpty() -> EmptyState(
+                mensaje = "No hay reservas vigentes en $areaTrabajo.",
+                icono = Icons.Outlined.EventBusy
+            )
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Reservas en mi área",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextoPrincipal
-                    )
-
-                    Text(
-                        text = areaTrabajo.ifBlank { "Sin área asignada" },
-                        fontSize = 13.sp,
-                        color = TextoSecundario,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
-
-                Button(
-                    onClick = { mostrarNotificaciones = true },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFD6E4FE),
-                        contentColor = Color(0xFF1E2E4F)
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                ) {
-                    Text("📢 Notif.", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (cargando) {
-                Text(text = "Cargando reservas...", color = TextoSecundario)
-            } else if (error != null) {
-                Text(text = error ?: "", color = ColorRojoTexto)
-            } else if (reservas.isEmpty()) {
-                Text(text = "No hay reservas vigentes en $areaTrabajo.", color = TextoSecundario)
-            } else {
-                reservas.forEach { reserva ->
+                items(reservas.filter { it.estado == EstadoReserva.CONFIRMADA }, key = { it.id }) { reserva ->
                     val nombre = reserva.usuarioNombre.ifBlank { "Usuario" }
 
                     ReservaEncargadoCard(
                         inicial = nombre.firstOrNull()?.uppercase() ?: "?",
                         nombre = nombre,
-                        fecha = reserva.fecha,
+                        fecha = Fechas.legible(reserva.fecha),
                         horario = "${reserva.horaInicio}–${reserva.horaFin}",
-                        area = "🎾 ${reserva.deporte} — ${reserva.areaNombre}",
+                        area = "${Deportes.emojiDe(reserva.deporte)} ${reserva.deporte} — ${reserva.areaNombre}",
                         asistencia = asistencias[reserva.id],
                         onAsistio = {
                             viewModel.registrarAsistencia(
@@ -141,17 +120,10 @@ fun ReservasEncargadoScreen(
                             )
                         }
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
-    }
-
-    if (mostrarNotificaciones) {
-        PersonalNotificacionesSheet(
-            onCerrar = { mostrarNotificaciones = false }
-        )
+        }
     }
 }
 
@@ -166,145 +138,66 @@ private fun ReservaEncargadoCard(
     onAsistio: () -> Unit,
     onNoAsistio: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Surface(
-                    modifier = Modifier,
-                    shape = CircleShape,
-                    color = ColorVerdeFondo
-                ) {
-                    Text(
-                        text = inicial,
-                        color = ColorVerdeTexto,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
-                }
+                BurbujaTexto(texto = inicial, tamano = 44.dp, tamanoTexto = 18)
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 12.dp)
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = nombre,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextoPrincipal
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TextoPrincipal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-
                     Text(
                         text = "$fecha · $horario",
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario
                     )
                 }
 
-                // Estado "Agendó" en verde
-                Etiqueta(texto = "Agendó", fondo = ColorVerdeFondo, textoColor = ColorVerdeTexto)
+                when (asistencia) {
+                    "ASISTIO" -> Insignia("Asistió", TipoInsignia.EXITO, icono = Icons.Filled.Check)
+                    "NO_ASISTIO" -> Insignia("No se presentó", TipoInsignia.PELIGRO, icono = Icons.Filled.Close)
+                    else -> Insignia("Por confirmar", TipoInsignia.ALERTA, icono = Icons.Filled.Schedule)
+                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = area,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextoSecundario,
+                modifier = Modifier.padding(top = 12.dp)
+            )
 
-            Surface(
-                shape = RoundedCornerShape(50.dp),
-                color = ColorNaranjaFondo
-            ) {
-                Text(
-                    text = area,
-                    color = ColorNaranjaTexto,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                )
-            }
+            if (asistencia == null) {
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            when (asistencia) {
-                "ASISTIO" -> {
-                    // Confirmado / Asistió -> VERDE
-                    Etiqueta(texto = "✓ Asistió", fondo = ColorVerdeFondo, textoColor = ColorVerdeTexto)
-                }
-                "NO_ASISTIO" -> {
-                    // No asistió -> ROJO
-                    Etiqueta(texto = "✕ No se presentó", fondo = ColorRojoFondo, textoColor = ColorRojoTexto)
-                }
-                else -> {
-                    // Pendiente -> NARANJA
-                    Etiqueta(texto = "⏳ Pendiente de asistencia", fondo = ColorNaranjaFondo, textoColor = ColorNaranjaTexto)
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "CONFIRMAR ASISTENCIA",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextoSecundario
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    BotonTonal(
+                        texto = "Asistió",
+                        icono = Icons.Filled.Check,
+                        fondo = ExitoSuave,
+                        color = Exito,
+                        onClick = onAsistio,
+                        modifier = Modifier.weight(1f)
                     )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Surface(
-                            onClick = onAsistio,
-                            shape = RoundedCornerShape(10.dp),
-                            color = ColorVerdeFondo
-                        ) {
-                            Text(
-                                text = "✓ Asistió",
-                                color = ColorVerdeTexto,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                            )
-                        }
-
-                        Surface(
-                            onClick = onNoAsistio,
-                            shape = RoundedCornerShape(10.dp),
-                            color = ColorRojoFondo
-                        ) {
-                            Text(
-                                text = "✕ No vino",
-                                color = ColorRojoTexto,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                            )
-                        }
-                    }
+                    BotonTonal(
+                        texto = "No vino",
+                        icono = Icons.Filled.Close,
+                        fondo = PeligroSuave,
+                        color = Peligro,
+                        onClick = onNoAsistio,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun Etiqueta(
-    texto: String,
-    fondo: Color,
-    textoColor: Color
-) {
-    Surface(
-        shape = RoundedCornerShape(50.dp),
-        color = fondo
-    ) {
-        Text(
-            text = texto,
-            color = textoColor,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-        )
     }
 }

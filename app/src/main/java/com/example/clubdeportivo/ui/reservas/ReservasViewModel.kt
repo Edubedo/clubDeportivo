@@ -12,12 +12,16 @@ import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.data.model.EstadoMembresia
+import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.model.esPersonal
 import com.example.clubdeportivo.data.repository.AreaRepository
+import com.example.clubdeportivo.data.repository.MembresiaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import com.example.clubdeportivo.data.repository.RestriccionHorarioRepository
 import com.example.clubdeportivo.data.repository.TorneoRepository
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.ReglasReserva
 import kotlinx.coroutines.launch
 
@@ -40,6 +44,8 @@ data class ReservaEspacioUi(
     val fecha: String = Fechas.hoy(),
     val horarioTexto: String = "",
     val horas: List<HoraUi> = emptyList(),
+    /** No se pudo leer la ocupación (sin conexión o sin permiso): no es lo mismo que "no hay horarios". */
+    val errorDisponibilidad: Boolean = false,
     /** Rango elegido, horas de inicio de la primera y la última (ambas incluidas). */
     val desde: Int? = null,
     val hasta: Int? = null,
@@ -72,7 +78,8 @@ class ReservasViewModel(
     private val reservaRepository: ReservaRepository = AppContainer.reservaRepository,
     private val areaRepository: AreaRepository = AppContainer.areaRepository,
     private val torneoRepository: TorneoRepository = AppContainer.torneoRepository,
-    private val restriccionHorarioRepository: RestriccionHorarioRepository = AppContainer.restriccionHorarioRepository
+    private val restriccionHorarioRepository: RestriccionHorarioRepository = AppContainer.restriccionHorarioRepository,
+    private val membresiaRepository: MembresiaRepository = AppContainer.membresiaRepository
 ) : ViewModel() {
 
     private val _ui = MutableLiveData(ReservaEspacioUi())
@@ -84,6 +91,10 @@ class ReservasViewModel(
     private val _mensaje = MutableLiveData<String?>()
     val mensaje: LiveData<String?> = _mensaje
 
+    /** Por qué la persona no puede reservar (membresía suspendida, vencida o inexistente); null si puede. */
+    private val _restriccion = MutableLiveData<String?>()
+    val restriccion: LiveData<String?> = _restriccion
+
     private val estado get() = _ui.value ?: ReservaEspacioUi()
     private val usuario get() = SesionManager.usuarioActual
     val esVisitanteExterno get() = usuario?.rol == Rol.VISITANTE_EXTERNO
@@ -93,6 +104,22 @@ class ReservasViewModel(
 
     init {
         cargar()
+        viewModelScope.launch { _restriccion.value = runCatching { motivoDeRestriccion() }.getOrNull() }
+    }
+
+    /** Solo socios y visitantes con una membresía activa y vigente pueden reservar; el personal siempre puede. */
+    private suspend fun motivoDeRestriccion(): String? {
+        val actual = usuario ?: return null
+        if (!actual.rol.esCliente()) return null
+        val membresia = membresiaRepository.obtenerMembresia(actual.id)
+            ?: return "No encontramos una membresía a tu nombre. Habla con recepción para poder reservar."
+        return when (ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy())) {
+            EstadoMembresia.ACTIVA -> null
+            EstadoMembresia.VENCIDA ->
+                "Tu membresía venció el ${Fechas.legible(membresia.fechaVencimiento)}. Renuévala en recepción para volver a reservar."
+            EstadoMembresia.SUSPENDIDA ->
+                "Tu membresía está suspendida (${membresia.motivoSuspension.ifBlank { "sin motivo registrado" }}). Habla con recepción."
+        }
     }
 
     fun cargar() {
@@ -111,7 +138,7 @@ class ReservasViewModel(
 
     fun elegirDeporte(deporte: String) {
         _ui.value = estado.copy(
-            deporte = deporte, area = null, horas = emptyList(), desde = null, hasta = null, personas = 1
+            deporte = deporte, area = null, horas = emptyList(), errorDisponibilidad = false, desde = null, hasta = null, personas = 1
         )
     }
 
@@ -159,8 +186,9 @@ class ReservasViewModel(
                     pasada = Fechas.horasDesdeAhora(fecha, "%02d:00".format(hora)) < Catalogos.ANTICIPACION_MINIMA_HORAS
                 )
             }
-            _ui.value = estado.copy(horas = horas)
+            _ui.value = estado.copy(horas = horas, errorDisponibilidad = false)
         } catch (e: Exception) {
+            _ui.value = estado.copy(horas = emptyList(), errorDisponibilidad = true)
             _mensaje.value = "No se pudo consultar la disponibilidad."
         }
     }
@@ -168,7 +196,14 @@ class ReservasViewModel(
     fun tocarHora(hora: Int) {
         val actual = estado
         val celda = actual.horas.firstOrNull { it.hora == hora } ?: return
-        if (!celda.seleccionable) return
+        if (!celda.seleccionable) {
+            _mensaje.value = when {
+                celda.pasada -> "Esa hora ya pasó o no cumple la anticipación mínima de ${Catalogos.ANTICIPACION_MINIMA_HORAS} horas."
+                celda.estado.torneo != null -> "A esa hora el área está reservada para el torneo \"${celda.estado.torneo.nombre}\"."
+                else -> "Esa hora ya alcanzó su cupo (${celda.estado.capacidad} personas). Elige otra hora."
+            }
+            return
+        }
         val d = actual.desde
         val a = actual.hasta
         val max = Catalogos.MAX_HORAS_POR_RESERVA
@@ -241,6 +276,7 @@ class ReservasViewModel(
      */
     private suspend fun validar(area: Area, fecha: String, horaInicio: String, horaFin: String, personas: Int): String? {
         val usuario = usuario ?: return "Inicia sesión para reservar."
+        motivoDeRestriccion()?.let { return it }
 
         if (esVisitanteExterno && !area.permiteExternos) return "Esta área no admite reservaciones de visitantes externos."
         if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return "${area.nombre} está en mantenimiento."

@@ -115,8 +115,7 @@ app/src/main/java/com/example/clubdeportivo/
 │   │                       "Fake" en memoria, que ya no se usan pero quedan de referencia)
 │   ├── Catalogos.kt     → precios y reglas de negocio centralizadas
 │   ├── SesionManager.kt → usuario logueado actual, en memoria
-│   ├── FirebaseSeeder.kt→ carga los datos de ejemplo (áreas, torneos) en Firestore la
-│   │                       primera vez que la app los necesita y la colección está vacía
+│   ├── (sin siembra de datos: Firestore empieza vacío y se llena desde la app)
 │   └── AppContainer.kt  → punto único de acceso a los repositorios
 ├── ui/
 │   ├── ClubDeportivoApp.kt → arma la pantalla completa: la barra de arriba, el menú de abajo,
@@ -199,37 +198,15 @@ service cloud.firestore {
 }
 ```
 
-**Datos de catálogo (áreas, torneos).** Firestore empieza vacío. `data/FirebaseSeeder.kt` carga
-los mismos datos de ejemplo que antes vivían hardcodeados en `FakeAreaRepository`/
-`FakeTorneoRepository`, la primera vez que la app los necesita y encuentra la colección vacía —
-no hace falta cargar nada a mano.
+**Datos de catálogo (áreas, torneos, inventario).** Firestore empieza vacío y así debe quedarse en producción: la app
+ya no siembra datos de ejemplo. Las áreas, los torneos y el inventario se dan de alta desde la propia app.
 
-**Lo que todavía no se puede hacer desde la app** (faltan pantallas para eso, no es un límite de
-Firebase): contratar una membresía, ni dar de alta áreas/torneos nuevos (no hay un panel
-de administración todavía). Esas colecciones se llenan desde `FirebaseSeeder.kt` o a mano en la
-consola (Firestore Database → Iniciar colección → agregar documento).
+Todo se administra desde la app: altas de miembros y personal, áreas, torneos, inventario, precios y avisos.
 
-### Datos de ejemplo ya cargados
+### Datos de ejemplo
 
-Además de `areas` y `torneos` (que se auto-cargan solos, ver arriba), el 2026-09-08 se sembraron
-a mano — una única vez, con `FirebaseSeeder.asegurarHerramientas`,
-`FirebaseSeeder.asegurarRestriccionesHorario` y `FirebaseSeeder.sembrarDatosDeCuentasDemo` — datos
-de ejemplo para el resto de las colecciones del modelo (ver
-[`modelo-de-datos.md`](modelo-de-datos.md)), usando los uids reales de las 6 cuentas de prueba
-(ver [`usuarios-y-guia.md`](usuarios-y-guia.md#usuarios-de-prueba)):
-
-- `herramientas` — las 4 que se prestan automáticamente al reservar.
-- `restriccionesHorario` — un documento por área (dato informativo; la app en realidad calcula
-  esto mismo con `FakeRestriccionHorarioRepository`, no lee esta colección — ver más abajo).
-- Personal — el administrador de área y el ayudante de ejemplo llevan tipoPersonal/turno/areaTrabajo en su documento de `usuarios` (la colección `empleados` se fusionó ahí).
-- `membresias` + `integrantesFamiliares` + `pagos` — la membresía familiar activa del socio de
-  prueba, con sus 2 integrantes y el pago del mes.
-- `reservas` (3 en total, distintos estados) + `materialAsignado` + `checkins` +
-  `inscripcionesTorneo` — para poder ver "Mis reservas" y el torneo con datos reales sin tener
-  que crear todo a mano desde la app.
-
-El código de `FirebaseSeeder.kt` queda como referencia de qué se cargó y con qué forma — no hace
-falta (ni conviene) volver a correrlo.
+En producción no debe quedar ningún dato de ejemplo (ver [`produccion.md`](produccion.md)). Las cuentas y registros de
+prueba que se crearon durante el desarrollo se borran desde la consola de Firebase antes de publicar.
 
 ### Repo público y `google-services.json`
 

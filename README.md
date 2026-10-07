@@ -1,4 +1,4 @@
-# ClubDeportivo
+# Athletic Club
 
 App Android (Kotlin + Jetpack Compose) para gestionar un club deportivo: reservar turnos en
 áreas, ver membresías y torneos, y administrar el perfil de cada usuario según su rol.
@@ -13,8 +13,9 @@ El frontend es esta app; el backend es **Firebase** (Authentication + Firestore)
    proyecto de Firebase — ver [`docs/arquitectura.md`](docs/arquitectura.md#repo-público-y-google-servicesjson))
    y ponelo en esa ruta exacta.
 3. Corré la app (▶️ en Android Studio, o `./gradlew installDebug` desde terminal).
-4. En el login, tocá "Registrate" y creá una cuenta (ver
-   [`docs/usuarios-y-guia.md`](docs/usuarios-y-guia.md)).
+4. Para entrar necesitas una cuenta: los empleados los crea un administrador y los miembros se registran con su código
+   (ver [`docs/usuarios-y-guia.md`](docs/usuarios-y-guia.md)).
+5. Antes de publicar, sigue [`docs/produccion.md`](docs/produccion.md).
 
 ## Documentación
 
@@ -24,4 +25,5 @@ Toda la documentación del proyecto vive en [`docs/`](docs/README.md):
 |---|---|
 | [`docs/arquitectura.md`](docs/arquitectura.md) | **Empezá acá si nunca usaste Android/Kotlin.** Cómo está organizado el código y por qué. |
 | [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md) | Todas las entidades del dominio y las reglas de negocio del club. |
-| [`docs/usuarios-y-guia.md`](docs/usuarios-y-guia.md) | Roles, usuarios de prueba, y guía paso a paso para poner el proyecto a andar. |
+| [`docs/usuarios-y-guia.md`](docs/usuarios-y-guia.md) | Roles, cómo se crea cada cuenta y guía para poner el proyecto a andar. |
+| [`docs/produccion.md`](docs/produccion.md) | Lista de pasos antes de publicar (reglas de Firebase, firma, prueba de humo). |

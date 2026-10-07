@@ -28,10 +28,14 @@ object ReglasMembresia {
     fun generarCodigo(azar: Random = SecureRandom().asKotlinRandom()): String =
         PREFIJO + (1..LARGO).map { ALFABETO[azar.nextInt(ALFABETO.length)] }.joinToString("")
 
-    /** Acepta "clb-7k3m9q", "CLB 7K3M9Q" o "CLB7K3M9Q" y lo deja como "CLB-7K3M9Q". */
+    /** Acepta "clb-7k3m9q", "CLB 7K3M9Q", "CLB7K3M9Q" o solo "7K3M9Q" y lo deja como "CLB-7K3M9Q". */
     fun normalizarCodigo(texto: String): String {
         val limpio = texto.trim().uppercase().replace(" ", "").replace("-", "")
-        return if (limpio.startsWith("CLB")) PREFIJO + limpio.removePrefix("CLB") else limpio
+        return when {
+            limpio.startsWith("CLB") -> PREFIJO + limpio.removePrefix("CLB")
+            limpio.length == LARGO -> PREFIJO + limpio
+            else -> limpio
+        }
     }
 
     fun esCodigo(texto: String): Boolean =

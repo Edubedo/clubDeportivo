@@ -74,7 +74,12 @@ class PerfilViewModel(
         }
     }
 
+    fun onMensajeMostrado() {
+        _mensaje.value = null
+    }
+
     fun cerrarSesion() {
+        AppContainer.authRepository.cerrarSesion()
         SesionManager.cerrarSesion()
     }
 }

@@ -53,9 +53,6 @@ class FirebaseReservaRepository(
         "5" to "11", "6" to "11", "7" to "15", "8" to "15"
     )
 
-    /** Marcas de tiempo (ms) de inasistencias por usuario, para la regla de 3 strikes. */
-    private val noShowsPorUsuario = mutableMapOf<String, MutableList<Long>>()
-
     override suspend fun obtenerReservasDeUsuario(usuarioId: String): List<Reserva> {
         return reservas.whereEqualTo("usuarioId", usuarioId).get().await()
             .documents.mapNotNull { it.toReserva() }
@@ -105,31 +102,58 @@ class FirebaseReservaRepository(
         val documento = reservas.add(datos).await()
         val nuevaReserva = Reserva(documento.id, usuarioId, areaId, fecha, horaInicio, horaFin, estadoInicial, esExterno, personas)
 
-        // El material solo se asigna si la reserva queda CONFIRMADA con al menos 1 hora de
-        // anticipación (una PENDIENTE_APROBACION todavía no lo necesita: se asignará cuando
-        // un administrador la confirme).
-        val horasDeAnticipacion = Fechas.horasDesdeAhora(fecha, horaInicio)
-        val debeAsignarMaterial = estadoInicial == EstadoReserva.CONFIRMADA &&
-            horasDeAnticipacion >= Catalogos.MATERIAL_AUTOMATICO_ANTICIPACION_MINIMA_HORAS
-
-        val herramientaId = herramientaPorArea[areaId]
-        if (debeAsignarMaterial && herramientaId != null) {
-            val herramienta = db.collection("herramientas").document(herramientaId).get().await()
-            materialAsignado.add(
-                mapOf(
-                    "reservaId" to nuevaReserva.id,
-                    "herramientaId" to herramientaId,
-                    "herramientaNombre" to (herramienta.getString("nombre") ?: ""),
-                    "areaId" to areaId,
-                    "fecha" to fecha,
-                    "cantidad" to 1L,
-                    "estado" to "ASIGNADO",
-                    "creadoEn" to FieldValue.serverTimestamp()
-                )
-            ).await()
-        }
+        // El material solo se asigna si la reserva queda CONFIRMADA (una pendiente de aprobación todavía no lo
+        // necesita: se aparta cuando el personal la aprueba).
+        if (estadoInicial == EstadoReserva.CONFIRMADA) asignarMaterial(nuevaReserva)
 
         return nuevaReserva
+    }
+
+    /** Aparta el material del área si la reserva tiene al menos [Catalogos.MATERIAL_AUTOMATICO_ANTICIPACION_MINIMA_HORAS] de anticipación. */
+    private suspend fun asignarMaterial(reserva: Reserva) {
+        val horasDeAnticipacion = Fechas.horasDesdeAhora(reserva.fecha, reserva.horaInicio)
+        if (horasDeAnticipacion < Catalogos.MATERIAL_AUTOMATICO_ANTICIPACION_MINIMA_HORAS) return
+        val herramientaId = herramientaPorArea[reserva.areaId] ?: return
+
+        val herramienta = db.collection("herramientas").document(herramientaId).get().await()
+        materialAsignado.add(
+            mapOf(
+                "reservaId" to reserva.id,
+                "herramientaId" to herramientaId,
+                "herramientaNombre" to (herramienta.getString("nombre") ?: ""),
+                "areaId" to reserva.areaId,
+                "fecha" to reserva.fecha,
+                "cantidad" to 1L,
+                "estado" to "ASIGNADO",
+                "creadoEn" to FieldValue.serverTimestamp()
+            )
+        ).await()
+    }
+
+    override suspend fun aprobarReserva(reservaId: String) {
+        val documento = reservas.document(reservaId).get().await()
+        val reserva = documento.toReserva() ?: error("La reserva ya no existe.")
+        if (reserva.estado != EstadoReserva.PENDIENTE_APROBACION) return
+        reservas.document(reservaId).update(
+            mapOf(
+                "estado" to EstadoReserva.CONFIRMADA.name,
+                "aprobadaEn" to FieldValue.serverTimestamp(),
+                "aprobadaPor" to (com.example.clubdeportivo.data.SesionManager.usuarioActual?.id ?: ""),
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        ).await()
+        asignarMaterial(reserva.copy(estado = EstadoReserva.CONFIRMADA))
+    }
+
+    override suspend fun rechazarReserva(reservaId: String) {
+        reservas.document(reservaId).update(
+            mapOf(
+                "estado" to EstadoReserva.CANCELADA.name,
+                "rechazadaEn" to FieldValue.serverTimestamp(),
+                "rechazadaPor" to (com.example.clubdeportivo.data.SesionManager.usuarioActual?.id ?: ""),
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        ).await()
     }
 
     override suspend fun obtenerReservasDeArea(areaId: String): List<Reserva> {
@@ -228,13 +252,15 @@ class FirebaseReservaRepository(
         return sinPenalizacion
     }
 
-    override suspend fun registrarNoShow(usuarioId: String) {
-        val strikes = noShowsPorUsuario.getOrPut(usuarioId) { mutableListOf() }
-        strikes.add(System.currentTimeMillis())
-    }
+    /** La inasistencia ya queda guardada como check-in en [registrarAsistencia]; de ahí se calcula el bloqueo. */
+    override suspend fun registrarNoShow(usuarioId: String) = Unit
 
     override suspend fun estaBloqueadoPorInasistencias(usuarioId: String): Boolean {
-        val strikes = noShowsPorUsuario[usuarioId] ?: return false
+        // Las faltas salen de los check-ins guardados (no de la memoria del teléfono), así valen en cualquier dispositivo.
+        val strikes = checkins.whereEqualTo("usuarioId", usuarioId).get().await().documents
+            .filter { it.getString("asistencia") == "NO_ASISTIO" }
+            .mapNotNull { it.getTimestamp("registradoEn")?.toDate()?.time }
+        if (strikes.isEmpty()) return false
         val ventanaMs = Catalogos.VENTANA_INASISTENCIAS_DIAS * 24L * 60 * 60 * 1000
         val recientes = strikes.filter { System.currentTimeMillis() - it <= ventanaMs }
         if (recientes.size < Catalogos.INASISTENCIAS_PARA_BLOQUEO) return false

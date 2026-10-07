@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.outlined.CardMembership
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.ListAlt
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
@@ -29,6 +31,7 @@ object Destinations {
     const val HOME = "home"
     const val PERSONAL = "personal"
     const val AREAS = "areas"
+    const val INVENTARIO = "inventario"
     const val RESERVAS = "reservas"
     const val MIS_RESERVAS = "mis_reservas" // 🚀 Nueva ruta exclusiva para socios
     const val MEMBRESIA = "membresia"
@@ -51,11 +54,10 @@ val bottomNavItems = listOf(
     BottomNavItem(Destinations.MEMBRESIA, "Membresías", Icons.Filled.CardMembership, Icons.Outlined.CardMembership)
 )
 
-/** Menú para encargados de área. */
+/** Menú para encargados de área: reservas, inventario y su perfil (sin gestión de áreas ni membresías). */
 val bottomNavItemsEncargado = listOf(
     BottomNavItem(Destinations.RESERVAS, "Reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.AREAS, "Áreas", Icons.Filled.Place, Icons.Outlined.Place),
-    BottomNavItem(Destinations.MEMBRESIA, "Membresías", Icons.Filled.CardMembership, Icons.Outlined.CardMembership),
+    BottomNavItem(Destinations.INVENTARIO, "Inventario", Icons.Filled.Inventory2, Icons.Outlined.Inventory2),
     BottomNavItem(Destinations.PERFIL, "Perfil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
 )
 
@@ -85,9 +87,10 @@ fun tituloPantalla(route: String?): String = when {
     route == Destinations.HOME -> "Inicio"
     route == Destinations.PERSONAL -> "Personal"
     route == Destinations.AREAS -> "Áreas"
+    route == Destinations.INVENTARIO -> "Inventario"
     route == Destinations.RESERVAS -> "Reservas"
     route == Destinations.MIS_RESERVAS -> "Mis reservas" // 🚀 Título de la nueva pantalla
     route == Destinations.MEMBRESIA -> "Membresías"
     route == Destinations.PERFIL -> "Mi perfil"
-    else -> "ClubDeportivo"
+    else -> "Athletic Club"
 }

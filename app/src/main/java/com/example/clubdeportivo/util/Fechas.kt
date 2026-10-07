@@ -7,6 +7,13 @@ import java.util.Locale
 
 /** Ayuda a comparar fechas/horas de texto ("yyyy-MM-dd", "HH:mm") sin depender de java.time (minSdk 24). */
 object Fechas {
+    private val NOMBRES_DIA = arrayOf("dom.", "lun.", "mar.", "mié.", "jue.", "vie.", "sáb.")
+    private val NOMBRES_MES = arrayOf("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+    private val MESES_LARGOS = arrayOf(
+        "enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    )
+
     private const val PATRON_FECHA_HORA = "yyyy-MM-dd HH:mm"
     private const val PATRON_FECHA = "yyyy-MM-dd"
 
@@ -43,6 +50,29 @@ object Fechas {
         return dias
     }
 
+    /**
+     * Fecha para mostrar a las personas: "Hoy", "Mañana" o "mié. 7 oct" (con el año si no es el actual).
+     * Si [fecha] no tiene el formato "yyyy-MM-dd" se devuelve tal cual.
+     */
+    fun legible(fecha: String): String {
+        if (fecha == hoy()) return "Hoy"
+        if (fecha == sumarDias(1)) return "Mañana"
+        val base = runCatching { formatoFecha().parse(fecha) }.getOrNull() ?: return fecha
+        val cal = Calendar.getInstance().apply { time = base }
+        val dia = NOMBRES_DIA[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val mes = NOMBRES_MES[cal.get(Calendar.MONTH)]
+        val anio = cal.get(Calendar.YEAR)
+        val sufijo = if (anio == Calendar.getInstance().get(Calendar.YEAR)) "" else " $anio"
+        return "$dia ${cal.get(Calendar.DAY_OF_MONTH)} $mes$sufijo"
+    }
+
+    /** "2026-10" -> "octubre" (o "oct" si [corto]). Devuelve [mes] tal cual si no tiene ese formato. */
+    fun nombreMes(mes: String, corto: Boolean = false): String {
+        val numero = mes.substringAfter("-", "").take(2).toIntOrNull() ?: return mes
+        if (numero !in 1..12) return mes
+        return if (corto) NOMBRES_MES[numero - 1] else MESES_LARGOS[numero - 1]
+    }
+
     fun sumarDias(dias: Int): String {
         val cal = Calendar.getInstance()
         cal.add(Calendar.DAY_OF_YEAR, dias)
@@ -51,10 +81,8 @@ object Fechas {
 
     /** Próximos [cantidad] días (incluyendo hoy) como pares fecha/etiqueta legible, ej. "Hoy", "Mañana", "vie. 12 sep". */
     fun proximosDias(cantidad: Int): List<Pair<String, String>> {
-        val nombresDia = arrayOf("dom.", "lun.", "mar.", "mié.", "jue.", "vie.", "sáb.")
-        val nombresMes = arrayOf(
-            "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"
-        )
+        val nombresDia = NOMBRES_DIA
+        val nombresMes = NOMBRES_MES
         val cal = Calendar.getInstance()
         return (0 until cantidad).map { offset ->
             val diaCal = cal.clone() as Calendar

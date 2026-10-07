@@ -27,7 +27,7 @@ import java.util.Locale
  */
 object MigracionEsquema {
 
-    const val VERSION = 5L
+    const val VERSION = 6L
     private const val TAG = "Esquema"
     private const val TAMANO_LOTE = 400
     private val ROLES_DE_PERSONAL = listOf("SUPERADMIN", "ADMIN", "ADMIN_AREA", "AYUDANTE_AREA")
@@ -97,6 +97,8 @@ object MigracionEsquema {
             mapOf("esTitular" to (doc.getString("parentesco") == "Titular"))
         }
 
+        resumen["registroCodigos"] = crearRegistroDeCodigos(db, miembros)
+
         resumen["membresias"] = completar(db.collection("membresias"), membresias) { doc ->
             val deEstaMembresia = miembros.filter { it.getString("membresiaId") == doc.id }
             val titular = deEstaMembresia.firstOrNull { it.getBoolean("esTitular") == true || it.getString("parentesco") == "Titular" }
@@ -144,7 +146,7 @@ object MigracionEsquema {
             )
         }
 
-        resumen["com/example/clubdeportivo/data/notificaciones"] = completar(db.collection("com/example/clubdeportivo/data/notificaciones"), leer(db, "com/example/clubdeportivo/data/notificaciones")) { doc ->
+        resumen["notificaciones"] = completar(db.collection("notificaciones"), leer(db, "notificaciones")) { doc ->
             val tipo = doc.getString("tipo").orEmpty()
             mapOf(
                 "leida" to doc.getBoolean("leido"),
@@ -289,6 +291,31 @@ object MigracionEsquema {
         calcular: (DocumentSnapshot) -> Map<String, Any?>
     ): Long = completar(coleccion.firestore, coleccion, documentos, forzar, calcular)
 
+    /**
+     * Desde la versión 6 los miembros se registran en la app con su código, y para saber si un código existe (y si ya
+     * tiene cuenta) se consulta `registroCodigos/{código}`. Esto crea ese documento para los miembros que ya existían.
+     * Devuelve cuántos documentos creó; los que ya existen no se tocan.
+     */
+    private suspend fun crearRegistroDeCodigos(db: FirebaseFirestore, miembros: List<DocumentSnapshot>): Long {
+        val existentes = leer(db, "registroCodigos").map { it.id }.toSet()
+        val faltantes = miembros.filter { it.id !in existentes && !it.getString("usuarioId").isNullOrBlank() }
+        faltantes.chunked(TAMANO_LOTE).forEach { grupo ->
+            val lote = db.batch()
+            grupo.forEach { miembro ->
+                lote.set(
+                    db.collection("registroCodigos").document(miembro.id),
+                    mapOf(
+                        "usuarioId" to miembro.getString("usuarioId"),
+                        "cuentaCreada" to false,
+                        "creadoEn" to FieldValue.serverTimestamp()
+                    )
+                )
+            }
+            lote.commit().await()
+        }
+        return faltantes.size.toLong()
+    }
+
     /** Quita [campo] de los documentos que lo tengan. Devuelve cuántos documentos cambiaron. */
     private suspend fun quitarCampo(db: FirebaseFirestore, documentos: List<DocumentSnapshot>, campo: String): Long {
         val conCampo = documentos.filter { it.contains(campo) }
@@ -312,7 +339,7 @@ object MigracionEsquema {
     private suspend fun auditar(db: FirebaseFirestore) {
         listOf(
             "areas", "checkins", "herramientas", "inscripcionesTorneo", "integrantesFamiliares",
-            "materialAsignado", "membresias", "miembros", "com/example/clubdeportivo/data/notificaciones", "pagos", "precios", "reservas",
+            "materialAsignado", "membresias", "miembros", "notificaciones", "avisos", "registroCodigos", "pagos", "precios", "reservas",
             "restriccionesHorario", "torneos", "usuarios"
         ).forEach { nombre ->
             val docs = leer(db, nombre)

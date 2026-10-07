@@ -13,7 +13,9 @@ data class MiembroClub(
     /** "Titular" o el parentesco con el titular (Cónyuge, Hijo...). */
     val parentesco: String,
     /** Uid de la cuenta de acceso en Firebase Authentication. */
-    val usuarioId: String
+    val usuarioId: String,
+    /** true cuando la persona ya se registró con su código y tiene su propio correo y contraseña. */
+    val cuentaCreada: Boolean = false
 ) {
     val esTitular get() = parentesco == PARENTESCO_TITULAR
 

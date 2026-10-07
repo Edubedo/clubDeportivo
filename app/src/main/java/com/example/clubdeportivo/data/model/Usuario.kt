@@ -4,8 +4,8 @@ package com.example.clubdeportivo.data.model
  * Roles del club, de mayor a menor alcance:
  * - SUPERADMIN: nivel sistema, controla todo (igual que ADMIN en la app).
  * - ADMIN: Administrador. Único con acceso al dashboard y a Personal (altas y cuentas del personal).
- * - ADMIN_AREA: rol heredado; se trata como Encargado de área.
- * - AYUDANTE_AREA: Encargado de área. Solo reservas, áreas y membresías.
+ * - ADMIN_AREA: rol heredado; se trata como Empleado de apoyo.
+ * - AYUDANTE_AREA: Empleado de apoyo. Reservas de su área, áreas y membresías (los precios solo los cambia un administrador).
  * - SOCIO: solo puede elegir a qué área ir y reservar.
  * - VISITANTE_EXTERNO: fue cliente de visita, acceso limitado (requiere aprobación para reservar).
  */
@@ -21,8 +21,8 @@ enum class Rol {
 fun Rol.nombreLegible(): String = when (this) {
     Rol.SUPERADMIN -> "Superadministrador"
     Rol.ADMIN -> "Administrador"
-    Rol.ADMIN_AREA -> "Encargado de área"
-    Rol.AYUDANTE_AREA -> "Encargado de área"
+    Rol.ADMIN_AREA -> "Empleado de apoyo"
+    Rol.AYUDANTE_AREA -> "Empleado de apoyo"
     Rol.SOCIO -> "Socio"
     Rol.VISITANTE_EXTERNO -> "Visitante externo"
 }

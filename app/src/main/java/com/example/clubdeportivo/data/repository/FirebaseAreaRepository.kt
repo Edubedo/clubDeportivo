@@ -1,6 +1,5 @@
 package com.example.clubdeportivo.data.repository
 
-import com.example.clubdeportivo.data.FirebaseSeeder
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.google.firebase.firestore.DocumentSnapshot
@@ -29,7 +28,6 @@ class FirebaseAreaRepository(
     private val coleccion = db.collection("areas")
 
     override suspend fun obtenerAreas(): List<Area> {
-        FirebaseSeeder.asegurarAreas(db)
         return coleccion.get().await().documents.mapNotNull { it.toArea() }
     }
 

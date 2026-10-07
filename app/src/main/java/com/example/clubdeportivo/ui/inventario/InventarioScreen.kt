@@ -1,14 +1,11 @@
 package com.example.clubdeportivo.ui.inventario
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,24 +14,29 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -42,34 +44,52 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
+import com.example.clubdeportivo.data.model.ArticuloInventario
+import com.example.clubdeportivo.ui.components.BotonIcono
 import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.BurbujaTexto
 import com.example.clubdeportivo.ui.components.CampoTexto
+import com.example.clubdeportivo.ui.components.DialogoConfirmacion
 import com.example.clubdeportivo.ui.components.DialogoFormulario
+import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EspacioCampos
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.clubdeportivo.ui.components.FullScreenLoading
+import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.MargenPantalla
+import com.example.clubdeportivo.ui.components.PestanasPildora
+import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.Marca
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.TextoPrincipal
+import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.ui.components.BotonFlotanteAgregar
+import com.example.clubdeportivo.ui.components.botonFlotanteVisible
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel()
 ) {
     val articulos by viewModel.articulos.observeAsState(emptyList())
+    val cargando by viewModel.cargando.observeAsState(true)
+    val mensaje by viewModel.mensaje.observeAsState()
     val filtroDeporte by viewModel.filtroDeporte.observeAsState("Todos")
     val mostrarModal by viewModel.mostrarModal.observeAsState(false)
     val articuloEnEdicion by viewModel.articuloEnEdicion.observeAsState()
-    val historial by viewModel.historial.observeAsState(emptyList())
     val articulosFiltrados = if (filtroDeporte == "Todos") {
         articulos
     } else {
@@ -77,19 +97,26 @@ fun InventarioScreen(
     }
 
     var articuloAEliminar by remember { mutableStateOf<ArticuloInventario?>(null) }
-    var mostrarHistorial by remember { mutableStateOf(false) }
+    val deportes by viewModel.deportes.observeAsState(viewModel.obtenerDeportes())
+    val listState = rememberLazyListState()
 
-    // 🚀 Scaffolding con el botón flotante real flotando por encima del contenido y la barra inferior
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(mensaje) {
+        mensaje?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onMensajeMostrado()
+        }
+    }
+
     Scaffold(
-        containerColor = Color(0xFFEAF1F8),
+        containerColor = FondoApp,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { viewModel.abrirModalAgregar() },
-                icon = { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White) },
-                text = { Text("Artículo", fontWeight = FontWeight.Bold) },
-                containerColor = Color(0xFF1E2E4F),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
+            BotonFlotanteAgregar(
+                texto = "Agregar artículo",
+                visible = listState.botonFlotanteVisible(),
+                onClick = { viewModel.abrirModalAgregar() }
             )
         }
     ) { innerPadding ->
@@ -97,68 +124,25 @@ fun InventarioScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color(0xFFEAF1F8))
         ) {
+            PestanasPildora(
+                opciones = deportes,
+                seleccionada = deportes.indexOf(filtroDeporte).coerceAtLeast(0),
+                onSeleccion = { viewModel.filtrarPorDeporte(deportes[it]) }
+            )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                viewModel.obtenerDeportes().forEach { deporte ->
-                    val esSeleccionado = filtroDeporte == deporte
-                    val colorFondo by animateColorAsState(
-                        targetValue = if (esSeleccionado) Color(0xFFD6E4FE) else Color.White
-                    )
-                    val colorTexto by animateColorAsState(
-                        targetValue = if (esSeleccionado) Color(0xFF1E2E4F) else Color(0xFF31487A)
-                    )
-//CLB-J2B3KF
-                    Surface(
-                        modifier = Modifier.size(width = 130.dp, height = 44.dp),
-                        shape = RoundedCornerShape(22.dp),
-                        color = colorFondo,
-                        onClick = { viewModel.filtrarPorDeporte(deporte) }
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = deporte,
-                                fontSize = 13.sp,
-                                fontWeight = if (esSeleccionado) FontWeight.SemiBold else FontWeight.Medium,
-                                color = colorTexto
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (articulosFiltrados.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No hay artículos en esta categoría todavía",
-                        fontSize = 14.sp,
-                        color = Color(0xFF31487A)
-                    )
-                }
+            if (cargando && articulos.isEmpty()) {
+                FullScreenLoading()
+            } else if (articulosFiltrados.isEmpty()) {
+                EmptyState(
+                    mensaje = "No hay artículos en esta categoría todavía.",
+                    icono = Icons.Outlined.Inventory2
+                )
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxWidth(),
-                    // 🌟 Espacio inferior amplio (96.dp) para que la lista nunca quede oculta tras el FAB
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 96.dp),
+                    contentPadding = PaddingValues(start = MargenPantalla, end = MargenPantalla, top = 4.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(articulosFiltrados, key = { it.id }) { articulo ->
@@ -178,7 +162,7 @@ fun InventarioScreen(
     if (mostrarModal) {
         ModalArticulo(
             articuloEnEdicion = articuloEnEdicion,
-            deportes = viewModel.obtenerDeportes().filterNot { it == "Todos" },
+            deportes = deportes.filterNot { it == "Todos" },
             existeNombre = { nombre, id -> viewModel.existeNombre(nombre, id) },
             onGuardar = { id, nombre, deporte, cantidad, stockMinimo ->
                 if (id != null) {
@@ -192,30 +176,16 @@ fun InventarioScreen(
     }
 
     articuloAEliminar?.let { articulo ->
-        AlertDialog(
-            onDismissRequest = { articuloAEliminar = null },
-            title = { Text("Eliminar artículo") },
-            text = { Text("¿Seguro que deseas eliminar \"${articulo.nombre}\" del inventario? Esta acción no se puede deshacer.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.eliminarArticulo(articulo)
-                    articuloAEliminar = null
-                }) {
-                    Text("Eliminar", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
-                }
+        DialogoConfirmacion(
+            titulo = "Eliminar artículo",
+            mensaje = "¿Seguro que deseas eliminar \"${articulo.nombre}\" del inventario? Esta acción no se puede deshacer.",
+            textoConfirmar = "Eliminar",
+            textoCancelar = "Cancelar",
+            onConfirmar = {
+                viewModel.eliminarArticulo(articulo)
+                articuloAEliminar = null
             },
-            dismissButton = {
-                TextButton(onClick = { articuloAEliminar = null }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
-
-    if (mostrarHistorial) {
-        ModalHistorialActividad(
-            historial = historial,
-            onCerrar = { mostrarHistorial = false }
+            onCancelar = { articuloAEliminar = null }
         )
     }
 }
@@ -230,12 +200,7 @@ fun ArticuloCard(
 ) {
     val stockBajo = articulo.cantidad <= articulo.stockMinimo
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -244,67 +209,65 @@ fun ArticuloCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(text = articulo.icono, fontSize = 28.sp)
+                BurbujaTexto(texto = articulo.icono, tamano = 48.dp, tamanoTexto = 24)
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = articulo.nombre,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF192338),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        Text(
-                            text = articulo.deporte,
-                            fontSize = 12.sp,
-                            color = Color(0xFF31487A)
-                        )
-                    }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = articulo.nombre,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TextoPrincipal,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = articulo.deporte,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario
+                    )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onEditar, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = "Editar ${articulo.nombre}",
-                            tint = Color(0xFF31487A)
-                        )
-                    }
-                    IconButton(onClick = onEliminar, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Eliminar ${articulo.nombre}",
-                            tint = Color(0xFFEF4444)
-                        )
-                    }
+                IconButton(onClick = onEditar, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Editar ${articulo.nombre}",
+                        tint = TextoSecundario,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(onClick = onEliminar, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "Eliminar ${articulo.nombre}",
+                        tint = Peligro,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = if (stockBajo) "⚠ Stock bajo (mín. ${articulo.stockMinimo})" else "Stock mínimo: ${articulo.stockMinimo}",
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp),
-                    fontSize = 12.sp,
-                    fontWeight = if (stockBajo) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (stockBajo) Color(0xFFEF4444) else Color(0xFF31487A)
-                )
+                if (stockBajo) {
+                    Insignia(
+                        texto = "Stock bajo (mín. ${articulo.stockMinimo})",
+                        tipo = TipoInsignia.ALERTA,
+                        icono = Icons.Filled.Warning,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                } else {
+                    Text(
+                        text = "Stock mínimo: ${articulo.stockMinimo}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
 
                 BotonesCantidad(
                     cantidad = articulo.cantidad,
@@ -326,41 +289,32 @@ fun BotonesCantidad(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        IconButton(
+        BotonIcono(
+            icono = Icons.Filled.Remove,
+            descripcion = "Quitar una unidad",
             onClick = onMenos,
-            enabled = cantidad > 0,
-            modifier = Modifier
-                .size(36.dp)
-                .background(Color(0xFFEAF1F8), RoundedCornerShape(10.dp))
-        ) {
-            Text(
-                text = "−",
-                fontSize = 18.sp,
-                color = if (cantidad > 0) Color(0xFF192338) else Color(0xFFD1D5DB)
-            )
-        }
+            enabled = cantidad > 0
+        )
 
         Text(
             text = cantidad.toString(),
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF192338),
+            color = TextoPrincipal,
             textAlign = TextAlign.Center,
             maxLines = 1,
-            modifier = Modifier.widthIn(min = 30.dp)
+            modifier = Modifier.widthIn(min = 32.dp)
         )
 
-        IconButton(
-            onClick = onMas,
-            modifier = Modifier
-                .size(36.dp)
-                .background(Color(0xFFEAF1F8), RoundedCornerShape(10.dp))
-        ) {
-            Text(text = "+", fontSize = 18.sp, color = Color(0xFF192338))
-        }
+        BotonIcono(
+            icono = Icons.Filled.Add,
+            descripcion = "Agregar una unidad",
+            onClick = onMas
+        )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModalArticulo(
     articuloEnEdicion: ArticuloInventario?,
@@ -386,13 +340,29 @@ private fun ModalArticulo(
 
     DialogoFormulario(
         titulo = if (enEdicion) "Editar artículo" else "Agregar artículo",
-        onCerrar = onCerrar
+        onCerrar = onCerrar,
+        pie = {
+            BotonPrimario(
+                texto = if (enEdicion) "Guardar cambios" else "Agregar",
+                enabled = nombre.isNotBlank() && deporteSeleccionado.isNotBlank() && !nombreRepetido,
+                onClick = {
+                    onGuardar(
+                        articuloEnEdicion?.id,
+                        nombre.trim(),
+                        deporteSeleccionado,
+                        cantidad.toIntOrNull() ?: 1,
+                        stockMinimo.toIntOrNull() ?: 1
+                    )
+                }
+            )
+        }
     ) {
         EtiquetaCampo("NOMBRE DEL ARTÍCULO")
         CampoTexto(
             value = nombre,
             onValueChange = { nombre = it },
             placeholder = "Ej: Raquetas",
+            capitalizacion = KeyboardCapitalization.Sentences,
             isError = nombreRepetido,
             mensajeError = if (nombreRepetido) "Ya existe un artículo con ese nombre en el inventario" else null
         )
@@ -400,62 +370,23 @@ private fun ModalArticulo(
         EspacioCampos()
 
         EtiquetaCampo("DEPORTE")
-        Box(modifier = Modifier.fillMaxWidth()) {
+        ExposedDropdownMenuBox(expanded = mostrarDropdown, onExpandedChange = { mostrarDropdown = it }) {
             CampoTexto(
-                value = deporteSeleccionado,
+                value = deporteSeleccionado.takeIf { it.isNotBlank() }?.let { "${Deportes.emojiDe(it)} $it" } ?: "",
                 onValueChange = {},
                 readOnly = true,
-                trailingIcon = { Text("▼") }
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mostrarDropdown) }
             )
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                color = Color.Transparent,
-                onClick = { mostrarDropdown = !mostrarDropdown }
-            ) {}
-
-            if (mostrarDropdown) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 60.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White,
-                    shadowElevation = 8.dp
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        deportes.forEach { deporte ->
-                            val esSeleccionado = deporteSeleccionado == deporte
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                color = if (esSeleccionado) Color(0xFFD6E4FE) else Color.White,
-                                onClick = {
-                                    deporteSeleccionado = deporte
-                                    mostrarDropdown = false
-                                }
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(text = Deportes.emojiDe(deporte))
-                                    Text(
-                                        text = deporte,
-                                        fontSize = 14.sp,
-                                        color = if (esSeleccionado) Color(0xFF1E2E4F) else Color(0xFF192338),
-                                        fontWeight = if (esSeleccionado) FontWeight.SemiBold else FontWeight.Normal
-                                    )
-                                }
-                            }
+            ExposedDropdownMenu(expanded = mostrarDropdown, onDismissRequest = { mostrarDropdown = false }) {
+                deportes.forEach { deporte ->
+                    DropdownMenuItem(
+                        text = { Text("${Deportes.emojiDe(deporte)} $deporte") },
+                        onClick = {
+                            deporteSeleccionado = deporte
+                            mostrarDropdown = false
                         }
-                    }
+                    )
                 }
             }
         }
@@ -480,59 +411,9 @@ private fun ModalArticulo(
                 CampoTexto(
                     value = stockMinimo,
                     onValueChange = { stockMinimo = it.filter(Char::isDigit).take(5) },
-                    tipoTeclado = KeyboardType.Number
+                    tipoTeclado = KeyboardType.Number,
+                    imeAction = ImeAction.Done
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        BotonPrimario(
-            texto = if (enEdicion) "Guardar cambios" else "Agregar",
-            enabled = nombre.isNotBlank() && deporteSeleccionado.isNotBlank() && !nombreRepetido,
-            onClick = {
-                onGuardar(
-                    articuloEnEdicion?.id,
-                    nombre.trim(),
-                    deporteSeleccionado,
-                    cantidad.toIntOrNull() ?: 1,
-                    stockMinimo.toIntOrNull() ?: 1
-                )
-            }
-        )
-    }
-}
-
-@Composable
-private fun ModalHistorialActividad(
-    historial: List<ActividadInventario>,
-    onCerrar: () -> Unit
-) {
-    val formato = remember { SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()) }
-
-    DialogoFormulario(titulo = "Actividad reciente", onCerrar = onCerrar) {
-        if (historial.isEmpty()) {
-            Text(
-                text = "Todavía no hay movimientos registrados en el inventario.",
-                fontSize = 14.sp,
-                color = Color(0xFF31487A),
-                modifier = Modifier.padding(vertical = 24.dp)
-            )
-        } else {
-            historial.forEach { actividad ->
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    Text(
-                        text = actividad.descripcion,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF192338)
-                    )
-                    Text(
-                        text = formato.format(Date(actividad.timestamp)),
-                        fontSize = 12.sp,
-                        color = Color(0xFF31487A)
-                    )
-                }
             }
         }
     }
