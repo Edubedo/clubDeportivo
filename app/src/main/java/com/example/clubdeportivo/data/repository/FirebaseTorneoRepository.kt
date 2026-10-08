@@ -53,6 +53,10 @@ class FirebaseTorneoRepository(
      * El id de la inscripción es `torneoId_usuarioId`: una persona no puede inscribirse dos veces al mismo torneo.
      * Todo ocurre en una transacción para que dos inscripciones simultáneas no sobrepasen el cupo.
      */
+    override suspend fun torneosInscritos(usuarioId: String): Set<String> =
+        inscripciones.whereEqualTo("usuarioId", usuarioId).get().await().documents
+            .mapNotNull { it.getString("torneoId") }.toSet()
+
     override suspend fun inscribirse(torneoId: String, usuarioId: String): InscripcionTorneo {
         val torneoRef = torneos.document(torneoId)
         val inscripcionRef = inscripciones.document("${torneoId}_$usuarioId")
@@ -144,5 +148,14 @@ class FirebaseTorneoRepository(
         val inscritos = torneos.document(id).get().await().getLong("inscritos")
             ?: inscripciones.whereEqualTo("torneoId", id).count().get(AggregateSource.SERVER).await().count
         return Torneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, inscritos.toInt(), horaInicio, horaFin)
+    }
+
+    override suspend fun eliminarTorneo(id: String) {
+        // Las inscripciones no tienen sentido sin su torneo: se borran en el mismo lote.
+        val inscritas = inscripciones.whereEqualTo("torneoId", id).get().await().documents
+        val lote = db.batch()
+        inscritas.forEach { lote.delete(it.reference) }
+        lote.delete(torneos.document(id))
+        lote.commit().await()
     }
 }

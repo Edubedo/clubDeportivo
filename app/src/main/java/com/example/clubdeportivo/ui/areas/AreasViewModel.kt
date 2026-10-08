@@ -5,8 +5,11 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
+import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
+import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import com.example.clubdeportivo.data.repository.TorneoRepository
@@ -41,10 +44,12 @@ class AreasViewModel(
         viewModelScope.launch {
             _cargando.value = true
             try {
-                _areas.value = areaRepository.obtenerAreas()
+                // Un encargado solo ve las áreas de su deporte.
+                val usuario = SesionManager.usuarioActual
+                _areas.value = areaRepository.obtenerAreas().filter { usuario.puedeVerDeporte(it.tipo) }
                 val hoy = Fechas.hoy()
                 _reservasHoy.value = reservaRepository.obtenerReservasVigentes()
-                    .filter { it.fecha == hoy }
+                    .filter { it.fecha == hoy && it.estado == EstadoReserva.CONFIRMADA }
                     .groupingBy { it.areaId }
                     .eachCount()
             } catch (e: Exception) {

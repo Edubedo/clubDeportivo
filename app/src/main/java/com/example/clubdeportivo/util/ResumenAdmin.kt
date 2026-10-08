@@ -18,8 +18,6 @@ data class ResumenAdmin(
     /** Los últimos meses de más antiguo a más reciente: ("2026-05", 12000.0)... incluye el actual. */
     val ingresosPorMes: List<Pair<String, Double>>,
     val ingresosPorMetodo: List<Pair<MetodoPago?, Double>>,
-    /** Lo que se cobraría en un mes si todas las membresías activas renuevan (no incluye visitas). */
-    val ingresoMensualEsperado: Double,
     val activas: Int,
     val personasActivas: Int,
     val vencidas: Int,
@@ -78,7 +76,6 @@ object CalculoResumenAdmin {
             ingresosPorMetodo = pagosDelMes.groupBy { it.metodo }
                 .map { (metodo, lista) -> metodo to lista.sumOf { it.monto } }
                 .sortedByDescending { it.second },
-            ingresoMensualEsperado = activas.sumOf { it.first.membresia.precio },
             activas = activas.size,
             personasActivas = activas.sumOf { it.first.personas.size },
             vencidas = conEstado.count { it.second == EstadoMembresia.VENCIDA && it.first.membresia.tipo != TipoMembresia.VISITA },

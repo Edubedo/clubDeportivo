@@ -9,13 +9,13 @@ import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Reserva
-import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.util.Fechas
 import kotlinx.coroutines.launch
 
 /**
- * Reservas de visitantes externos que esperan aprobación del personal. Un encargado de área solo ve las de su
- * deporte; el administrador ve todas.
+ * Reservas de miembros y visitantes que están "en revisión" y esperan aprobación. Un encargado de área solo ve (y
+ * responde) las de su deporte; el administrador ve todas.
  */
 class AprobacionesViewModel : ViewModel() {
 
@@ -38,10 +38,9 @@ class AprobacionesViewModel : ViewModel() {
             try {
                 val hoy = Fechas.hoy()
                 val usuario = SesionManager.usuarioActual
-                val soloDeSuArea = usuario?.rol == Rol.AYUDANTE_AREA || usuario?.rol == Rol.ADMIN_AREA
                 pendientes = repositorio.obtenerReservasVigentes()
                     .filter { it.estado == EstadoReserva.PENDIENTE_APROBACION && it.fecha >= hoy }
-                    .filter { !soloDeSuArea || it.deporte.equals(usuario?.areaTrabajo, ignoreCase = true) }
+                    .filter { usuario.puedeVerDeporte(it.deporte) }
                     .sortedWith(compareBy({ it.fecha }, { it.horaInicio }))
             } catch (e: Exception) {
                 pendientes = pendientes ?: emptyList()
@@ -62,6 +61,10 @@ class AprobacionesViewModel : ViewModel() {
                 accion()
                 pendientes = pendientes?.filterNot { it.id == reserva.id }
                 mensaje = exito
+            } catch (e: IllegalStateException) {
+                // Reglas de negocio (otra área, ya respondida por alguien más, ya terminó...): se explican tal cual.
+                mensaje = e.message ?: "No se pudo completar la acción."
+                cargar()
             } catch (e: Exception) {
                 mensaje = "No se pudo completar la acción. Intenta de nuevo."
             }

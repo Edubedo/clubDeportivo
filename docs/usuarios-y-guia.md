@@ -14,9 +14,9 @@ reservas de áreas, membresías y cobros, torneos, inventario, personal y avisos
 | Rol | Qué ve y qué hace |
 |---|---|
 | `SUPERADMIN` / `ADMIN` | **Administrador.** Dashboard (ingresos y membresías), Personal, Áreas e inventario, Reservas (con torneos y aprobaciones) y Membresías (incluye cambiar precios). Es el único que crea cuentas de personal y avisa a empleados. |
-| `AYUDANTE_AREA` (y `ADMIN_AREA`, heredado) | **Empleado de apoyo.** Reservas de su área (asistencia y aprobaciones), Áreas, Membresías (alta de miembros, renovaciones, suspensiones) y Perfil. No cambia precios ni administra personal. |
+| `AYUDANTE_AREA` (y `ADMIN_AREA`, heredado) | **Encargado.** Solo ve lo de su área de trabajo (obligatoria al darlo de alta): Reservas (aprueba o rechaza las solicitudes, ve la disponibilidad por hora y toma asistencia), Mi área (la puede poner en mantenimiento), Inventario de su deporte y Perfil. No ve Membresías, precios ni Personal. |
 | `SOCIO` | Reserva espacios, ve sus reservas, su membresía y los avisos del club. |
-| `VISITANTE_EXTERNO` | Igual que el socio, pero sus reservas esperan la aprobación del personal y solo puede reservar en áreas que admiten visitantes. |
+| `VISITANTE_EXTERNO` | Igual que el miembro, y solo puede reservar en áreas que admiten visitantes. |
 
 ## Cómo se crea cada tipo de cuenta
 
@@ -39,9 +39,24 @@ reservas de áreas, membresías y cobros, torneos, inventario, personal y avisos
 - Renovar suma un mes, **cobra** (con método de pago) y registra el pago.
 - Una membresía suspendida, vencida o inexistente **no puede reservar** (la app avisa por qué).
 
+## Reservas: de la solicitud a la confirmación
+
+1. El **miembro** reserva un espacio y la solicitud queda **"En revisión"** (ya ocupa cupo, para que nadie más tome esas horas).
+2. El **encargado del área** (o un administrador) la ve en *Reservas → Por aprobar* y la **aprueba** (pasa a *Confirmada* y se aparta el material) o la **rechaza** (el miembro la ve como *Rechazada* y el lugar se libera).
+3. El miembro puede cancelar su solicitud o reserva cuando quiera (con menos de 4 h de anticipación cuenta como tardía).
+4. El encargado ve la ocupación hora por hora de su área en *Reservas → Horarios*. Un miembro puede tener máximo 3 reservas activas.
+
+> `firestore.rules` obliga a que las reservas de miembros nazcan "en revisión" y a que solo el encargado de ese deporte (o un administrador) las apruebe: hay que **publicar** el archivo en Firebase tras cada cambio.
+
+## Cambiar la contraseña del personal
+
+*Personal → Editar → Cambiar contraseña*: el administrador escribe la contraseña nueva (con los mismos requisitos del alta) y se
+cambia al instante, **sin correo**. Avísale a la persona su contraseña nueva; sus sesiones abiertas se cierran. Funciona con una
+Cloud Function que hay que publicar una vez: ver [`../functions/README.md`](../functions/README.md).
+
 ## Dashboard del administrador
 
-Ingresos del mes (contra el mes anterior), gráfica de seis meses, ingreso mensual esperado, membresías activas,
+Ingresos del mes (contra el mes anterior), gráfica de seis meses, membresías activas,
 altas del mes, vencimientos de la semana, vencidas y suspendidas, cobros por método y la operación del día (reservas,
 reservas por aprobar, áreas, stock bajo, personal, torneos). **Los ingresos salen de los cobros que registra la app
 desde que se estrenó esta versión**; no se inventan cobros anteriores.

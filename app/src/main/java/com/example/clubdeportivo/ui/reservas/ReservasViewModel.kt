@@ -250,10 +250,12 @@ class ReservasViewModel(
                         horaInicio = horaInicio,
                         horaFin = horaFin,
                         esExterno = esVisitanteExterno,
-                        personas = actual.personas
+                        personas = actual.personas,
+                        // Miembros y visitantes quedan en revisión; el personal reserva sin pedir permiso.
+                        requiereAprobacion = usuario.rol.esCliente()
                     )
                     _mensaje.value = if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) {
-                        "Reserva enviada: queda pendiente de aprobación."
+                        "Solicitud enviada: tu reserva está en revisión. El encargado del área la aprobará o rechazará."
                     } else {
                         "¡Reserva confirmada! ${Deportes.titulo(area.tipo, area.nombre)}, ${actual.fecha} de $horaInicio a $horaFin."
                     }
@@ -308,8 +310,13 @@ class ReservasViewModel(
     private suspend fun cargarLista(areas: List<Area>) {
         val usuario = usuario ?: return
         val hoy = Fechas.hoy()
-        val todas = reservaRepository.obtenerReservasVigentes()
-        val visibles = if (usuario.rol.esPersonal()) todas else todas.filter { it.usuarioId == usuario.id }
+        // Quien reserva también ve las suyas rechazadas (para saber qué pasó); el personal, las vigentes de todos.
+        val visibles = if (usuario.rol.esPersonal()) {
+            reservaRepository.obtenerReservasVigentes()
+        } else {
+            reservaRepository.obtenerReservasDeUsuario(usuario.id)
+                .filter { ReglasReserva.esVigente(it) || it.estado == EstadoReserva.RECHAZADA }
+        }
         _reservas.value = visibles
             .filter { it.fecha >= hoy }
             .sortedWith(compareBy({ it.fecha }, { it.horaInicio }))

@@ -6,7 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.Deportes
+import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.ArticuloInventario
+import com.example.clubdeportivo.data.model.Usuario
+import com.example.clubdeportivo.data.model.esEncargado
+import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.data.repository.InventarioRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -29,6 +33,8 @@ private const val MAX_ACTIVIDADES = 50
 class InventarioViewModel(
     private val repositorio: InventarioRepository = AppContainer.inventarioRepository,
     private val alcance: CoroutineScope? = null,
+    /** Usuario que está viendo el inventario: un encargado solo ve (y agrega) lo de su área. */
+    private val usuario: () -> Usuario? = { SesionManager.usuarioActual },
     /** Deportes de las áreas del club (para ofrecer también los que se dieron de alta después). */
     private val deportesDelClub: suspend () -> List<String> = {
         runCatching { AppContainer.areaRepository.obtenerAreas().map { it.tipo.trim() } }.getOrDefault(emptyList())
@@ -70,10 +76,17 @@ class InventarioViewModel(
         scope.launch {
             _cargando.value = true
             try {
-                _articulos.value = repositorio.obtenerArticulos()
+                val actual = usuario()
+                _articulos.value = repositorio.obtenerArticulos().filter { actual.puedeVerDeporte(it.deporte) }
                 val propios = _articulos.value.orEmpty().map { it.deporte }
-                _deportes.value = listOf("Todos") +
-                    (Deportes.predefinidos + deportesDelClub() + propios).filter { it.isNotBlank() }.distinct()
+                _deportes.value = if (actual?.rol?.esEncargado() == true) {
+                    // Un encargado solo trabaja con el deporte de su área: ni filtro "Todos" ni otros deportes.
+                    listOfNotNull(actual.areaTrabajo?.trim()?.takeIf { it.isNotEmpty() })
+                } else {
+                    listOf("Todos") +
+                        (Deportes.predefinidos + deportesDelClub() + propios).filter { it.isNotBlank() }.distinct()
+                }
+                if (actual?.rol?.esEncargado() == true) _filtroDeporte.value = _deportes.value.orEmpty().firstOrNull() ?: "Todos"
             } catch (e: Exception) {
                 _mensaje.value = "No se pudo cargar el inventario. Revisa tu conexión."
             }
@@ -206,7 +219,7 @@ class InventarioViewModel(
             } catch (e: Exception) {
                 _mensaje.value = "No se pudo guardar el cambio. Se restauró el inventario."
                 try {
-                    _articulos.value = repositorio.obtenerArticulos()
+                    _articulos.value = repositorio.obtenerArticulos().filter { usuario().puedeVerDeporte(it.deporte) }
                 } catch (_: Exception) { }
             }
         }

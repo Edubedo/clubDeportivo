@@ -152,7 +152,10 @@ internal fun MiembrosTab(
                 it.nombre.contains(texto, ignoreCase = true) || it.codigo.contains(ReglasMembresia.normalizarCodigo(texto).takeIf { c -> c.length > 3 } ?: texto, ignoreCase = true)
             }
         }
-        .sortedBy { it.titular?.nombre?.lowercase() ?: "" }
+        .sortedWith(
+            compareBy<MembresiaDetalle> { ReglasMembresia.estadoEfectivo(it.membresia, hoy) != EstadoMembresia.ACTIVA }
+                .thenBy { it.titular?.nombre?.lowercase() ?: "" }
+        )
 
     Scaffold(
         containerColor = FondoApp,

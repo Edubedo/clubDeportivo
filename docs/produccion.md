@@ -34,7 +34,7 @@ Marca cada punto. Los marcados con ⚠️ son obligatorios: sin ellos la app **n
 
 ## 3. Prueba de humo (30 min, con un miembro de prueba)
 
-1. Admin: crea un empleado de apoyo (Personal) y un miembro (Membresías → Registrar miembro, cobra en efectivo).
+1. Admin: crea un encargado (Personal, con su área) y un miembro (Membresías → Registrar miembro, cobra en efectivo).
 2. Miembro: **Regístrate con tu código**. Repite con el mismo código: debe decir que ya tiene cuenta.
 3. Miembro: inicia sesión, reserva un espacio, cancela la reserva (con confirmación).
 4. Admin: suspende esa membresía con un motivo. El miembro ve el motivo y no puede reservar. Reactívala.

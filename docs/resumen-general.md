@@ -51,7 +51,7 @@ ui/  (Screen + ViewModel)  →  data/repository/ (interfaz + Firebase*Repository
 | Rol | Qué ve y qué puede hacer |
 |---|---|
 | **SUPERADMIN / ADMIN** | Dashboard, Personal, Áreas (con Inventario), Reservas (con Torneos) y Membresías. Son los únicos que crean cuentas de personal. |
-| **AYUDANTE_AREA** (y ADMIN_AREA heredado) | Se muestra como "Empleado de apoyo". Ve Reservas (de su área, con aprobaciones), Áreas, Membresías y Perfil; sin dashboard, Personal ni cambio de precios. |
+| **AYUDANTE_AREA** (y ADMIN_AREA heredado) | Se muestra como "Encargado". Solo ve lo de su área: Reservas (por aprobar, reservas y horarios), Mi área, Inventario y Perfil; sin dashboard, Personal, Membresías ni precios. |
 | **SOCIO** | Reservas (solo las suyas), su Membresía y su Perfil. |
 | **VISITANTE_EXTERNO** | Igual que el socio, pero sus reservas nacen `PENDIENTE_APROBACION`. Solo puede reservar en áreas que permiten externos. |
 
@@ -397,7 +397,7 @@ El personal no tiene límite de reservas ni bloqueo por inasistencias, y ve las 
 
 ### 4. Personal (solo admin)
 
-Alta de personal con rol Administrador o Empleado de apoyo. Crea su cuenta de Firebase y captura tipo de trabajo,
+Alta de personal con rol Administrador o Encargado (el encargado necesita un área). Crea su cuenta de Firebase y captura tipo de trabajo,
 turno y área.
 
 ### 5. Áreas e inventario (personal)

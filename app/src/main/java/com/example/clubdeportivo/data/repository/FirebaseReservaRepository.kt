@@ -4,6 +4,7 @@ import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.MaterialAsignado
 import com.example.clubdeportivo.data.model.Reserva
+import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasReserva
 import com.google.firebase.firestore.DocumentSnapshot
@@ -21,9 +22,8 @@ private fun DocumentSnapshot.toReserva(): Reserva? {
         fecha = getString("fecha") ?: "",
         horaInicio = getString("horaInicio") ?: "",
         horaFin = getString("horaFin") ?: "",
-        estado = EstadoReserva.valueOf(
-            getString("estado") ?: "CONFIRMADA"
-        ),
+        estado = runCatching { EstadoReserva.valueOf(getString("estado") ?: "CONFIRMADA") }
+            .getOrDefault(EstadoReserva.CANCELADA),
         esExterno = getBoolean("esExterno") ?: false,
         personas = (getLong("personas") ?: 1L)
             .toInt()
@@ -71,11 +71,12 @@ class FirebaseReservaRepository(
         horaInicio: String,
         horaFin: String,
         esExterno: Boolean,
-        personas: Int
+        personas: Int,
+        requiereAprobacion: Boolean
     ): Reserva {
-        // Un visitante externo necesita aprobación de un administrador antes de que su
-        // reserva sea válida; un socio queda confirmado de inmediato.
-        val estadoInicial = if (esExterno) EstadoReserva.PENDIENTE_APROBACION else EstadoReserva.CONFIRMADA
+        // Miembros y visitantes quedan "en revisión" hasta que el encargado del área apruebe o rechace; la reserva
+        // del propio personal (administrador o encargado) queda confirmada.
+        val estadoInicial = if (requiereAprobacion) EstadoReserva.PENDIENTE_APROBACION else EstadoReserva.CONFIRMADA
 
         // Nombre del área y de la persona se guardan en la propia reserva: así las listas y reportes no
         // dependen de que el área siga existiendo ni necesitan una lectura extra por cada fila.
@@ -100,10 +101,15 @@ class FirebaseReservaRepository(
             "actualizadoEn" to FieldValue.serverTimestamp()
         )
         val documento = reservas.add(datos).await()
-        val nuevaReserva = Reserva(documento.id, usuarioId, areaId, fecha, horaInicio, horaFin, estadoInicial, esExterno, personas)
+        val nuevaReserva = Reserva(
+            documento.id, usuarioId, areaId, fecha, horaInicio, horaFin, estadoInicial, esExterno, personas,
+            usuarioNombre = persona.getString("nombre") ?: "",
+            areaNombre = area.getString("nombre") ?: "",
+            deporte = area.getString("tipo") ?: ""
+        )
 
         // El material solo se asigna si la reserva queda CONFIRMADA (una pendiente de aprobación todavía no lo
-        // necesita: se aparta cuando el personal la aprueba).
+        // necesita: se aparta cuando el encargado la aprueba).
         if (estadoInicial == EstadoReserva.CONFIRMADA) asignarMaterial(nuevaReserva)
 
         return nuevaReserva
@@ -130,10 +136,21 @@ class FirebaseReservaRepository(
         ).await()
     }
 
+    /** Lee una reserva que espera respuesta y comprueba que quien responde puede hacerlo (el encargado, solo en su área). */
+    private suspend fun reservaPorResolver(reservaId: String): Reserva {
+        val reserva = reservas.document(reservaId).get().await().toReserva() ?: error("La reserva ya no existe.")
+        if (!com.example.clubdeportivo.data.SesionManager.usuarioActual.puedeVerDeporte(reserva.deporte)) {
+            error("Esta reserva es de otra área: solo su encargado puede responderla.")
+        }
+        if (reserva.estado != EstadoReserva.PENDIENTE_APROBACION) {
+            error("Esta reserva ya no está en revisión (${reserva.estado.name.lowercase().replace('_', ' ')}).")
+        }
+        return reserva
+    }
+
     override suspend fun aprobarReserva(reservaId: String) {
-        val documento = reservas.document(reservaId).get().await()
-        val reserva = documento.toReserva() ?: error("La reserva ya no existe.")
-        if (reserva.estado != EstadoReserva.PENDIENTE_APROBACION) return
+        val reserva = reservaPorResolver(reservaId)
+        if (Fechas.horasDesdeAhora(reserva.fecha, reserva.horaFin) <= 0) error("Esta reserva ya terminó: no se puede aprobar.")
         reservas.document(reservaId).update(
             mapOf(
                 "estado" to EstadoReserva.CONFIRMADA.name,
@@ -146,9 +163,10 @@ class FirebaseReservaRepository(
     }
 
     override suspend fun rechazarReserva(reservaId: String) {
+        reservaPorResolver(reservaId)
         reservas.document(reservaId).update(
             mapOf(
-                "estado" to EstadoReserva.CANCELADA.name,
+                "estado" to EstadoReserva.RECHAZADA.name,
                 "rechazadaEn" to FieldValue.serverTimestamp(),
                 "rechazadaPor" to (com.example.clubdeportivo.data.SesionManager.usuarioActual?.id ?: ""),
                 "actualizadoEn" to FieldValue.serverTimestamp()
@@ -230,6 +248,8 @@ class FirebaseReservaRepository(
     override suspend fun cancelarReserva(reservaId: String): Boolean {
         val documento = reservas.document(reservaId).get().await()
         val reserva = documento.toReserva() ?: return true
+        // Una reserva ya cancelada o rechazada no se cancela otra vez (no se reescribe su estado).
+        if (!ReglasReserva.esVigente(reserva)) return true
 
         val sinPenalizacion = Fechas.horasDesdeAhora(reserva.fecha, reserva.horaInicio) >=
             Catalogos.CANCELACION_SIN_PENALIZACION_HORAS

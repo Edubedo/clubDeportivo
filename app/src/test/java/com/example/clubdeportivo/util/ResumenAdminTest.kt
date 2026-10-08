@@ -62,7 +62,7 @@ class ResumenAdminTest {
     }
 
     @Test
-    fun `el ingreso esperado solo cuenta membresias activas y no visitas`() {
+    fun `las activas no cuentan visitas, suspendidas ni vencidas por fecha`() {
         val membresias = listOf(
             membresia("1", 1800.0),
             membresia("2", 3500.0),
@@ -73,7 +73,6 @@ class ResumenAdminTest {
 
         val resumen = CalculoResumenAdmin.calcular(membresias, emptyList(), hoy)
 
-        assertEquals(5300.0, resumen.ingresoMensualEsperado, 0.001)
         assertEquals(2, resumen.activas)
         assertEquals(1, resumen.suspendidas)
         assertEquals(1, resumen.vencidas)

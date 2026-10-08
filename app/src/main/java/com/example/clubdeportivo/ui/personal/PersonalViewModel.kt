@@ -13,9 +13,13 @@ import com.example.clubdeportivo.data.model.Personal
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.PersonalRepository
+import com.example.clubdeportivo.util.ReglasContrasena
 import com.example.clubdeportivo.util.Resultado
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+
+/** Texto con el que empieza el aviso de éxito al cambiar una contraseña (la pantalla lo pinta en verde). */
+const val MENSAJE_CONTRASENA_CAMBIADA = "Contraseña actualizada para "
 
 /** Personal del club: lista, altas (con cuenta de acceso real) y ediciones. Todo sobre la colección `usuarios`. */
 class PersonalViewModel(
@@ -82,6 +86,11 @@ class PersonalViewModel(
             _avisoFormulario.value = "No puedes desactivarte ni quitarte el rol de administrador a ti mismo."
             return
         }
+        // Un encargado trabaja solo con lo de su área: sin área no vería reservas, áreas ni inventario.
+        if (!datos.rol.esAdministrador() && datos.areaTrabajo.isNullOrBlank()) {
+            _avisoFormulario.value = "Elige el área que va a encargar."
+            return
+        }
         viewModelScope.launch {
             _guardando.value = true
             val resultado = if (existente == null) personalRepository.crear(datos) else personalRepository.actualizar(existente.id, datos)
@@ -97,13 +106,24 @@ class PersonalViewModel(
         }
     }
 
-    fun enviarRestablecimiento(email: String) {
+    /** Cambia la contraseña de [persona] sin correo (la valida el servidor). El resultado se avisa dentro del formulario abierto. */
+    fun cambiarContrasena(persona: Personal, contrasena: String) {
+        _avisoFormulario.value = null
+        if (SesionManager.usuarioActual?.rol?.esAdministrador() != true) {
+            _avisoFormulario.value = "Solo los administradores pueden cambiar contraseñas del personal."
+            return
+        }
+        ReglasContrasena.primerError(contrasena)?.let {
+            _avisoFormulario.value = it
+            return
+        }
         viewModelScope.launch {
-            _avisoFormulario.value = null
-            when (val resultado = personalRepository.enviarRestablecimientoDeContrasena(email)) {
-                is Resultado.Exito -> _avisoFormulario.value = "Enviamos un correo a $email para cambiar la contraseña."
+            _guardando.value = true
+            when (val resultado = personalRepository.cambiarContrasena(persona.id, contrasena)) {
+                is Resultado.Exito -> _avisoFormulario.value = "${MENSAJE_CONTRASENA_CAMBIADA}${persona.nombre.trim()}."
                 is Resultado.Error -> _avisoFormulario.value = resultado.mensaje
             }
+            _guardando.value = false
         }
     }
 

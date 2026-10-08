@@ -14,9 +14,13 @@ interface PersonalRepository {
     /** Crea la cuenta de acceso (Firebase Authentication) y el perfil en `usuarios`, sin cerrar la sesión de quien la crea. */
     suspend fun crear(datos: DatosPersonal): Resultado<Personal>
 
-    /** Actualiza el perfil. El correo y la contraseña no se cambian aquí (ver [enviarRestablecimientoDeContrasena]). */
+    /** Actualiza el perfil. El correo no se cambia aquí y la contraseña tiene su propio método ([cambiarContrasena]). */
     suspend fun actualizar(id: String, datos: DatosPersonal): Resultado<Unit>
 
-    /** Manda a [email] un correo para que la persona elija una contraseña nueva. */
-    suspend fun enviarRestablecimientoDeContrasena(email: String): Resultado<Unit>
+    /**
+     * Cambia la contraseña de la persona [id] sin mandarle correo. Solo funciona si quien llama es administrador:
+     * lo comprueba el servidor (Cloud Function `cambiarContrasenaPersonal`), no la app. Cierra las sesiones abiertas
+     * de esa persona.
+     */
+    suspend fun cambiarContrasena(id: String, contrasena: String): Resultado<Unit>
 }

@@ -7,6 +7,8 @@ import kotlinx.coroutines.delay
 interface TorneoRepository {
     suspend fun obtenerTorneos(): List<Torneo>
     suspend fun inscribirse(torneoId: String, usuarioId: String): InscripcionTorneo
+    /** Ids de los torneos en los que [usuarioId] ya está inscrito. */
+    suspend fun torneosInscritos(usuarioId: String): Set<String>
     suspend fun crearTorneo(
         nombre: String,
         disciplina: String,
@@ -28,6 +30,8 @@ interface TorneoRepository {
         horaInicio: String,
         horaFin: String
     ): Torneo
+    /** Borra el torneo y las inscripciones que tenía. */
+    suspend fun eliminarTorneo(id: String)
 }
 
 class FakeTorneoRepository : TorneoRepository {
@@ -47,8 +51,13 @@ class FakeTorneoRepository : TorneoRepository {
         return torneos.toList()
     }
 
+    private val inscritosPorUsuario = mutableMapOf<String, MutableSet<String>>()
+
+    override suspend fun torneosInscritos(usuarioId: String): Set<String> = inscritosPorUsuario[usuarioId].orEmpty().toSet()
+
     override suspend fun inscribirse(torneoId: String, usuarioId: String): InscripcionTorneo {
         delay(400)
+        inscritosPorUsuario.getOrPut(usuarioId) { mutableSetOf() }.add(torneoId)
         val indice = torneos.indexOfFirst { it.id == torneoId }
         if (indice != -1) {
             val torneo = torneos[indice]
@@ -112,5 +121,10 @@ class FakeTorneoRepository : TorneoRepository {
             )
         if (indice != -1) torneos[indice] = actualizado
         return actualizado
+    }
+
+    override suspend fun eliminarTorneo(id: String) {
+        delay(300)
+        torneos.removeAll { it.id == id }
     }
 }

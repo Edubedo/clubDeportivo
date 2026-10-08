@@ -23,6 +23,10 @@ class TorneosViewModel(
     private val _torneos = MutableLiveData<List<Torneo>>()
     val torneos: LiveData<List<Torneo>> = _torneos
 
+    /** Torneos en los que la persona que tiene la sesión ya está inscrita. */
+    private val _inscritos = MutableLiveData<Set<String>>(emptySet())
+    val inscritos: LiveData<Set<String>> = _inscritos
+
     private val _areas = MutableLiveData<List<Area>>(emptyList())
     val areas: LiveData<List<Area>> = _areas
 
@@ -51,6 +55,9 @@ class TorneosViewModel(
         viewModelScope.launch {
             _cargando.value = true
             _torneos.value = torneoRepository.obtenerTorneos()
+            SesionManager.usuarioActual?.id?.let { uid ->
+                _inscritos.value = runCatching { torneoRepository.torneosInscritos(uid) }.getOrDefault(_inscritos.value.orEmpty())
+            }
             _cargando.value = false
         }
     }
@@ -130,6 +137,18 @@ class TorneosViewModel(
             }
             _mostrarModalCrear.value = false
             _torneoEnEdicion.value = null
+            cargarTorneos()
+        }
+    }
+
+    fun eliminarTorneo(torneo: Torneo) {
+        viewModelScope.launch {
+            try {
+                torneoRepository.eliminarTorneo(torneo.id)
+                _mensaje.value = "Torneo eliminado: ${torneo.nombre}"
+            } catch (e: Exception) {
+                _mensaje.value = "No se pudo eliminar el torneo. Inténtalo de nuevo."
+            }
             cargarTorneos()
         }
     }

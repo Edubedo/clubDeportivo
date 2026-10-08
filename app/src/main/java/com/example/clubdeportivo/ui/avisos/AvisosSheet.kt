@@ -166,7 +166,7 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
                     }
                 } else {
                     Text(
-                        text = "Este aviso lo recibirán los socios del club.",
+                        text = "Este aviso lo recibirán los miembros del club.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoSecundario
                     )

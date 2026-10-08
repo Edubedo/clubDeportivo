@@ -8,14 +8,18 @@ import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.Resultado
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 /** Roles que cuentan como personal. Incluye los heredados (SUPERADMIN, ADMIN_AREA) para no perder a nadie ya registrado. */
 private val ROLES_QUE_SON_PERSONAL = (ROLES_DE_PERSONAL + listOf(Rol.SUPERADMIN, Rol.ADMIN_AREA)).map { it.name }
@@ -101,13 +105,46 @@ class FirebasePersonalRepository(
         Resultado.Error(traducirError(e))
     }
 
-    override suspend fun enviarRestablecimientoDeContrasena(email: String): Resultado<Unit> = try {
-        authPrincipal.sendPasswordResetEmail(email.trim()).await()
-        Resultado.Exito(Unit)
-    } catch (e: FirebaseAuthInvalidUserException) {
-        Resultado.Error("Esta persona todavía no tiene cuenta de acceso con ese correo.")
-    } catch (e: Exception) {
-        Resultado.Error(traducirError(e))
+    override suspend fun cambiarContrasena(id: String, contrasena: String): Resultado<Unit> {
+        val token = try {
+            authPrincipal.currentUser?.getIdToken(false)?.await()?.token
+        } catch (e: Exception) {
+            null
+        } ?: return Resultado.Error("Tu sesión expiró. Cierra sesión y vuelve a entrar.")
+
+        val url = "https://us-central1-${FirebaseApp.getInstance().options.projectId}.cloudfunctions.net/$FUNCION_CAMBIAR_CONTRASENA"
+        return withContext(Dispatchers.IO) {
+            val conexion = URL(url).openConnection() as HttpURLConnection
+            try {
+                conexion.requestMethod = "POST"
+                conexion.connectTimeout = 15_000
+                conexion.readTimeout = 20_000
+                conexion.doOutput = true
+                conexion.setRequestProperty("Content-Type", "application/json")
+                conexion.setRequestProperty("Authorization", "Bearer $token")
+                val cuerpo = JSONObject().put("data", JSONObject().put("uid", id).put("contrasena", contrasena))
+                conexion.outputStream.use { it.write(cuerpo.toString().toByteArray(Charsets.UTF_8)) }
+
+                val codigo = conexion.responseCode
+                val texto = (if (codigo in 200..299) conexion.inputStream else conexion.errorStream)
+                    ?.bufferedReader()?.use { it.readText() }.orEmpty()
+                val json = runCatching { JSONObject(texto) }.getOrNull()
+                if (codigo in 200..299 && json?.optJSONObject("result")?.optBoolean("ok") == true) {
+                    Resultado.Exito(Unit)
+                } else {
+                    // Los mensajes de la función ya vienen en español y listos para mostrar; si no hay, se explica lo general.
+                    Resultado.Error(
+                        json?.optJSONObject("error")?.optString("message")?.takeIf { it.isNotBlank() }
+                            ?: if (codigo == 404) "La función para cambiar contraseñas todavía no está publicada en Firebase."
+                            else "No se pudo cambiar la contraseña. Intenta de nuevo."
+                    )
+                }
+            } catch (e: Exception) {
+                Resultado.Error("No se pudo conectar. Revisa tu internet e intenta de nuevo.")
+            } finally {
+                conexion.disconnect()
+            }
+        }
     }
 
     private fun camposDe(datos: DatosPersonal): Map<String, Any?> = mapOf(
@@ -131,5 +168,6 @@ class FirebasePersonalRepository(
 
     private companion object {
         const val NOMBRE_APP_ALTAS = "altas-de-personal"
+        const val FUNCION_CAMBIAR_CONTRASENA = "cambiarContrasenaPersonal"
     }
 }

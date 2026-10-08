@@ -1,0 +1,34 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { initializeApp } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
+initializeApp({ projectId: 'demo-athletic' });
+const auth = getAuth(), db = getFirestore();
+const mk = async (uid, email, pw, rol, extra = {}) => { await auth.createUser({ uid, email, password: pw }); await db.doc('usuarios/' + uid).set({ nombre: uid, rol, estado: 'ACTIVO', ...extra }); };
+await mk('adm', 'adm@x.com', 'Admin#2026Club', 'ADMIN');
+await mk('enc', 'enc@x.com', 'Encar#2026Club', 'AYUDANTE_AREA', { areaTrabajo: 'Tenis' });
+await mk('mie', 'mie@x.com', 'Mario#123', 'SOCIO');
+await mk('adm2', 'adm2@x.com', 'Admin2#2026', 'ADMIN', { estado: 'INACTIVO' });
+const token = async (email, pw) => (await (await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=x', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: pw, returnSecureToken: true }) })).json());
+const llamar = async (t, data) => { const r = await fetch('http://127.0.0.1:5001/demo-athletic/us-central1/cambiarContrasenaPersonal', { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ data }) }); return [r.status, await r.json()]; };
+let fallos = 0;
+const esperar = (nombre, ok) => { console.log(ok ? 'OK   ' : 'FALLA', nombre); if (!ok) fallos++; };
+const A = (await token('adm@x.com', 'Admin#2026Club')).idToken, E = (await token('enc@x.com', 'Encar#2026Club')).idToken, M = (await token('mie@x.com', 'Mario#123')).idToken, A2 = (await token('adm2@x.com', 'Admin2#2026')).idToken;
+let [s, b] = await llamar(null, { uid: 'enc', contrasena: 'Nueva#2026Clave' }); esperar('sin sesión se rechaza (' + s + ')', s === 401);
+[s, b] = await llamar(E, { uid: 'enc', contrasena: 'Nueva#2026Clave' }); esperar('un encargado NO puede (' + b.error?.status + ')', b.error?.status === 'PERMISSION_DENIED');
+[s, b] = await llamar(M, { uid: 'enc', contrasena: 'Nueva#2026Clave' }); esperar('un miembro NO puede (' + b.error?.status + ')', b.error?.status === 'PERMISSION_DENIED');
+[s, b] = await llamar(A2, { uid: 'enc', contrasena: 'Nueva#2026Clave' }); esperar('un admin INACTIVO NO puede (' + b.error?.status + ')', b.error?.status === 'PERMISSION_DENIED');
+[s, b] = await llamar(A, { uid: 'mie', contrasena: 'Nueva#2026Clave' }); esperar('no se cambia la contraseña de un MIEMBRO (' + b.error?.status + ')', b.error?.status === 'PERMISSION_DENIED');
+[s, b] = await llamar(A, { uid: 'noexiste', contrasena: 'Nueva#2026Clave' }); esperar('persona inexistente -> not-found (' + b.error?.status + ')', b.error?.status === 'NOT_FOUND');
+for (const mala of ['cor1!A', 'sinmayuscula#1', 'SINMINUSCULA#1', 'SinNumero#abc', 'SinEspecial123A', 'Con Espacio#12', '']) {
+  [s, b] = await llamar(A, { uid: 'enc', contrasena: mala }); esperar(`contraseña débil "${mala}" se rechaza (${b.error?.status})`, b.error?.status === 'INVALID_ARGUMENT');
+}
+[s, b] = await llamar(A, { contrasena: 'Nueva#2026Clave' }); esperar('sin uid se rechaza', b.error?.status === 'INVALID_ARGUMENT');
+const viejaAntes = await token('enc@x.com', 'Encar#2026Club'); esperar('antes del cambio la contraseña vieja funciona', !!viejaAntes.idToken);
+[s, b] = await llamar(A, { uid: 'enc', contrasena: 'Nueva#2026Clave' }); esperar('el administrador SÍ cambia la del encargado (' + JSON.stringify(b) + ')', b.result?.ok === true);
+esperar('la contraseña vieja ya NO entra', !(await token('enc@x.com', 'Encar#2026Club')).idToken);
+esperar('la nueva SÍ entra', !!(await token('enc@x.com', 'Nueva#2026Clave')).idToken);
+const d = (await db.doc('usuarios/enc').get()).data(); esperar('queda registro de quién y cuándo', d.contrasenaCambiadaPor === 'adm' && !!d.contrasenaCambiadaEn);
+const cambiaAdmin = await llamar(A, { uid: 'adm2', contrasena: 'Otra#2026Clave1' }); esperar('también puede cambiar la de otro administrador', cambiaAdmin[1].result?.ok === true);
+console.log(fallos === 0 ? '\nTODAS LAS PRUEBAS DE LA FUNCIÓN PASARON' : `\n${fallos} FALLARON`); process.exit(fallos ? 1 : 0);

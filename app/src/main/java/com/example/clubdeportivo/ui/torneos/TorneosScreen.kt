@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Schedule
@@ -79,6 +80,7 @@ import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.Torneo
 import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.CampoTexto
+import com.example.clubdeportivo.ui.components.DialogoConfirmacion
 import com.example.clubdeportivo.ui.components.DialogoFormulario
 import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
@@ -114,7 +116,9 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
     val mensaje by viewModel.mensaje.observeAsState()
     val mostrarModalCrear by viewModel.mostrarModalCrear.observeAsState(false)
     val torneoEnEdicion by viewModel.torneoEnEdicion.observeAsState()
+    val inscritos by viewModel.inscritos.observeAsState(emptySet())
     val errorFormulario by viewModel.errorFormulario.observeAsState()
+    var torneoPorEliminar by remember { mutableStateOf<Torneo?>(null) }
 
     val esAdministrador = SesionManager.usuarioActual?.rol in rolesDeAdministracion
 
@@ -153,14 +157,32 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
                 esAdministrador -> TorneosAdminContent(
                     torneos = torneos,
                     listState = listState,
-                    onEditar = { viewModel.abrirModalEditar(it) }
+                    onEditar = { viewModel.abrirModalEditar(it) },
+                    onEliminar = { torneoPorEliminar = it }
                 )
                 else -> TorneosSocioContent(
-                    torneos = torneos,
+                    // Un torneo que ya terminó no admite inscripciones: no se muestra.
+                    torneos = torneos.filter { it.fechaFin >= Fechas.hoy() },
+                    inscritos = inscritos,
                     onInscribirse = { viewModel.inscribirse(it) }
                 )
             }
         }
+    }
+
+    torneoPorEliminar?.let { torneo ->
+        DialogoConfirmacion(
+            titulo = "Eliminar torneo",
+            mensaje = "Se eliminará \"${torneo.nombre}\"" +
+                (if (torneo.inscritos > 0) " y sus ${torneo.inscritos} inscripciones" else "") +
+                ". El área quedará libre para reservas. Esta acción no se puede deshacer.",
+            textoConfirmar = "Eliminar",
+            onConfirmar = {
+                viewModel.eliminarTorneo(torneo)
+                torneoPorEliminar = null
+            },
+            onCancelar = { torneoPorEliminar = null }
+        )
     }
 
     if (mostrarModalCrear) {
@@ -181,7 +203,8 @@ private fun TorneosAdminContent(
     torneos: List<Torneo>,
     listState: LazyListState,
     modifier: Modifier = Modifier,
-    onEditar: (Torneo) -> Unit
+    onEditar: (Torneo) -> Unit,
+    onEliminar: (Torneo) -> Unit
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         EncabezadoPantalla(titulo = "Torneos", modifier = Modifier.padding(horizontal = MargenPantalla))
@@ -199,7 +222,7 @@ private fun TorneosAdminContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(torneos, key = { it.id }) { torneo ->
-                    TorneoCardAdmin(torneo = torneo, onEditar = { onEditar(torneo) })
+                    TorneoCardAdmin(torneo = torneo, onEditar = { onEditar(torneo) }, onEliminar = { onEliminar(torneo) })
                 }
             }
         }
@@ -207,7 +230,7 @@ private fun TorneosAdminContent(
 }
 
 @Composable
-private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
+private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit, onEliminar: () -> Unit) {
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -232,6 +255,17 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit) {
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Editar torneo",
                         tint = TextoSecundario,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(
+                    onClick = onEliminar,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "Eliminar torneo",
+                        tint = Peligro,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -308,6 +342,7 @@ private fun EtiquetaDisciplina(disciplina: String) {
 @Composable
 private fun TorneosSocioContent(
     torneos: List<Torneo>,
+    inscritos: Set<String>,
     modifier: Modifier = Modifier,
     onInscribirse: (Torneo) -> Unit
 ) {
@@ -317,13 +352,13 @@ private fun TorneosSocioContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(torneos, key = { it.id }) { torneo ->
-            TorneoCardSocio(torneo = torneo, onInscribirse = { onInscribirse(torneo) })
+            TorneoCardSocio(torneo = torneo, inscrito = torneo.id in inscritos, onInscribirse = { onInscribirse(torneo) })
         }
     }
 }
 
 @Composable
-private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
+private fun TorneoCardSocio(torneo: Torneo, inscrito: Boolean, onInscribirse: () -> Unit) {
     val cupoLleno = torneo.inscritos >= torneo.cupoMaximo
 
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
@@ -344,8 +379,12 @@ private fun TorneoCardSocio(torneo: Torneo, onInscribirse: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
             BotonPrimario(
-                texto = if (cupoLleno) "Cupo lleno" else "Inscribirme",
-                enabled = !cupoLleno,
+                texto = when {
+                    inscrito -> "Ya estás inscrito"
+                    cupoLleno -> "Cupo lleno"
+                    else -> "Inscribirme"
+                },
+                enabled = !cupoLleno && !inscrito,
                 onClick = onInscribirse
             )
         }

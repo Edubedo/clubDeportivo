@@ -71,6 +71,15 @@ object ReglasReserva {
         return EstadoHora(hora, area.capacidad, ocupadas, torneo)
     }
 
+    /** Lugares de [areaId] que esa hora están pedidos en solicitudes todavía "en revisión" (ya cuentan dentro del cupo ocupado). */
+    fun personasEnRevision(areaId: String, reservas: List<Reserva>, fecha: String, hora: Int): Int =
+        reservas
+            .filter {
+                it.areaId == areaId && it.fecha == fecha && it.estado == EstadoReserva.PENDIENTE_APROBACION &&
+                    reservaSolapa(it, hora * 60, hora * 60 + 60)
+            }
+            .sumOf { it.personas }
+
     private fun texto(hora: Int) = "%02d:00".format(hora)
 
     /**
