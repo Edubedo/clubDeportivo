@@ -15,7 +15,9 @@ async function prueba(nombre, fn) {
 await env.withSecurityRulesDisabled(async ctx => {
   const db = ctx.firestore();
   await setDoc(doc(db, 'usuarios/admin1'), { nombre: 'Admin', rol: 'ADMIN', estado: 'ACTIVO' });
-  await setDoc(doc(db, 'usuarios/ayudante1'), { nombre: 'Ayu', rol: 'AYUDANTE_AREA', estado: 'ACTIVO' });
+  await setDoc(doc(db, 'usuarios/ayudante1'), { nombre: 'Ayu', rol: 'AYUDANTE_AREA', estado: 'ACTIVO', areaTrabajo: 'Fútbol' });
+  await setDoc(doc(db, 'usuarios/ayudante2'), { nombre: 'Ayu2', rol: 'AYUDANTE_AREA', estado: 'ACTIVO', areaTrabajo: 'Tenis' });
+  await setDoc(doc(db, 'usuarios/ayudante3'), { nombre: 'Ayu3', rol: 'AYUDANTE_AREA', estado: 'ACTIVO', areaTrabajo: '' });
   await setDoc(doc(db, 'usuarios/interno1'), { nombre: 'Ana', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-AAAAAA' });
   await setDoc(doc(db, 'usuarios/interno2'), { nombre: 'Visita', rol: 'VISITANTE_EXTERNO', estado: 'ACTIVO', codigoMiembro: 'CLB-BBBBBB' });
   await setDoc(doc(db, 'miembros/CLB-AAAAAA'), { nombre: 'Ana', usuarioId: 'interno1', membresiaId: 'm1', parentesco: 'Titular' });
@@ -33,6 +35,8 @@ const nuevo1 = env.authenticatedContext('nuevo1').firestore();
 const intruso = env.authenticatedContext('intruso').firestore();
 const admin = env.authenticatedContext('admin1').firestore();
 const ayudante = env.authenticatedContext('ayudante1').firestore();
+const ayudanteTenis = env.authenticatedContext('ayudante2').firestore();
+const ayudanteSinArea = env.authenticatedContext('ayudante3').firestore();
 
 // ---- consulta del código antes de iniciar sesión
 await prueba('sin sesión se puede consultar UN código', () => assertSucceeds(getDoc(doc(anonimo, 'registroCodigos/CLB-AAAAAA'))));
@@ -73,8 +77,10 @@ await prueba('la cuenta nueva lee su membresía por el código', () => assertSuc
 await prueba('la cuenta nueva NO puede cambiarse el rol', () => assertFails(updateDoc(doc(nuevo1, 'usuarios/nuevo1'), { rol: 'ADMIN' })));
 await prueba('la cuenta nueva lee las áreas y puede reservar a su nombre', async () => {
   await assertSucceeds(getDoc(doc(nuevo1, 'areas/a1')));
-  await assertSucceeds(addDoc(collection(nuevo1, 'reservas'), { usuarioId: 'nuevo1', areaId: 'a1', estado: 'CONFIRMADA' }));
+  await assertSucceeds(addDoc(collection(nuevo1, 'reservas'), { usuarioId: 'nuevo1', areaId: 'a1', estado: 'PENDIENTE_APROBACION' }));
 });
+await prueba('un miembro NO puede crear una reserva ya confirmada (siempre queda en revisión)', () =>
+  assertFails(addDoc(collection(nuevo1, 'reservas'), { usuarioId: 'nuevo1', areaId: 'a1', estado: 'CONFIRMADA' })));
 await prueba('ya reclamado: se consulta como "ya registrado"', async () => {
   const s = await assertSucceeds(getDoc(doc(anonimo, 'registroCodigos/CLB-AAAAAA')));
   if (s.data().cuentaCreada !== true) throw new Error('debería estar reclamado');
@@ -137,8 +143,26 @@ await prueba('nadie puede crearse un perfil de socio por su cuenta sin código (
   assertFails(setDoc(doc(intruso, 'usuarios/intruso'), { nombre: 'I', rol: 'SOCIO', estado: 'ACTIVO' })));
 await prueba('una cuenta desactivada no puede reservar', async () => {
   await assertSucceeds(updateDoc(doc(admin, 'usuarios/nuevo1'), { estado: 'INACTIVO' }));
-  await assertFails(addDoc(collection(nuevo1, 'reservas'), { usuarioId: 'nuevo1', areaId: 'a1', estado: 'CONFIRMADA' }));
+  await assertFails(addDoc(collection(nuevo1, 'reservas'), { usuarioId: 'nuevo1', areaId: 'a1', estado: 'PENDIENTE_APROBACION' }));
 });
+
+// ---- aprobación de reservas: solo el encargado del área (o un administrador)
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'usuarios/miembroX'), { nombre: 'Mario', rol: 'SOCIO', estado: 'ACTIVO' });
+  for (const id of ['rA', 'rB', 'rC', 'rD']) {
+    await setDoc(doc(db, 'reservas/' + id), { usuarioId: 'miembroX', areaId: 'a1', deporte: 'Fútbol', estado: 'PENDIENTE_APROBACION' });
+  }
+});
+const miembroX = env.authenticatedContext('miembroX').firestore();
+await prueba('el miembro NO puede aprobar su propia reserva', () => assertFails(updateDoc(doc(miembroX, 'reservas/rA'), { estado: 'CONFIRMADA' })));
+await prueba('el miembro SÍ puede cancelar su solicitud en revisión', () => assertSucceeds(updateDoc(doc(miembroX, 'reservas/rD'), { estado: 'CANCELADA' })));
+await prueba('el encargado de OTRA área (Tenis) NO aprueba una reserva de Fútbol', () =>
+  assertFails(updateDoc(doc(ayudanteTenis, 'reservas/rA'), { estado: 'CONFIRMADA' })));
+await prueba('un encargado sin área NO aprueba nada', () => assertFails(updateDoc(doc(ayudanteSinArea, 'reservas/rA'), { estado: 'CONFIRMADA' })));
+await prueba('el encargado del área (Fútbol) aprueba', () => assertSucceeds(updateDoc(doc(ayudante, 'reservas/rA'), { estado: 'CONFIRMADA' })));
+await prueba('el encargado del área (Fútbol) rechaza', () => assertSucceeds(updateDoc(doc(ayudante, 'reservas/rB'), { estado: 'RECHAZADA' })));
+await prueba('el administrador aprueba cualquier reserva', () => assertSucceeds(updateDoc(doc(admin, 'reservas/rC'), { estado: 'CONFIRMADA' })));
 
 await env.cleanup();
 console.log(fallos === 0 ? '\nTODAS LAS PRUEBAS DE REGLAS PASARON' : `\n${fallos} PRUEBA(S) FALLARON`);

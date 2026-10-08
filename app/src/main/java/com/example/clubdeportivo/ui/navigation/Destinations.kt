@@ -54,9 +54,10 @@ val bottomNavItems = listOf(
     BottomNavItem(Destinations.MEMBRESIA, "Membresías", Icons.Filled.CardMembership, Icons.Outlined.CardMembership)
 )
 
-/** Menú para encargados de área: reservas, inventario y su perfil (sin gestión de áreas ni membresías). */
+/** Menú para encargados de área: las reservas, el área y el inventario de su deporte, y su perfil. */
 val bottomNavItemsEncargado = listOf(
     BottomNavItem(Destinations.RESERVAS, "Reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
+    BottomNavItem(Destinations.AREAS, "Mi área", Icons.Filled.Place, Icons.Outlined.Place),
     BottomNavItem(Destinations.INVENTARIO, "Inventario", Icons.Filled.Inventory2, Icons.Outlined.Inventory2),
     BottomNavItem(Destinations.PERFIL, "Perfil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
 )

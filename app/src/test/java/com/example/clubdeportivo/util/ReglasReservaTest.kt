@@ -191,4 +191,60 @@ class ReglasReservaTest {
         assertNotNull(ReglasReserva.validarTorneo(cancha, emptyList(), emptyList(), null, fecha, fecha, "12:00", "10:00"))
         assertNotNull(ReglasReserva.validarTorneo(cancha, emptyList(), emptyList(), null, "2026-10-12", "2026-10-10", "10:00", "12:00"))
     }
+
+    @Test
+    fun `las solicitudes en revision ocupan cupo y se cuentan aparte`() {
+        val reservas = listOf(
+            reserva(9, personas = 2, estado = EstadoReserva.PENDIENTE_APROBACION),
+            reserva(9, personas = 1),
+            reserva(9, personas = 1, estado = EstadoReserva.RECHAZADA),
+            reserva(9, personas = 4, estado = EstadoReserva.CANCELADA)
+        )
+        val hora = ReglasReserva.estadoDeHora(cancha, reservas, emptyList(), fecha, 9)
+        assertEquals(3, hora.ocupadas) // 2 en revisión + 1 confirmada; rechazadas y canceladas liberan el lugar
+        assertEquals(2, ReglasReserva.personasEnRevision(cancha.id, reservas, fecha, 9))
+        assertEquals(0, ReglasReserva.personasEnRevision(cancha.id, reservas, fecha, 10))
+        assertEquals(0, ReglasReserva.personasEnRevision("otra", reservas, fecha, 9))
+    }
+
+    @Test
+    fun `una reserva rechazada libera su lugar`() {
+        val reservas = listOf(reserva(9, personas = 4, estado = EstadoReserva.RECHAZADA))
+        assertNull(ReglasReserva.validarReserva(cancha, reservas, emptyList(), fecha, "09:00", "10:00", 4))
+        assertFalse(ReglasReserva.esVigente(reservas.first()))
+    }
+
+    @Test
+    fun `limites de duracion - 4 horas si, 5 horas no, vacio o invertido no`() {
+        assertNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "08:00", "12:00", 1))
+        assertNotNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "08:00", "13:00", 1))
+        assertNotNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "08:00", "08:00", 1))
+        assertNotNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "10:00", "08:00", 1))
+        assertNotNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "", "09:00", 1))
+    }
+
+    @Test
+    fun `limites de personas - 0 no, justo la capacidad si, una mas no`() {
+        assertNotNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "09:00", "10:00", 0))
+        assertNotNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "09:00", "10:00", -3))
+        assertNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "09:00", "10:00", cancha.capacidad))
+        assertNotNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "09:00", "10:00", cancha.capacidad + 1))
+    }
+
+    @Test
+    fun `reservas pegadas una tras otra no se estorban pero un traslape si cuenta`() {
+        val reservas = listOf(reserva(9, personas = 4))
+        // 10:00-11:00 empieza justo cuando termina la de las 9: no comparten hora
+        assertNull(ReglasReserva.validarReserva(cancha, reservas, emptyList(), fecha, "10:00", "11:00", 4))
+        // 08:00-10:00 incluye la hora de las 9, que ya está llena
+        assertNotNull(ReglasReserva.validarReserva(cancha, reservas, emptyList(), fecha, "08:00", "10:00", 1))
+    }
+
+    @Test
+    fun `el cupo llenado por solicitudes en revision tambien bloquea y al rechazarlas se libera`() {
+        val enRevision = listOf(reserva(9, personas = 4, estado = EstadoReserva.PENDIENTE_APROBACION))
+        assertNotNull(ReglasReserva.validarReserva(cancha, enRevision, emptyList(), fecha, "09:00", "10:00", 1))
+        val rechazada = listOf(reserva(9, personas = 4, estado = EstadoReserva.RECHAZADA))
+        assertNull(ReglasReserva.validarReserva(cancha, rechazada, emptyList(), fecha, "09:00", "10:00", 1))
+    }
 }

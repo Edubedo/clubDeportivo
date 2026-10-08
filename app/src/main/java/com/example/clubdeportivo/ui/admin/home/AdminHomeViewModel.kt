@@ -81,7 +81,8 @@ class AdminHomeViewModel : ViewModel() {
                 val listaReservas = reservas.await()
                 val listaAreas = areas.await()
                 proximasReservas = listaReservas
-                    ?.filter { it.fecha >= hoy }
+                    // "Próximas": las de hoy que ya terminaron no cuentan.
+                    ?.filter { it.fecha > hoy || (it.fecha == hoy && Fechas.horasDesdeAhora(it.fecha, it.horaFin) > 0) }
                     ?.sortedWith(compareBy({ it.fecha }, { it.horaInicio }))
                     ?.take(5)
                     ?: emptyList()

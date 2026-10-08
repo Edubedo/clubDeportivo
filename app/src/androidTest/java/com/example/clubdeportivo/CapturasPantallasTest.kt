@@ -64,7 +64,6 @@ class CapturasPantallasTest {
             cobrosMes = 19,
             ingresosPorMes = listOf("2026-05" to 18000.0, "2026-06" to 22500.0, "2026-07" to 27900.0, "2026-08" to 25100.0, "2026-09" to 31250.0, mes to 38400.0),
             ingresosPorMetodo = listOf(MetodoPago.TARJETA to 21000.0, MetodoPago.EFECTIVO to 13400.0, MetodoPago.TRANSFERENCIA to 4000.0),
-            ingresoMensualEsperado = 61200.0,
             activas = 34,
             personasActivas = 71,
             vencidas = 3,

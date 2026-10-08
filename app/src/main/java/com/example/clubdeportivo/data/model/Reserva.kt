@@ -1,6 +1,10 @@
 package com.example.clubdeportivo.data.model
 
-enum class EstadoReserva { CONFIRMADA, PENDIENTE_APROBACION, CANCELADA, FINALIZADA }
+/**
+ * PENDIENTE_APROBACION es lo que el miembro ve como "En revisión": el encargado del área la aprueba (CONFIRMADA) o la
+ * rechaza (RECHAZADA). CANCELADA es la que canceló quien reservó.
+ */
+enum class EstadoReserva { CONFIRMADA, PENDIENTE_APROBACION, CANCELADA, RECHAZADA, FINALIZADA }
 
 data class Reserva(
     val id: String,

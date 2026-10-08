@@ -54,7 +54,7 @@ import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
 
-/** Lista de reservas de visitantes que esperan una respuesta del personal: aprobar o rechazar. */
+/** Solicitudes de reserva "en revisión": el encargado del área (o un administrador) las aprueba o rechaza. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
@@ -82,7 +82,7 @@ fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
             when {
                 pendientes == null -> FullScreenLoading()
                 pendientes.isEmpty() -> EmptyState(
-                    mensaje = "No hay reservas esperando aprobación.",
+                    mensaje = "No hay solicitudes de reserva en revisión.",
                     icono = Icons.Outlined.TaskAlt
                 )
                 else -> LazyColumn(
@@ -106,8 +106,8 @@ fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
     aRechazar?.let { reserva ->
         DialogoConfirmacion(
             titulo = "Rechazar reserva",
-            mensaje = "¿Rechazar la reserva de ${reserva.usuarioNombre.ifBlank { "este visitante" }} del " +
-                "${Fechas.legible(reserva.fecha)} a las ${reserva.horaInicio}? Se cancela y el lugar queda libre.",
+            mensaje = "¿Rechazar la reserva de ${reserva.usuarioNombre.ifBlank { "esta persona" }} del " +
+                "${Fechas.legible(reserva.fecha)} a las ${reserva.horaInicio}? Queda rechazada y el lugar se libera.",
             textoConfirmar = "Rechazar",
             textoCancelar = "Volver",
             onConfirmar = {
@@ -131,7 +131,7 @@ private fun TarjetaPorAprobar(reserva: Reserva, ocupada: Boolean, onAprobar: () 
                 BurbujaTexto(texto = Deportes.emojiDe(reserva.deporte), tamano = 48.dp, tamanoTexto = 24)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = reserva.usuarioNombre.ifBlank { "Visitante" },
+                        text = reserva.usuarioNombre.ifBlank { "Miembro" },
                         style = MaterialTheme.typography.titleSmall,
                         color = TextoPrincipal,
                         maxLines = 1,
@@ -151,7 +151,7 @@ private fun TarjetaPorAprobar(reserva: Reserva, ocupada: Boolean, onAprobar: () 
                         color = TextoSecundario
                     )
                 }
-                Insignia(texto = "Pendiente", tipo = TipoInsignia.ALERTA)
+                Insignia(texto = "En revisión", tipo = TipoInsignia.ALERTA)
             }
 
             Spacer(modifier = Modifier.height(12.dp))

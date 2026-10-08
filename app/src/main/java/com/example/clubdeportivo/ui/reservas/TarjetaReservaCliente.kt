@@ -3,6 +3,8 @@ package com.example.clubdeportivo.ui.reservas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +36,7 @@ import com.example.clubdeportivo.util.Fechas
 @Composable
 internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Unit) {
     val pendiente = reserva.estado == EstadoReserva.PENDIENTE_APROBACION
+    val rechazada = reserva.estado == EstadoReserva.RECHAZADA
     var confirmando by remember { mutableStateOf(false) }
 
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
@@ -66,14 +69,30 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                     )
                 }
                 Insignia(
-                    texto = if (pendiente) "Pendiente" else "Confirmada",
-                    tipo = if (pendiente) TipoInsignia.ALERTA else TipoInsignia.EXITO
+                    texto = when {
+                        pendiente -> "En revisión"
+                        rechazada -> "Rechazada"
+                        else -> "Confirmada"
+                    },
+                    tipo = when {
+                        pendiente -> TipoInsignia.ALERTA
+                        rechazada -> TipoInsignia.PELIGRO
+                        else -> TipoInsignia.EXITO
+                    }
                 )
             }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { confirmando = true }) {
-                    Text("Cancelar reserva", color = Peligro, fontWeight = FontWeight.SemiBold)
+            if (rechazada) {
+                Spacer(modifier = Modifier.height(12.dp))
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { confirmando = true }) {
+                        Text(
+                            if (pendiente) "Cancelar solicitud" else "Cancelar reserva",
+                            color = Peligro,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }

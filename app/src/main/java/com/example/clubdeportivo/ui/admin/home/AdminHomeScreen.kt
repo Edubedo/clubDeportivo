@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -136,12 +135,6 @@ internal fun PanelAdmin(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-                        Metrica(
-                            icono = Icons.Filled.TrendingUp,
-                            valor = dinero(resumen.ingresoMensualEsperado),
-                            titulo = "Ingreso mensual esperado",
-                            modifier = Modifier.weight(1f)
-                        )
                         Metrica(
                             icono = Icons.Filled.CardMembership,
                             valor = resumen.activas.toString(),

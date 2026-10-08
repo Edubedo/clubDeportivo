@@ -125,11 +125,14 @@ fun InventarioScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            PestanasPildora(
-                opciones = deportes,
-                seleccionada = deportes.indexOf(filtroDeporte).coerceAtLeast(0),
-                onSeleccion = { viewModel.filtrarPorDeporte(deportes[it]) }
-            )
+            // Un encargado solo tiene el deporte de su área: no hay nada que filtrar.
+            if (deportes.size > 1) {
+                PestanasPildora(
+                    opciones = deportes,
+                    seleccionada = deportes.indexOf(filtroDeporte).coerceAtLeast(0),
+                    onSeleccion = { viewModel.filtrarPorDeporte(deportes[it]) }
+                )
+            }
 
             if (cargando && articulos.isEmpty()) {
                 FullScreenLoading()

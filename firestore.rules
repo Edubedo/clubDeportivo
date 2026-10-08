@@ -133,15 +133,19 @@ service cloud.firestore {
       // Se leen todas porque el cupo por hora se calcula con las reservas de todos.
       allow read: if firmado();
 
-      // Un socio crea reservas a su nombre; un visitante externo siempre queda pendiente de aprobación.
+      // Un miembro o visitante crea reservas a su nombre y SIEMPRE quedan "en revisión" (PENDIENTE_APROBACION):
+      // solo el encargado del área (o un administrador) las confirma. El personal reserva sin pedir permiso.
       allow create: if esPersonal()
                     || (conPerfil() && activo()
                         && request.resource.data.usuarioId == request.auth.uid
-                        && (rolActual() != 'VISITANTE_EXTERNO'
-                            || request.resource.data.estado == 'PENDIENTE_APROBACION'));
+                        && request.resource.data.estado == 'PENDIENTE_APROBACION');
 
-      // Quien reserva solo puede cancelar la suya; confirmar o finalizar es del personal.
-      allow update: if esPersonal()
+      // Quien reserva solo puede cancelar la suya. Aprobar, rechazar o finalizar es del administrador o del
+      // encargado del área de la reserva (el deporte de la reserva debe ser el suyo).
+      allow update: if esAdmin()
+                    || (esPersonal()
+                        && get(rutaPerfil()).data.get('areaTrabajo', '') != ''
+                        && resource.data.get('deporte', '') == get(rutaPerfil()).data.get('areaTrabajo', ''))
                     || (firmado() && resource.data.usuarioId == request.auth.uid
                         && request.resource.data.usuarioId == resource.data.usuarioId
                         && request.resource.data.estado == 'CANCELADA');

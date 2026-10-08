@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.data.model.EstadoReserva
@@ -75,19 +76,24 @@ fun ReservasEncargadoScreen(
             modifier = Modifier.padding(horizontal = MargenPantalla)
         )
         PestanasPildora(
-            opciones = listOf("Reservas", "Por aprobar"),
+            opciones = listOf("Por aprobar", "Reservas", "Horarios"),
             seleccionada = pestana,
             onSeleccion = { pestana = it }
         )
 
-        if (pestana == 1) {
+        // Lo que se aprobó en la otra pestaña tiene que aparecer aquí: se vuelve a leer al entrar.
+        LaunchedEffect(pestana) { if (pestana == 1) viewModel.cargarReservas() }
+
+        if (pestana == 0) {
             PorAprobarScreen()
+        } else if (pestana == 2) {
+            DisponibilidadScreen()
         } else Column(modifier = Modifier.fillMaxSize().padding(horizontal = MargenPantalla)) {
         when {
             cargando -> FullScreenLoading()
             error != null -> EmptyState(mensaje = error.orEmpty(), icono = Icons.Outlined.EventBusy)
-            reservas.isEmpty() -> EmptyState(
-                mensaje = "No hay reservas vigentes en $areaTrabajo.",
+            reservas.none { it.estado == EstadoReserva.CONFIRMADA } -> EmptyState(
+                mensaje = "No hay reservas confirmadas en $areaTrabajo.",
                 icono = Icons.Outlined.EventBusy
             )
             else -> LazyColumn(
@@ -105,6 +111,8 @@ fun ReservasEncargadoScreen(
                         horario = "${reserva.horaInicio}–${reserva.horaFin}",
                         area = "${Deportes.emojiDe(reserva.deporte)} ${reserva.deporte} — ${reserva.areaNombre}",
                         asistencia = asistencias[reserva.id],
+                        // La asistencia se toma cuando la reserva ya empezó, no antes.
+                        yaEmpezo = Fechas.horasDesdeAhora(reserva.fecha, reserva.horaInicio) <= 0,
                         onAsistio = {
                             viewModel.registrarAsistencia(
                                 reservaId = reserva.id,
@@ -135,6 +143,7 @@ private fun ReservaEncargadoCard(
     horario: String,
     area: String,
     asistencia: String?,
+    yaEmpezo: Boolean,
     onAsistio: () -> Unit,
     onNoAsistio: () -> Unit
 ) {
@@ -176,7 +185,15 @@ private fun ReservaEncargadoCard(
                 modifier = Modifier.padding(top = 12.dp)
             )
 
-            if (asistencia == null) {
+            if (asistencia == null && !yaEmpezo) {
+                Text(
+                    text = "La asistencia se registra cuando empieza la reserva.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            if (asistencia == null && yaEmpezo) {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {

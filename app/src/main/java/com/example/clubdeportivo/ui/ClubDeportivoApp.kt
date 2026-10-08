@@ -59,12 +59,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import com.example.clubdeportivo.data.SesionManager
-import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.ui.admin.home.AdminHomeScreen
 import com.example.clubdeportivo.ui.avisos.AvisosSheet
 import com.example.clubdeportivo.ui.avisos.AvisosViewModel
 import com.example.clubdeportivo.ui.areas.AreasDetailScreen
+import com.example.clubdeportivo.ui.areas.AreasScreen
 import com.example.clubdeportivo.ui.inventario.InventarioScreen
 import com.example.clubdeportivo.ui.login.LoginScreen
 import com.example.clubdeportivo.ui.membresia.MembresiaScreen
@@ -288,22 +289,16 @@ fun ClubDeportivoApp() {
                 RutaProtegida(navController, Destinations.PERSONAL) { PersonalScreen() }
             }
             composable(Destinations.AREAS) {
-                RutaProtegida(navController, Destinations.AREAS) { AreasDetailScreen() }
+                RutaProtegida(navController, Destinations.AREAS) {
+                    // Un encargado solo ve su área (el inventario tiene su propia pestaña en su menú).
+                    if (rol?.esEncargado() == true) AreasScreen() else AreasDetailScreen()
+                }
             }
             composable(Destinations.INVENTARIO) {
                 RutaProtegida(navController, Destinations.INVENTARIO) { InventarioScreen() }
             }
             composable(Destinations.RESERVAS) {
-                val rolActual = SesionManager.usuarioActual?.rol
-                when (rolActual) {
-                    Rol.ADMIN_AREA,
-                    Rol.AYUDANTE_AREA -> {
-                        ReservasEncargadoScreen()
-                    }
-                    else -> {
-                        ReservasScreen()
-                    }
-                }
+                if (SesionManager.usuarioActual?.rol?.esEncargado() == true) ReservasEncargadoScreen() else ReservasScreen()
             }
             composable(Destinations.MIS_RESERVAS) {
                 RutaProtegida(navController, Destinations.MIS_RESERVAS) {

@@ -69,6 +69,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
+import com.example.clubdeportivo.data.SesionManager
+import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.ui.components.BotonPrimario
@@ -105,9 +107,13 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
     var areaAEliminar by remember { mutableStateOf<Area?>(null) }
     var filtroDeporte by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+    // Un encargado solo ve su área: puede ponerla en mantenimiento, pero no crear, editar ni borrar áreas.
+    val esEncargado = SesionManager.usuarioActual?.rol?.esEncargado() == true
 
     val deportes = areas.map { it.tipo }.distinct()
-    val areasVisibles = areas.filter { filtroDeporte == null || it.tipo == filtroDeporte }
+    val areasVisibles = areas
+        .filter { filtroDeporte == null || it.tipo == filtroDeporte }
+        .sortedBy { it.disponibilidad == DisponibilidadArea.MANTENIMIENTO } // las que están en mantenimiento, al final
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(mensaje) {
@@ -122,14 +128,16 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
         containerColor = FondoApp,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            BotonFlotanteAgregar(
-                texto = "Agregar área",
-                visible = listState.botonFlotanteVisible(),
-                onClick = {
-                    areaEnEdicion = null
-                    mostrarFormulario = true
-                }
-            )
+            if (!esEncargado) {
+                BotonFlotanteAgregar(
+                    texto = "Agregar área",
+                    visible = listState.botonFlotanteVisible(),
+                    onClick = {
+                        areaEnEdicion = null
+                        mostrarFormulario = true
+                    }
+                )
+            }
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
@@ -149,7 +157,8 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                 when {
                     cargando && areas.isEmpty() -> FullScreenLoading()
                     areas.isEmpty() -> EmptyState(
-                        mensaje = "No hay áreas registradas. Agrega la primera con \"Agregar área\".",
+                        mensaje = if (esEncargado) "No hay áreas de tu deporte registradas, o todavía no tienes un área asignada."
+                        else "No hay áreas registradas. Agrega la primera con \"Agregar área\".",
                         icono = Icons.Default.Place
                     )
                     else -> LazyColumn(
@@ -162,6 +171,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                             AreaCard(
                                 area = area,
                                 reservasHoy = reservasHoy[area.id] ?: 0,
+                                soloEstatus = esEncargado,
                                 onEditar = {
                                     areaEnEdicion = area
                                     mostrarFormulario = true
@@ -209,6 +219,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
 private fun AreaCard(
     area: Area,
     reservasHoy: Int,
+    soloEstatus: Boolean,
     onEditar: () -> Unit,
     onCambiarEstatus: (DisponibilidadArea) -> Unit,
     onEliminar: () -> Unit
@@ -216,7 +227,7 @@ private fun AreaCard(
     var menuAbierto by remember { mutableStateOf(false) }
     val enMantenimiento = area.disponibilidad == DisponibilidadArea.MANTENIMIENTO
 
-    TarjetaClub(modifier = Modifier.fillMaxWidth(), onClick = onEditar) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth(), onClick = if (soloEstatus) null else onEditar) {
         Row(
             modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.Top,
@@ -266,7 +277,7 @@ private fun AreaCard(
                     Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = TextoSecundario)
                 }
                 DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
-                    DropdownMenuItem(
+                    if (!soloEstatus) DropdownMenuItem(
                         text = { Text("Editar") },
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                         onClick = { menuAbierto = false; onEditar() }
@@ -284,7 +295,7 @@ private fun AreaCard(
                             onCambiarEstatus(if (enMantenimiento) DisponibilidadArea.DISPONIBLE else DisponibilidadArea.MANTENIMIENTO)
                         }
                     )
-                    DropdownMenuItem(
+                    if (!soloEstatus) DropdownMenuItem(
                         text = { Text("Eliminar", color = Peligro) },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Peligro) },
                         onClick = { menuAbierto = false; onEliminar() }

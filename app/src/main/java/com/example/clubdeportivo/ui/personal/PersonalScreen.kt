@@ -102,7 +102,7 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
             it.nombre.contains(texto, ignoreCase = true) ||
             it.email.contains(texto, ignoreCase = true) ||
             (it.areaTrabajo ?: "").contains(texto, ignoreCase = true)
-    }
+    }.sortedBy { it.estado.uppercase() != "ACTIVO" } // estable: dentro de cada grupo se conserva el orden por nombre
 
     LaunchedEffect(mensaje) {
         mensaje?.let {
@@ -180,7 +180,7 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
             guardando = guardando,
             aviso = avisoFormulario,
             onGuardar = { datos -> viewModel.guardar(enEdicion, datos) },
-            onRestablecerContrasena = { viewModel.enviarRestablecimiento(it) },
+            onCambiarContrasena = { persona, nueva -> viewModel.cambiarContrasena(persona, nueva) },
             onCerrar = {
                 mostrarFormulario = false
                 viewModel.limpiarAvisoFormulario()
@@ -197,7 +197,7 @@ fun FormularioPersonalDialog(
     guardando: Boolean,
     aviso: String?,
     onGuardar: (DatosPersonal) -> Unit,
-    onRestablecerContrasena: (String) -> Unit,
+    onCambiarContrasena: (Personal, String) -> Unit,
     onCerrar: () -> Unit
 ) {
     val context = LocalContext.current
@@ -246,7 +246,7 @@ fun FormularioPersonalDialog(
             (mensajeError ?: aviso)?.let {
                 Text(
                     text = it,
-                    color = if (mensajeError == null && it.startsWith("Enviamos")) Exito else Peligro,
+                    color = if (mensajeError == null && it.startsWith(MENSAJE_CONTRASENA_CAMBIADA)) Exito else Peligro,
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
@@ -259,6 +259,7 @@ fun FormularioPersonalDialog(
                     val error = when {
                         nombre.isBlank() -> "Escribe el nombre."
                         telefono.isNotBlank() && telefono.count { it.isDigit() } < 10 -> "El teléfono debe tener al menos 10 dígitos."
+                        rol != Rol.ADMIN && area == SIN_AREA -> "Elige el área que va a encargar."
                         !esEdicion && !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() -> "Escribe un correo válido."
                         !esEdicion && ReglasContrasena.primerError(contrasena) != null -> ReglasContrasena.primerError(contrasena)
                         !esEdicion && contrasena != confirmarContrasena -> "Las contraseñas no coinciden."
@@ -359,7 +360,7 @@ fun FormularioPersonalDialog(
         )
         Text(
             text = if (rol == Rol.ADMIN) "Acceso total: dashboard, personal, áreas, reservas, membresías y precios."
-            else "Ve las reservas de su área, las áreas y las membresías; no cambia precios ni administra personal.",
+            else "Solo ve lo de su área: las reservas de su área (las aprueba o rechaza), el área y su inventario. Necesita un área asignada.",
             style = MaterialTheme.typography.bodySmall,
             color = TextoSecundario
         )
@@ -396,7 +397,7 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo("ÁREA DE TRABAJO")
+        EtiquetaCampo(if (rol == Rol.ADMIN) "ÁREA DE TRABAJO (OPCIONAL)" else "ÁREA A SU CARGO")
         ExposedDropdownMenuBox(expanded = areaExpandida, onExpandedChange = { areaExpandida = it }) {
             CampoTexto(
                 value = area,
@@ -417,11 +418,57 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
+        // Campos de contraseña: al crear son parte del alta; al editar sirven para que el administrador la cambie sin correo.
+        val iconoVer: @Composable () -> Unit = {
+            IconButton(onClick = { contrasenaVisible = !contrasenaVisible }) {
+                Icon(
+                    imageVector = if (contrasenaVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                    contentDescription = if (contrasenaVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                )
+            }
+        }
         if (esEdicion) {
-            EtiquetaCampo("CONTRASEÑA")
-            BotonSecundario(
-                texto = "Enviar correo para cambiarla",
-                onClick = { onRestablecerContrasena(correo) }
+            EtiquetaCampo("CAMBIAR CONTRASEÑA")
+            CampoTexto(
+                value = contrasena,
+                onValueChange = { contrasena = it },
+                placeholder = "Contraseña nueva",
+                esContrasena = !contrasenaVisible,
+                trailingIcon = iconoVer
+            )
+            if (contrasena.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                RequisitosContrasena(contrasena = contrasena)
+                Spacer(modifier = Modifier.height(8.dp))
+                CampoTexto(
+                    value = confirmarContrasena,
+                    onValueChange = { confirmarContrasena = it },
+                    placeholder = "Repite la contraseña nueva",
+                    esContrasena = !contrasenaVisible,
+                    imeAction = ImeAction.Done,
+                    isError = confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena,
+                    mensajeError = if (confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena) "Las contraseñas no coinciden" else null
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                BotonSecundario(
+                    texto = "Cambiar contraseña",
+                    onClick = {
+                        val error = ReglasContrasena.primerError(contrasena)
+                            ?: if (contrasena != confirmarContrasena) "Las contraseñas no coinciden." else null
+                        mensajeError = error
+                        if (error == null && personaAEditar != null) {
+                            onCambiarContrasena(personaAEditar, contrasena)
+                            contrasena = ""
+                            confirmarContrasena = ""
+                        }
+                    }
+                )
+            }
+            Text(
+                text = "Se cambia al instante y no se envía ningún correo. Avísale su contraseña nueva; sus sesiones abiertas se cierran.",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextoSecundario,
+                modifier = Modifier.padding(top = 8.dp)
             )
         } else {
             EtiquetaCampo("CONTRASEÑA")

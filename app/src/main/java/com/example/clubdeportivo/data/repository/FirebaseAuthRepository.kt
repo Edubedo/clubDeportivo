@@ -84,6 +84,13 @@ class FirebaseAuthRepository(
                 registro.getBoolean("cuentaCreada") == true -> Resultado.Exito(EstadoCodigo.YA_REGISTRADO)
                 else -> Resultado.Exito(EstadoCodigo.DISPONIBLE)
             }
+        } catch (e: FirebaseFirestoreException) {
+            if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                // El código es válido; lo que falla es la consulta, porque las reglas publicadas en Firebase no incluyen registroCodigos.
+                Resultado.Error("No se pudo consultar el código: las reglas de Firebase del club están desactualizadas. Avisa al administrador para que publique firestore.rules.")
+            } else {
+                Resultado.Error(traducirError(e))
+            }
         } catch (e: Exception) {
             Resultado.Error(traducirError(e))
         }

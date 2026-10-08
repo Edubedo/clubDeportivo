@@ -23,7 +23,9 @@ interface ReservaRepository {
         horaInicio: String,
         horaFin: String,
         esExterno: Boolean,
-        personas: Int = 1
+        personas: Int = 1,
+        /** true = la reserva queda "en revisión" hasta que el encargado del área la apruebe (miembros y visitantes). */
+        requiereAprobacion: Boolean = true
     ): Reserva
     /** Reservas vigentes (confirmadas o pendientes) de un área, de cualquier usuario: base del control de cupo. */
     suspend fun obtenerReservasDeArea(areaId: String): List<Reserva>
@@ -38,7 +40,7 @@ interface ReservaRepository {
     /** Confirma una reserva que estaba pendiente de aprobación (visitantes externos) y le aparta su material. */
     suspend fun aprobarReserva(reservaId: String)
 
-    /** Rechaza una reserva pendiente de aprobación: queda cancelada y libera su lugar. */
+    /** Rechaza una reserva pendiente de aprobación: queda rechazada y libera su lugar. */
     suspend fun rechazarReserva(reservaId: String)
     suspend fun estaBloqueadoPorInasistencias(usuarioId: String): Boolean
 
@@ -104,13 +106,13 @@ class FakeReservaRepository : ReservaRepository {
         horaInicio: String,
         horaFin: String,
         esExterno: Boolean,
-        personas: Int
+        personas: Int,
+        requiereAprobacion: Boolean
     ): Reserva {
         delay(500)
 
-        // Un visitante externo necesita aprobación de un administrador antes de
-        // que su reserva sea válida; un socio queda confirmado de inmediato.
-        val estadoInicial = if (esExterno) EstadoReserva.PENDIENTE_APROBACION else EstadoReserva.CONFIRMADA
+        // Miembros y visitantes quedan en revisión hasta que el encargado del área apruebe; el personal, confirmado.
+        val estadoInicial = if (requiereAprobacion) EstadoReserva.PENDIENTE_APROBACION else EstadoReserva.CONFIRMADA
 
         val nuevaReserva = Reserva(
             id = (siguienteId++).toString(),
@@ -189,7 +191,7 @@ class FakeReservaRepository : ReservaRepository {
     }
 
     override suspend fun rechazarReserva(reservaId: String) {
-        reservas.replaceAll { if (it.id == reservaId) it.copy(estado = EstadoReserva.CANCELADA) else it }
+        reservas.replaceAll { if (it.id == reservaId) it.copy(estado = EstadoReserva.RECHAZADA) else it }
     }
 
     override suspend fun registrarNoShow(usuarioId: String) {
