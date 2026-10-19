@@ -7,21 +7,22 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 
-// Una sola marca: primary, secondary y tertiary son el mismo azul para que ningún componente de Material
-// "invente" otro color. Los contenedores usan la versión suave y los fondos son grises neutros.
+// Base azul (Azul Profundo): primary y tertiary son la marca. El elemento seleccionado (barra de navegación,
+// chips) usa Azul Cielo con texto azul noche. El Verde Azulado (Caledula) no está en el esquema a propósito:
+// se usa a mano como acento pequeño (ver Color.kt) para que ningún componente lo convierta en dominante.
 private val EsquemaClub = lightColorScheme(
     primary = Marca,
     onPrimary = SobreMarca,
     primaryContainer = MarcaSuave,
-    onPrimaryContainer = Marca,
+    onPrimaryContainer = MarcaOscura,
     secondary = Marca,
     onSecondary = SobreMarca,
-    secondaryContainer = MarcaSuave,
-    onSecondaryContainer = Marca,
-    tertiary = Marca,
-    onTertiary = SobreMarca,
-    tertiaryContainer = MarcaSuave,
-    onTertiaryContainer = Marca,
+    secondaryContainer = Trigo,
+    onSecondaryContainer = MarcaOscura,
+    tertiary = Caledula,
+    onTertiary = MarcaOscura,
+    tertiaryContainer = CaledulaSuave,
+    onTertiaryContainer = Citrino,
     error = Peligro,
     onError = SobreMarca,
     errorContainer = PeligroSuave,
@@ -30,13 +31,13 @@ private val EsquemaClub = lightColorScheme(
     onBackground = TextoPrincipal,
     surface = Superficie,
     onSurface = TextoPrincipal,
-    surfaceVariant = FondoApp,
+    surfaceVariant = Perla,
     onSurfaceVariant = TextoSecundario,
     surfaceTint = Superficie,
     outline = BordeCampo,
     outlineVariant = Borde,
-    // Los avisos emergentes (Snackbar) usan inverseSurface: van en el naranja de la marca, no en negro.
-    inverseSurface = Marca,
+    // Los avisos emergentes (Snackbar) usan inverseSurface: van en el azul noche de la marca, no en negro.
+    inverseSurface = MarcaOscura,
     inverseOnSurface = SobreMarca,
     inversePrimary = MarcaSuave,
     scrim = TextoPrincipal,
@@ -58,8 +59,8 @@ private val FormasClub = Shapes(
 )
 
 /**
- * Tema único de la app. Es solo claro a propósito: toda la interfaz (tarjetas blancas sobre fondo gris) está
- * pensada para una sola apariencia y así se ve igual en cualquier teléfono.
+ * Tema único de la app. Es solo claro a propósito: toda la interfaz (tarjetas blancas sobre fondo azul muy
+ * claro) está pensada para una sola apariencia y así se ve igual en cualquier teléfono.
  */
 @Composable
 fun ClubDeportivoTheme(content: @Composable () -> Unit) {
