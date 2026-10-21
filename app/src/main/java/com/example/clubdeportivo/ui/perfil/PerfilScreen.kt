@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.perfil
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -16,10 +17,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -33,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,9 +49,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.example.clubdeportivo.data.SesionManager
+import java.io.File
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.BotonSecundario
@@ -60,9 +68,9 @@ import com.example.clubdeportivo.ui.components.TipoInsignia
 import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
-import com.example.clubdeportivo.util.FotoPerfilManager
 
 @Composable
 fun PerfilScreen(
@@ -72,27 +80,33 @@ fun PerfilScreen(
     val usuario by viewModel.usuario.observeAsState()
     val guardando by viewModel.guardando.observeAsState(false)
     val mensaje by viewModel.mensaje.observeAsState()
+    val subiendoFoto by viewModel.subiendoFoto.observeAsState(false)
     val context = LocalContext.current
-
-    var fotoPerfil by remember(usuario?.id) {
-        mutableStateOf(
-            usuario?.id?.let { id ->
-                FotoPerfilManager.obtenerFoto(context, id)
-            }
-        )
-    }
+    val fotoPerfil = usuario?.fotoUrl
 
     val selectorFoto = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        if (uri != null && usuario != null) {
-            val nuevaFoto = FotoPerfilManager.guardarFoto(
-                context = context,
-                uri = uri,
-                usuarioId = usuario!!.id
-            )
-            fotoPerfil = nuevaFoto
-            SesionManager.notificarCambioFoto()
+        if (uri != null) viewModel.cambiarFoto(context.contentResolver, uri)
+    }
+
+    var mostrarOpcionesFoto by remember { mutableStateOf(false) }
+    // rememberSaveable: Android puede cerrar la app mientras la cámara está abierta y hay que recordar dónde quedó la foto.
+    var uriCamara by rememberSaveable { mutableStateOf<Uri?>(null) }
+    val camara = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { tomada ->
+        val uri = uriCamara
+        if (tomada && uri != null) viewModel.cambiarFoto(context.contentResolver, uri)
+    }
+    val abrirCamara = {
+        try {
+            val archivo = File(context.cacheDir, "fotos").apply { mkdirs() }.let { File(it, "perfil_camara.jpg") }
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
+            uriCamara = uri
+            camara.launch(uri)
+        } catch (e: Exception) {
+            viewModel.mostrarMensaje("No se pudo abrir la cámara en este dispositivo.")
         }
     }
 
@@ -134,18 +148,21 @@ fun PerfilScreen(
                         modifier = Modifier
                             .size(96.dp)
                             .clip(CircleShape)
-                            .clickable { selectorFoto.launch("image/*") },
+                            .clickable(enabled = !subiendoFoto) { mostrarOpcionesFoto = true },
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Box(modifier = Modifier.clickable { selectorFoto.launch("image/*") }) {
+                    Box(modifier = Modifier.clickable(enabled = !subiendoFoto) { mostrarOpcionesFoto = true }) {
                         InitialsAvatar(nombre = usuario?.nombre ?: "?", size = 96.dp)
                     }
+                }
+                if (subiendoFoto) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp), color = Marca, strokeWidth = 3.dp)
                 }
             }
 
             Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { selectorFoto.launch("image/*") }) {
+                TextButton(enabled = !subiendoFoto, onClick = { mostrarOpcionesFoto = true }) {
                     Text(
                         text = if (fotoPerfil == null) "Agregar foto" else "Cambiar foto",
                         color = Marca,
@@ -153,15 +170,7 @@ fun PerfilScreen(
                     )
                 }
                 if (fotoPerfil != null) {
-                    TextButton(
-                        onClick = {
-                            usuario?.let { usuarioActual ->
-                                FotoPerfilManager.eliminarFoto(context = context, usuarioId = usuarioActual.id)
-                                fotoPerfil = null
-                                SesionManager.notificarCambioFoto()
-                            }
-                        }
-                    ) {
+                    TextButton(enabled = !subiendoFoto, onClick = { viewModel.quitarFoto() }) {
                         Text(text = "Quitar foto", color = Peligro, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -263,6 +272,55 @@ fun PerfilScreen(
                 }
             }
         }
+    }
+
+    if (mostrarOpcionesFoto) {
+        AlertDialog(
+            onDismissRequest = { mostrarOpcionesFoto = false },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Superficie,
+            title = { Text("Foto de perfil", style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
+            text = {
+                Column {
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            mostrarOpcionesFoto = false
+                            abrirCamara()
+                        }
+                    ) {
+                        Icon(Icons.Outlined.PhotoCamera, contentDescription = null, tint = Marca)
+                        Text(
+                            "Tomar foto",
+                            color = TextoPrincipal,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f).padding(start = 12.dp)
+                        )
+                    }
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            mostrarOpcionesFoto = false
+                            selectorFoto.launch("image/*")
+                        }
+                    ) {
+                        Icon(Icons.Outlined.PhotoLibrary, contentDescription = null, tint = Marca)
+                        Text(
+                            "Elegir de la galería",
+                            color = TextoPrincipal,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f).padding(start = 12.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { mostrarOpcionesFoto = false }) {
+                    Text("Cancelar", color = TextoSecundario, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        )
     }
 
     if (confirmandoSalida) {

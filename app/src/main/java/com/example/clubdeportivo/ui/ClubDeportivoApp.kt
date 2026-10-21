@@ -87,7 +87,6 @@ import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.ui.theme.TextoTenue
-import com.example.clubdeportivo.util.FotoPerfilManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -192,7 +191,6 @@ fun ClubDeportivoApp() {
                                     }
                                 }
                                 AvatarUsuario(
-                                    usuarioId = usuario?.id,
                                     nombre = usuario?.nombre.orEmpty(),
                                     onClick = {
                                         if (menu.any { it.route == Destinations.PERFIL }) {
@@ -327,11 +325,8 @@ fun ClubDeportivoApp() {
 
 /** Foto de perfil (si la hay) o inicial del nombre, en un círculo que lleva al perfil. */
 @Composable
-private fun AvatarUsuario(usuarioId: String?, nombre: String, onClick: () -> Unit) {
-    val contexto = LocalContext.current
-    val foto = remember(usuarioId, SesionManager.versionFotoPerfil) {
-        usuarioId?.let { FotoPerfilManager.obtenerFoto(contexto, it) }
-    }
+private fun AvatarUsuario(nombre: String, onClick: () -> Unit) {
+    val foto = remember(SesionManager.versionFotoPerfil) { SesionManager.usuarioActual?.fotoUrl }
 
     Box(
         modifier = Modifier
