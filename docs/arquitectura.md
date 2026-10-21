@@ -198,6 +198,12 @@ service cloud.firestore {
 }
 ```
 
+**Fotos de perfil.** No usan Firebase Storage (que puede exigir el plan de pago): la foto se reduce a 256 px, se
+comprime a JPEG (~20-40 KB) y se guarda dentro del propio perfil, en `usuarios/{uid}.fotoUrl`, como data URI en base64
+(`data:image/jpeg;base64,...`). Coil lo muestra tal cual y la foto sigue ahí si el usuario cambia de teléfono. Las reglas
+de Firestore de arriba ya la cubren; no hay nada extra que configurar. Si algún día hicieran falta fotos grandes, hay que
+pasar a Storage o a un servicio como Cloudinary (solo cambia `FirebaseFotoPerfilRepository`).
+
 **Datos de catálogo (áreas, torneos, inventario).** Firestore empieza vacío y así debe quedarse en producción: la app
 ya no siembra datos de ejemplo. Las áreas, los torneos y el inventario se dan de alta desde la propia app.
 
