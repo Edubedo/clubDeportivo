@@ -2,8 +2,8 @@ package com.example.clubdeportivo.data.notificaciones
 
 /** A quién va dirigido un aviso. */
 enum class DestinatarioNotificacion(val etiqueta: String) {
-    EMPLEADOS("Encargados"),
-    SOCIOS("Miembros"),
+    EMPLEADOS("Personal"),
+    SOCIOS("Socio"),
     TODOS("Todos")
 }
 
@@ -15,5 +15,7 @@ data class Notificacion(
     val destinatario: DestinatarioNotificacion,
     val autorId: String = "",
     val autorNombre: String = "",
-    val fechaMillis: Long = System.currentTimeMillis()
+    val fechaMillis: Long = System.currentTimeMillis(),
+    val imagenUrl: String = "",
+    val vigencia: String = ""
 )

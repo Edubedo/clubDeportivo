@@ -76,7 +76,7 @@ fun ReservasEncargadoScreen(
             modifier = Modifier.padding(horizontal = MargenPantalla)
         )
         PestanasPildora(
-            opciones = listOf("Por aprobar", "Reservas", "Horarios"),
+            opciones = listOf("Solicitudes", "Reservas", "Horarios"),
             seleccionada = pestana,
             onSeleccion = { pestana = it }
         )

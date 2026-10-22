@@ -67,6 +67,7 @@ NoSQL, orientada a documentos. Cada documento copia el nombre de lo que referenc
 | Membresías y dinero | `membresias`, `pagos`, `precios`, `integrantesFamiliares` (obsoleta) |
 | Instalaciones | `areas`, `herramientas`, `restriccionesHorario` |
 | Reservas | `reservas`, `materialAsignado`, `checkins`, `notificaciones` |
+| Comunicación | `avisos` (bandeja), `publicaciones` (novedades del dashboard) |
 | Torneos | `torneos`, `inscripcionesTorneo/{torneoId}_{usuarioId}` |
 | Sistema | `config/esquema` |
 
@@ -291,6 +292,21 @@ Avisos para una persona. **PK:** id automático. **FK:** `usuarioId` → `usuari
 | `mensaje` | String | S | Texto del aviso |
 | `leida` | Boolean | S | `false` hasta que se abre |
 | `creadoEn` | Timestamp | S | Cuándo se generó |
+
+#### `publicaciones`
+Novedades creadas desde el dashboard, separadas de los avisos internos de la campana. **PK:** id automático.
+La portada se guarda como data URI JPEG comprimida en `imagenUrl`; la audiencia es `TODOS`, `PERSONAL` o `SOCIOS`.
+
+| Campo | Tipo | Req | Descripción |
+|---|---|---|---|
+| `titulo` | String | S | Título de la publicación |
+| `descripcion` | String | S | Descripción completa |
+| `imagenUrl` | String | S | Portada comprimida |
+| `audiencia` | String | S | `TODOS` · `PERSONAL` · `SOCIOS` |
+| `vigencia` | String | N | Último día de vigencia (`yyyy-MM-dd`), hoy o una fecha futura |
+| `autorId` | String | S | uid del administrador autor |
+| `fechaMillis` | Number | S | Orden de creación en milisegundos |
+| `creadoEn` / `editadoEn` | Timestamp | N | Auditoría del servidor |
 
 #### `torneos`
 Competencia que ocupa un área completa en un rango de fechas y horas. **PK:** id automático. **FK:** `areaId` →

@@ -60,6 +60,7 @@ import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.esEncargado
+import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.ui.admin.home.AdminHomeScreen
 import com.example.clubdeportivo.ui.avisos.AvisosSheet
@@ -70,6 +71,8 @@ import com.example.clubdeportivo.ui.components.Insignia
 import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.components.tipoInsigniaRol
 import com.example.clubdeportivo.ui.inventario.InventarioScreen
+import com.example.clubdeportivo.ui.home.EncargadoHomeScreen
+import com.example.clubdeportivo.ui.home.MiembroHomeScreen
 import com.example.clubdeportivo.ui.login.LoginScreen
 import com.example.clubdeportivo.ui.membresia.MembresiaScreen
 import com.example.clubdeportivo.ui.navigation.Destinations
@@ -81,6 +84,9 @@ import com.example.clubdeportivo.ui.personal.PersonalScreen
 import com.example.clubdeportivo.ui.registro.RegistroScreen
 import com.example.clubdeportivo.ui.reservas.MisReservasScreen
 import com.example.clubdeportivo.ui.reservas.ReservasEncargadoScreen
+import com.example.clubdeportivo.ui.reservas.ReservasScreen
+import com.example.clubdeportivo.ui.reservas.ReservasViewModel
+import com.example.clubdeportivo.ui.publicaciones.PublicacionesViewModel
 import com.example.clubdeportivo.ui.reservas.ReservasScreen
 import com.example.clubdeportivo.ui.theme.Borde
 import com.example.clubdeportivo.ui.theme.Marca
@@ -117,9 +123,12 @@ fun ClubDeportivoApp() {
 
     // Avisos del club: todos los roles tienen su bandeja; la campana marca cuántos faltan por leer.
     val avisos: AvisosViewModel = viewModel()
+    val reservas: ReservasViewModel = viewModel()
+    val publicaciones: PublicacionesViewModel = viewModel()
     var mostrarAvisos by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(usuario?.id) { avisos.cargar() }
+    LaunchedEffect(usuario?.id) { publicaciones.cargar() }
     LaunchedEffect(avisos.mensaje) {
         avisos.mensaje?.let {
             snackbarHostState.showSnackbar(it)
@@ -222,7 +231,8 @@ fun ClubDeportivoApp() {
                         tonalElevation = 0.dp
                     ) {
                         menu.forEach { item ->
-                            val seleccionado = currentRoute == item.route
+                            val seleccionado = currentRoute == item.route ||
+                                (item.route == Destinations.RESERVAS && currentRoute == Destinations.MIS_RESERVAS)
                             NavigationBarItem(
                                 selected = seleccionado,
                                 onClick = { navegarAPestana(navController, item.route, menu.first().route) },
@@ -235,7 +245,7 @@ fun ClubDeportivoApp() {
                                 label = {
                                     Text(
                                         text = item.label,
-                                        fontSize = 12.sp,
+                                        fontSize = if (rol?.esAdministrador() == true) 10.sp else 12.sp,
                                         fontWeight = if (seleccionado) FontWeight.SemiBold else FontWeight.Medium,
                                         maxLines = 1
                                     )
@@ -281,7 +291,24 @@ fun ClubDeportivoApp() {
             }
             composable(Destinations.HOME) {
                 RutaProtegida(navController, Destinations.HOME) {
-                    AdminHomeScreen()
+                    when {
+                        rol?.esAdministrador() == true -> AdminHomeScreen(
+                            publicacionesViewModel = publicaciones,
+                            onIrReservas = { navegarAPestana(navController, Destinations.RESERVAS, Destinations.HOME) },
+                            onIrMembresia = { navegarAPestana(navController, Destinations.MEMBRESIA, Destinations.HOME) }
+                        )
+                        rol?.esEncargado() == true -> EncargadoHomeScreen(
+                            publicacionesViewModel = publicaciones,
+                            reservasViewModel = reservas,
+                            onReservas = { navegarAPestana(navController, Destinations.RESERVAS, Destinations.HOME) }
+                        )
+                        else -> MiembroHomeScreen(
+                            publicacionesViewModel = publicaciones,
+                            reservasViewModel = reservas,
+                            onReservar = { navController.navigate(Destinations.MIS_RESERVAS) { launchSingleTop = true } },
+                            onMembresia = { navegarAPestana(navController, Destinations.MEMBRESIA, Destinations.HOME) }
+                        )
+                    }
                 }
             }
             composable(Destinations.PERSONAL) {
@@ -301,7 +328,7 @@ fun ClubDeportivoApp() {
             }
             composable(Destinations.MIS_RESERVAS) {
                 RutaProtegida(navController, Destinations.MIS_RESERVAS) {
-                    MisReservasScreen()
+                    ReservasScreen(initialTab = 2)
                 }
             }
             composable(Destinations.MEMBRESIA) {

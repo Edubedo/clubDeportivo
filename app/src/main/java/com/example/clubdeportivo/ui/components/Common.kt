@@ -1023,12 +1023,12 @@ fun PestanasPildora(
                 border = if (activa) null else BorderStroke(1.dp, BordeCampo)
             ) {
                 Box(
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = if (repartir) 6.dp else 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = texto,
-                        fontSize = 14.sp,
+                        fontSize = if (repartir && texto.length > 9) 12.sp else 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (activa) SobreMarca else TextoSecundario,
                         maxLines = 1

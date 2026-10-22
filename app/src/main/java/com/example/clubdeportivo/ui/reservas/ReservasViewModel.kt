@@ -49,7 +49,9 @@ data class ReservaEspacioUi(
     /** Rango elegido, horas de inicio de la primera y la última (ambas incluidas). */
     val desde: Int? = null,
     val hasta: Int? = null,
-    val personas: Int = 1
+    val personas: Int = 1,
+    val carril: Int? = null,
+    val carrilesDisponibles: List<Int> = emptyList()
 ) {
     val horasElegidas get() = if (desde != null && hasta != null) hasta - desde + 1 else 0
 
@@ -71,7 +73,9 @@ data class ReservaListada(
     val horaFin: String,
     val personas: Int,
     val estado: EstadoReserva,
-    val deporte: String
+    val deporte: String,
+    val carril: Int?,
+    val usuarioNombre: String
 )
 
 class ReservasViewModel(
@@ -147,13 +151,13 @@ class ReservasViewModel(
             val (apertura, cierre) = rangoDeApertura(area)
             val texto = "Horario · abierto ${apertura.take(5)} – ${cierre.take(5)} · máx. ${Catalogos.MAX_HORAS_POR_RESERVA} horas" +
                 if (esVisitanteExterno) " (requiere aprobación)" else ""
-            _ui.value = estado.copy(area = area, horarioTexto = texto, desde = null, hasta = null, personas = 1)
+            _ui.value = estado.copy(area = area, horarioTexto = texto, desde = null, hasta = null, personas = 1, carril = null, carrilesDisponibles = emptyList())
             recalcularHoras(apertura, cierre)
         }
     }
 
     fun elegirFecha(fecha: String) {
-        _ui.value = estado.copy(fecha = fecha, desde = null, hasta = null, personas = 1)
+        _ui.value = estado.copy(fecha = fecha, desde = null, hasta = null, personas = 1, carril = null, carrilesDisponibles = emptyList())
         val area = estado.area ?: return
         viewModelScope.launch {
             val (apertura, cierre) = rangoDeApertura(area)
@@ -212,10 +216,51 @@ class ReservasViewModel(
         }
         val nuevo = actual.copy(desde = nuevoDesde, hasta = nuevoHasta)
         _ui.value = nuevo.copy(personas = nuevo.personas.coerceIn(1, nuevo.maxPersonas.coerceAtLeast(1)))
+        if (nuevoDesde == null || nuevoHasta == null) {
+            _ui.value = estado.copy(carril = null, carrilesDisponibles = emptyList())
+        } else {
+            viewModelScope.launch { cargarCarrilesDisponibles() }
+        }
     }
 
     fun limpiarSeleccion() {
-        _ui.value = estado.copy(desde = null, hasta = null, personas = 1)
+        _ui.value = estado.copy(desde = null, hasta = null, personas = 1, carril = null, carrilesDisponibles = emptyList())
+    }
+
+    fun elegirCarril(carril: Int) {
+        if (carril !in estado.carrilesDisponibles) return
+        _ui.value = estado.copy(carril = carril)
+    }
+
+    private suspend fun cargarCarrilesDisponibles() {
+        val actual = estado
+        val area = actual.area ?: return
+        val desde = actual.desde ?: return
+        val hasta = actual.hasta ?: return
+        if (area.carriles <= 0) {
+            _ui.value = actual.copy(carrilesDisponibles = emptyList())
+            return
+        }
+        try {
+            val ocupadas = reservaRepository.obtenerReservasDeArea(area.id)
+                .filter {
+                    it.fecha == actual.fecha &&
+                        it.carril != null &&
+                        it.horaInicio < "%02d:00".format(hasta + 1) &&
+                        it.horaFin > "%02d:00".format(desde)
+                }
+                .mapNotNull { it.carril }
+                .toSet()
+            val disponibles = (1..area.carriles).filterNot { it in ocupadas }
+            _ui.value = actual.copy(
+                carrilesDisponibles = disponibles,
+                carril = actual.carril?.takeIf { it in disponibles },
+                errorDisponibilidad = false
+            )
+        } catch (e: Exception) {
+            _ui.value = actual.copy(errorDisponibilidad = true)
+            _mensaje.value = "No se pudo consultar la disponibilidad de carriles."
+        }
     }
 
     fun cambiarPersonas(delta: Int) {
@@ -235,7 +280,7 @@ class ReservasViewModel(
         viewModelScope.launch {
             _ui.value = estado.copy(enviando = true)
             try {
-                val error = validar(area, actual.fecha, horaInicio, horaFin, actual.personas)
+                val error = validar(area, actual.fecha, horaInicio, horaFin, actual.personas, actual.carril)
                 if (error != null) {
                     _mensaje.value = error
                 } else {
@@ -247,6 +292,7 @@ class ReservasViewModel(
                         horaFin = horaFin,
                         esExterno = esVisitanteExterno,
                         personas = actual.personas,
+                        carril = actual.carril,
                         // Miembros y visitantes quedan en revisión; el personal reserva sin pedir permiso.
                         requiereAprobacion = usuario.rol.esCliente()
                     )
@@ -257,7 +303,7 @@ class ReservasViewModel(
                     }
                 }
                 // Siempre se vuelve a leer la ocupación real, haya funcionado o no.
-                _ui.value = estado.copy(desde = null, hasta = null, personas = 1)
+                _ui.value = estado.copy(desde = null, hasta = null, personas = 1, carril = null, carrilesDisponibles = emptyList())
                 val (apertura, cierre) = rangoDeApertura(area)
                 recalcularHoras(apertura, cierre)
                 cargarLista(estado.areas)
@@ -272,9 +318,19 @@ class ReservasViewModel(
      * Reglas del socio y del club + cupo/torneos. Usa datos recién leídos (no los de la pantalla),
      * así un cupo que se llenó mientras se elegía el horario se detecta antes de guardar.
      */
-    private suspend fun validar(area: Area, fecha: String, horaInicio: String, horaFin: String, personas: Int): String? {
+    private suspend fun validar(area: Area, fecha: String, horaInicio: String, horaFin: String, personas: Int, carril: Int?): String? {
         val usuario = usuario ?: return "Inicia sesión para reservar."
         motivoDeRestriccion()?.let { return it }
+        if (area.carriles > 0) {
+            if (carril == null || carril !in 1..area.carriles) return "Selecciona un carril disponible."
+            val carrilOcupado = reservaRepository.obtenerReservasDeArea(area.id).any {
+                it.fecha == fecha &&
+                    it.carril == carril &&
+                    it.horaInicio < horaFin &&
+                    it.horaFin > horaInicio
+            }
+            if (carrilOcupado) return "Ese carril acaba de ocuparse. Selecciona otro."
+        }
 
         if (esVisitanteExterno && !area.permiteExternos) return "Esta área no admite reservaciones de visitantes externos."
         if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return "${area.nombre} está en mantenimiento."
@@ -327,7 +383,9 @@ class ReservasViewModel(
                     horaFin = reserva.horaFin,
                     personas = reserva.personas,
                     estado = reserva.estado,
-                    deporte = area?.tipo ?: ""
+                    deporte = area?.tipo ?: reserva.deporte,
+                    carril = reserva.carril,
+                    usuarioNombre = reserva.usuarioNombre
                 )
             }
     }

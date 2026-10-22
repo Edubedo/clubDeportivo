@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -58,7 +59,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.SesionManager
-import com.example.clubdeportivo.data.model.esPersonal
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.ui.components.BotonIcono
@@ -94,14 +94,20 @@ import com.example.clubdeportivo.ui.theme.UnavailableForeground
 import com.example.clubdeportivo.ui.torneos.TorneosScreen
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.data.model.esAdministrador
+import com.example.clubdeportivo.data.model.esEncargado
+import com.example.clubdeportivo.data.model.esCliente
 
 @Composable
-fun ReservasScreen() {
-    var pestana by rememberSaveable { mutableIntStateOf(0) }
+fun ReservasScreen(initialTab: Int = 0) {
     val rol = SesionManager.usuarioActual?.rol
-    // Solo el personal que NO es administrador (los encargados de área) aprueba reservas.
-    val puedeAprobar = rol?.esPersonal() == true && rol.esAdministrador() == false
-    val opciones = if (puedeAprobar) listOf("Espacio", "Torneo", "Por aprobar") else listOf("Espacio", "Torneo")
+    val esCliente = rol?.esCliente() == true
+    val puedeAprobar = rol?.esAdministrador() == true || rol?.esEncargado() == true
+    var pestana by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, 2)) }
+    val opciones = when {
+        esCliente -> listOf("Espacio", "Torneo", "Mis reservas")
+        puedeAprobar -> listOf("Espacio", "Torneo", "Solicitudes")
+        else -> listOf("Espacio", "Torneo")
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(FondoApp)) {
         PestanasPildora(
@@ -113,6 +119,7 @@ fun ReservasScreen() {
         when (pestana.coerceAtMost(opciones.lastIndex)) {
             0 -> ReservarEspacioScreen()
             1 -> TorneosScreen()
+            2 -> if (esCliente) MisReservasScreen() else if (puedeAprobar) PorAprobarScreen() else TorneosScreen()
             else -> if (puedeAprobar) PorAprobarScreen() else TorneosScreen()
         }
     }
@@ -503,6 +510,44 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
 
             if (ui.desde != null) {
                 Spacer(modifier = Modifier.height(16.dp))
+                if (area.carriles > 0) {
+                    Text(
+                        "CARRIL",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextoSecundario,
+                        letterSpacing = 0.4.sp
+                    )
+                    Text(
+                        if (ui.carrilesDisponibles.isEmpty()) "No hay carriles libres en este horario."
+                        else "Selecciona un carril disponible",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        (1..area.carriles).forEach { carril ->
+                            val disponible = carril in ui.carrilesDisponibles
+                            val seleccionado = carril == ui.carril
+                            Surface(
+                                onClick = { viewModel.elegirCarril(carril) },
+                                enabled = disponible,
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (seleccionado) Marca else if (disponible) MarcaSuave else FondoApp,
+                                border = BorderStroke(1.dp, if (seleccionado) Marca else Borde),
+                                modifier = Modifier.heightIn(min = 44.dp)
+                            ) {
+                                Text(
+                                    "Carril $carril",
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (seleccionado) SobreMarca else if (disponible) TextoPrincipal else TextoTenue
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -537,7 +582,8 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
 private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel) {
     val desde = ui.desde
     val hasta = ui.hasta
-    val listo = desde != null && hasta != null
+    val requiereCarril = (ui.area?.carriles ?: 0) > 0
+    val listo = desde != null && hasta != null && (!requiereCarril || ui.carril != null)
     val etiquetaFecha = viewModel.fechas.firstOrNull { it.first == ui.fecha }?.second ?: Fechas.legible(ui.fecha)
 
     Surface(color = Superficie, shadowElevation = 8.dp) {
@@ -547,7 +593,7 @@ private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel
                     "$etiquetaFecha · %02d:00 → %02d:00 (%dh) · %s".format(
                         desde, hasta!! + 1, ui.horasElegidas,
                         if (ui.personas == 1) "1 persona" else "${ui.personas} personas"
-                    )
+                    ) + (ui.carril?.let { " · Carril $it" } ?: "")
                 } else {
                     "Elige las horas que quieres reservar"
                 },

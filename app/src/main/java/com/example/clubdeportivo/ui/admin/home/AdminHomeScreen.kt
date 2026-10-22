@@ -1,16 +1,22 @@
 package com.example.clubdeportivo.ui.admin.home
 
+import android.util.Base64
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -20,9 +26,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CardMembership
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Groups
@@ -35,29 +44,57 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
+import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.MembresiaDetalle
 import com.example.clubdeportivo.data.model.MetodoPago
 import com.example.clubdeportivo.data.model.Reserva
+import com.example.clubdeportivo.data.publicaciones.AudienciaPublicacion
+import com.example.clubdeportivo.data.publicaciones.Publicacion
+import com.example.clubdeportivo.ui.publicaciones.PublicacionesViewModel
 import com.example.clubdeportivo.ui.components.BurbujaTexto
 import com.example.clubdeportivo.ui.components.EncabezadoPantalla
 import com.example.clubdeportivo.ui.components.FullScreenLoading
@@ -68,6 +105,7 @@ import com.example.clubdeportivo.ui.components.TipoInsignia
 import com.example.clubdeportivo.ui.components.TituloSeccion
 import com.example.clubdeportivo.ui.membresia.dinero
 import com.example.clubdeportivo.ui.theme.Borde
+import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.ActionBlue
 import com.example.clubdeportivo.ui.theme.ActionOrange
 import com.example.clubdeportivo.ui.theme.CourtBlueBright
@@ -88,16 +126,30 @@ import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.ResumenAdmin
+import com.example.clubdeportivo.util.comprimirImagenPublicacion
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Date
+import java.util.Locale
 
 @Composable
-fun AdminHomeScreen(viewModel: AdminHomeViewModel = viewModel()) {
+fun AdminHomeScreen(
+    viewModel: AdminHomeViewModel = viewModel(),
+    publicacionesViewModel: PublicacionesViewModel = viewModel(),
+    onIrReservas: () -> Unit = {},
+    onIrMembresia: () -> Unit = {}
+) {
     PanelAdmin(
         resumen = viewModel.resumen,
         operacion = viewModel.operacion,
         proximasReservas = viewModel.proximasReservas,
         cargando = viewModel.cargando,
         errorFinanzas = viewModel.errorFinanzas,
-        onActualizar = { viewModel.cargar() }
+        onActualizar = { viewModel.cargar() },
+        publicacionesViewModel = publicacionesViewModel,
+        onIrReservas = onIrReservas,
+        onIrMembresia = onIrMembresia
     )
 }
 
@@ -110,8 +162,19 @@ internal fun PanelAdmin(
     proximasReservas: List<Reserva>?,
     cargando: Boolean,
     errorFinanzas: Boolean,
-    onActualizar: () -> Unit
+    onActualizar: () -> Unit,
+    publicacionesViewModel: PublicacionesViewModel = viewModel(),
+    onIrReservas: () -> Unit = {},
+    onIrMembresia: () -> Unit = {}
 ) {
+    var mostrandoNovedades by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = mostrandoNovedades) { mostrandoNovedades = false }
+    if (mostrandoNovedades) {
+        NovedadesAdminScreen(
+            publicacionesViewModel = publicacionesViewModel
+        )
+        return
+    }
     PullToRefreshBox(
         isRefreshing = cargando && (resumen != null || errorFinanzas),
         onRefresh = onActualizar,
@@ -124,10 +187,22 @@ internal fun PanelAdmin(
                 .padding(horizontal = MargenPantalla)
                 .padding(bottom = 24.dp)
         ) {
-            EncabezadoPantalla(
-                titulo = "Dashboard",
-                subtitulo = resumen?.let { "Resumen de ${Fechas.nombreMes(it.mes)}" } ?: "Resumen del club"
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                EncabezadoPantalla(
+                    titulo = "Dashboard",
+                    modifier = Modifier.weight(1f),
+                    subtitulo = resumen?.let { "Resumen de ${Fechas.nombreMes(it.mes)}" } ?: "Resumen del club"
+                )
+                Button(
+                    onClick = { mostrandoNovedades = true },
+                    modifier = Modifier.padding(start = 8.dp),
+                    shape = RoundedCornerShape(13.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Marca)
+                ) {
+                    Text("Publicaciones", fontWeight = FontWeight.SemiBold, maxLines = 1)
+                }
+            }
 
             when {
                 resumen == null && cargando -> {
@@ -141,6 +216,14 @@ internal fun PanelAdmin(
 
                     Spacer(modifier = Modifier.height(12.dp))
                     GraficaIngresos(resumen)
+
+                    Spacer(modifier = Modifier.height(22.dp))
+                    AccionesAdmin(
+                        pendientes = operacion.pendientesDeAprobar,
+                        porVencer = resumen.porVencer,
+                        onIrReservas = onIrReservas,
+                        onIrMembresia = onIrMembresia
+                    )
 
                     Spacer(modifier = Modifier.height(24.dp))
                     TituloSeccion("Membresías")
@@ -243,6 +326,472 @@ internal fun PanelAdmin(
         }
     }
 }
+
+@Composable
+private fun AccionesAdmin(
+    pendientes: Int?,
+    porVencer: List<MembresiaDetalle>,
+    onIrReservas: () -> Unit,
+    onIrMembresia: () -> Unit
+) {
+    var dialogo by remember { mutableStateOf<String?>(null) }
+    var recordatorioEnviado by remember { mutableStateOf(false) }
+
+    TituloSeccion("Requiere tu atención")
+    Spacer(Modifier.height(12.dp))
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        TarjetaAtencion(
+            cantidad = pendientes?.toString() ?: "—",
+            titulo = "Solicitudes pendientes",
+            detalle = "Reservas por aprobar",
+            color = ActionOrange,
+            modifier = Modifier.weight(1f),
+            onClick = onIrReservas
+        )
+        TarjetaAtencion(
+            cantidad = porVencer.size.toString(),
+            titulo = "Membresías por vencer",
+            detalle = "En los próximos 7 días",
+            color = ActionBlue,
+            modifier = Modifier.weight(1f),
+            onClick = { dialogo = "membresias" }
+        )
+    }
+
+    when (dialogo) {
+        "membresias" -> AlertDialog(
+            onDismissRequest = { dialogo = null },
+            title = { Text("Membresías por vencer", color = TextoPrincipal, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (porVencer.isEmpty()) {
+                        Text("No hay membresías por vencer esta semana.", color = TextoSecundario)
+                    } else {
+                        porVencer.take(7).forEach { detalle ->
+                            Column {
+                                Text(detalle.titular?.nombre ?: "Miembro del club", color = TextoPrincipal, fontWeight = FontWeight.SemiBold)
+                                Text("Vence el ${Fechas.legible(detalle.membresia.fechaVencimiento)}", color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                    if (recordatorioEnviado) {
+                        Text("Recordatorios preparados para los miembros de esta lista.", color = Exito, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { recordatorioEnviado = true }) {
+                    Text(if (recordatorioEnviado) "Enviado" else "Enviar recordatorios")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { dialogo = null; onIrMembresia() }) { Text("Ver membresías") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun NovedadesAdminScreen(
+    publicacionesViewModel: PublicacionesViewModel
+) {
+    var mostrarFormulario by remember { mutableStateOf(false) }
+    var publicacionEditando by remember { mutableStateOf<Publicacion?>(null) }
+    var publicacionDetalle by remember { mutableStateOf<Publicacion?>(null) }
+    var publicacionParaBorrar by remember { mutableStateOf<Publicacion?>(null) }
+    var publicacionGuardada by remember { mutableStateOf(false) }
+    val publicaciones = publicacionesViewModel.propias.sortedByDescending { it.fechaMillis }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = MargenPantalla)
+            .padding(bottom = 24.dp)
+    ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                EncabezadoPantalla(
+                    titulo = "Publicaciones",
+                    modifier = Modifier.weight(1f),
+                    subtitulo = "Novedades del club"
+                )
+                FilledTonalButton(
+                    onClick = { publicacionEditando = null; mostrarFormulario = true },
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("Crear", maxLines = 1)
+            }
+        }
+
+        if (publicaciones.isEmpty()) {
+            TarjetaClub(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Todavía no hay publicaciones. Crea una novedad para compartirla con el club.",
+                    modifier = Modifier.padding(18.dp),
+                    color = TextoSecundario
+                )
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                publicaciones.forEach { aviso ->
+                    TarjetaClub(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { publicacionDetalle = aviso }
+                    ) {
+                        if (aviso.imagenUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = aviso.imagenUrl,
+                                contentDescription = aviso.titulo,
+                                modifier = Modifier.fillMaxWidth().height(160.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                            Insignia("Publicada", TipoInsignia.EXITO)
+                            Spacer(Modifier.height(7.dp))
+                            Text(aviso.titulo, style = MaterialTheme.typography.titleMedium, color = TextoPrincipal, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Para: ${aviso.audiencia.etiqueta}" +
+                                    aviso.vigencia.takeIf { it.isNotBlank() }?.let { " · Hasta ${Fechas.legible(it)}" }.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextoSecundario
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                FilledTonalButton(
+                                    onClick = { publicacionDetalle = aviso },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Ver detalles", color = Marca)
+                                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Marca, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    publicacionesViewModel.error?.let { mensaje ->
+        AlertDialog(
+            onDismissRequest = publicacionesViewModel::limpiarError,
+            title = { Text("No se pudo completar la acción", color = TextoPrincipal, fontWeight = FontWeight.Bold) },
+            text = { Text(mensaje, color = TextoSecundario) },
+            confirmButton = { TextButton(onClick = publicacionesViewModel::limpiarError) { Text("Entendido") } }
+        )
+    }
+
+    if (mostrarFormulario) {
+        FormularioPublicacion(
+            inicial = publicacionEditando,
+            enviando = publicacionesViewModel.enviando,
+            onCerrar = { mostrarFormulario = false; publicacionEditando = null },
+            onPublicar = { datos ->
+                publicacionesViewModel.guardar(
+                    id = publicacionEditando?.id,
+                    titulo = datos.titulo,
+                    descripcion = datos.mensaje,
+                    imagenUrl = datos.imagenUrl,
+                    audiencia = datos.destinatario,
+                    vigencia = datos.vigencia
+                ) {
+                    mostrarFormulario = false
+                    publicacionEditando = null
+                    publicacionGuardada = true
+                }
+            }
+        )
+    }
+
+    publicacionDetalle?.let { publicacion ->
+        Dialog(
+            onDismissRequest = { publicacionDetalle = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            androidx.compose.material3.Surface(
+                modifier = Modifier.fillMaxSize().padding(14.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(20.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (publicacion.imagenUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = publicacion.imagenUrl,
+                                contentDescription = publicacion.titulo,
+                                modifier = Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(18.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Insignia("Publicada", TipoInsignia.EXITO)
+                        Text(publicacion.titulo, color = TextoPrincipal, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text(publicacion.descripcion, color = TextoSecundario, style = MaterialTheme.typography.bodyLarge)
+                        Text("Audiencia: ${publicacion.audiencia.etiqueta}", color = TextoSecundario)
+                        if (publicacion.vigencia.isNotBlank()) Text("Vigente hasta: ${Fechas.legible(publicacion.vigencia)}", color = TextoSecundario)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = { publicacionDetalle = null; publicacionEditando = publicacion; mostrarFormulario = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Editar") }
+                    OutlinedButton(
+                        onClick = { publicacionDetalle = null; publicacionParaBorrar = publicacion },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Borrar publicación", color = Peligro) }
+                    OutlinedButton(
+                        onClick = { publicacionDetalle = null },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
+                    ) { Text("Cerrar") }
+                }
+            }
+        }
+    }
+
+    publicacionParaBorrar?.let { publicacion ->
+        AlertDialog(
+            onDismissRequest = { publicacionParaBorrar = null },
+            title = { Text("Borrar publicación", color = TextoPrincipal, fontWeight = FontWeight.Bold) },
+            text = { Text("¿Quieres borrar «${publicacion.titulo}»? Esta acción no se puede deshacer.", color = TextoSecundario) },
+            confirmButton = {
+                TextButton(onClick = {
+                    publicacionesViewModel.eliminar(publicacion)
+                    publicacionParaBorrar = null
+                }) { Text("Borrar", color = Peligro) }
+            },
+            dismissButton = { TextButton(onClick = { publicacionParaBorrar = null }) { Text("Cancelar") } }
+        )
+    }
+
+    if (publicacionGuardada) {
+        AlertDialog(
+            onDismissRequest = { publicacionGuardada = false },
+            title = { Text("Novedad guardada", color = TextoPrincipal, fontWeight = FontWeight.Bold) },
+            text = { Text("La publicación se guardó correctamente.", color = TextoSecundario) },
+            confirmButton = { TextButton(onClick = { publicacionGuardada = false }) { Text("Listo") } }
+        )
+    }
+}
+
+@Composable
+private fun TarjetaAtencion(
+    cantidad: String,
+    titulo: String,
+    detalle: String,
+    color: Color,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    TarjetaClub(modifier = modifier, onClick = onClick) {
+        Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Text(cantidad, style = MaterialTheme.typography.headlineMedium, color = color, fontWeight = FontWeight.Bold)
+            Column {
+                Text(titulo, style = MaterialTheme.typography.titleSmall, color = TextoPrincipal, fontWeight = FontWeight.SemiBold)
+                Text(detalle, style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FormularioPublicacion(
+    inicial: Publicacion? = null,
+    enviando: Boolean = false,
+    onCerrar: () -> Unit,
+    onPublicar: (DatosFormularioPublicacion) -> Unit
+) {
+    val contexto = LocalContext.current
+    val alcance = rememberCoroutineScope()
+    var titulo by remember(inicial) { mutableStateOf(inicial?.titulo.orEmpty()) }
+    var descripcion by remember(inicial) { mutableStateOf(inicial?.descripcion.orEmpty()) }
+    var imagen by remember(inicial) { mutableStateOf(inicial?.imagenUrl.orEmpty()) }
+    var vigencia by remember(inicial) { mutableStateOf(inicial?.vigencia.orEmpty()) }
+    var audiencia by remember(inicial) {
+        mutableStateOf(
+            inicial?.audiencia ?: AudienciaPublicacion.TODOS
+        )
+    }
+    var errorImagen by remember { mutableStateOf<String?>(null) }
+    var comprimiendoImagen by remember { mutableStateOf(false) }
+    var mostrarCalendario by remember { mutableStateOf(false) }
+    val fechasDesdeHoy = remember {
+        object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                utcTimeMillis >= (fechaASeleccionMillis(Fechas.hoy()) ?: 0L)
+        }
+    }
+    val estadoFecha = rememberDatePickerState(
+        initialSelectedDateMillis = fechaASeleccionMillis(vigencia)?.takeIf { vigencia >= Fechas.hoy() },
+        selectableDates = fechasDesdeHoy
+    )
+    var errorVigencia by remember(inicial) { mutableStateOf(false) }
+    val selectorImagen = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            alcance.launch {
+                comprimiendoImagen = true
+                val jpeg = withContext(Dispatchers.IO) { comprimirImagenPublicacion(contexto.contentResolver, uri) }
+                if (jpeg == null) {
+                    errorImagen = "No se pudo leer la imagen. Elige otro archivo."
+                } else {
+                    val dataUri = "data:image/jpeg;base64," + Base64.encodeToString(jpeg, Base64.NO_WRAP)
+                    if (dataUri.length > MAX_PORTADA_FIRESTORE_CARACTERES) {
+                        errorImagen = "La portada sigue siendo muy pesada. Elige una imagen más pequeña."
+                    } else {
+                        imagen = dataUri
+                        errorImagen = null
+                    }
+                }
+                comprimiendoImagen = false
+            }
+        }
+    }
+    Dialog(
+        onDismissRequest = onCerrar,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        androidx.compose.material3.Surface(
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+                Text(
+                    if (inicial == null) "Publicar una novedad" else "Editar novedad",
+                    color = TextoPrincipal,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(14.dp))
+                Column(
+                    modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                OutlinedButton(onClick = { selectorImagen.launch("image/*") }, enabled = !comprimiendoImagen, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Image, contentDescription = null)
+                    Text(if (comprimiendoImagen) "Preparando imagen…" else if (imagen.isBlank()) "Elegir foto de portada" else "Cambiar foto de portada")
+                }
+                if (imagen.isNotBlank()) {
+                    AsyncImage(model = imagen, contentDescription = "Vista previa de portada", modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
+                }
+                errorImagen?.let { Text(it, color = Peligro, style = MaterialTheme.typography.bodySmall) }
+                OutlinedTextField(value = titulo, onValueChange = { titulo = it.take(60) }, label = { Text("Título") }, singleLine = true)
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it.take(300) },
+                    label = { Text("Descripción") },
+                    minLines = 3,
+                    maxLines = 5,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedButton(onClick = { mostrarCalendario = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.DateRange, contentDescription = null)
+                    Text(if (vigencia.isBlank()) "Elegir vigencia" else "Vigente hasta ${Fechas.legible(vigencia)}")
+                }
+                if (errorVigencia || (vigencia.isNotBlank() && vigencia < Fechas.hoy())) {
+                    Text("La vigencia debe ser hoy o una fecha futura.", color = Peligro, style = MaterialTheme.typography.bodySmall)
+                }
+                Text("Audiencia", color = TextoSecundario, style = MaterialTheme.typography.labelMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        AudienciaPublicacion.TODOS to "Todos",
+                        AudienciaPublicacion.PERSONAL to "Personal",
+                        AudienciaPublicacion.SOCIOS to "Socio"
+                    ).forEach { (destinatario, etiqueta) ->
+                        FilterChip(selected = audiencia == destinatario, onClick = { audiencia = destinatario }, label = { Text(etiqueta) })
+                    }
+                }
+            }
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = onCerrar,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
+                    ) { Text("Cancelar") }
+                    Button(
+                        onClick = {
+                            if (vigencia.isNotBlank() && vigencia < Fechas.hoy()) {
+                                errorVigencia = true
+                            } else {
+                                onPublicar(DatosFormularioPublicacion(titulo.trim(), descripcion.trim(), imagen, vigencia, audiencia))
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = titulo.isNotBlank() && descripcion.isNotBlank() && imagen.isNotBlank() &&
+                            (vigencia.isBlank() || vigencia >= Fechas.hoy()) && !comprimiendoImagen && !enviando
+                    ) { Text(if (enviando) "Guardando…" else if (inicial != null) "Guardar" else "Publicar") }
+                }
+            }
+        }
+    }
+
+    if (mostrarCalendario) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarCalendario = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val seleccion = estadoFecha.selectedDateMillis
+                    if (seleccion == null) {
+                        vigencia = ""
+                        errorVigencia = false
+                        mostrarCalendario = false
+                    } else {
+                        val seleccionada = fechaDesdeSeleccionMillis(seleccion)
+                        if (seleccionada < Fechas.hoy()) {
+                            errorVigencia = true
+                        } else {
+                            vigencia = seleccionada
+                            errorVigencia = false
+                            mostrarCalendario = false
+                        }
+                    }
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarCalendario = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = estadoFecha)
+        }
+    }
+}
+
+private fun fechaASeleccionMillis(fecha: String): Long? =
+    runCatching {
+        java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+            isLenient = false
+        }.parse(fecha)?.time
+    }.getOrNull()
+
+private fun fechaDesdeSeleccionMillis(millis: Long): String =
+    java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        timeZone = java.util.TimeZone.getTimeZone("UTC")
+    }.format(Date(millis))
+
+private data class DatosFormularioPublicacion(
+    val titulo: String,
+    val mensaje: String,
+    val imagenUrl: String,
+    val vigencia: String,
+    val destinatario: AudienciaPublicacion
+)
+
+private const val MAX_PORTADA_FIRESTORE_CARACTERES = 700 * 1024
 
 @Composable
 private fun AvisoError() {

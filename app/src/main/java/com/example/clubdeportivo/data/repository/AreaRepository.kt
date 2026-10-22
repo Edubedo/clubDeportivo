@@ -7,7 +7,7 @@ import kotlinx.coroutines.delay
 interface AreaRepository {
     suspend fun obtenerAreas(): List<Area>
     suspend fun obtenerAreaPorId(id: String): Area?
-    suspend fun crearArea(nombre: String, tipo: String, capacidad: Int, emoji: String): Area
+    suspend fun crearArea(nombre: String, tipo: String, capacidad: Int, emoji: String, carriles: Int = 0): Area
     suspend fun actualizarArea(area: Area): Area
     suspend fun eliminarArea(id: String)
 }
@@ -44,8 +44,8 @@ class FakeAreaRepository : AreaRepository {
         return areas.find { it.id == id }
     }
 
-    override suspend fun crearArea(nombre: String, tipo: String, capacidad: Int, emoji: String): Area {
-        val area = Area((areas.size + 1).toString(), nombre, tipo, capacidad, DisponibilidadArea.DISPONIBLE, emoji = emoji)
+    override suspend fun crearArea(nombre: String, tipo: String, capacidad: Int, emoji: String, carriles: Int): Area {
+        val area = Area((areas.size + 1).toString(), nombre, tipo, capacidad, DisponibilidadArea.DISPONIBLE, emoji = emoji, carriles = carriles)
         areas = areas + area
         return area
     }

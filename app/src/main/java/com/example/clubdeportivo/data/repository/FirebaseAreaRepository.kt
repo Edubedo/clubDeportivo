@@ -17,7 +17,8 @@ private fun DocumentSnapshot.toArea(): Area? {
         capacidad = (getLong("capacidad") ?: 0).toInt(),
         disponibilidad = DisponibilidadArea.valueOf(getString("disponibilidad") ?: "DISPONIBLE"),
         permiteExternos = getBoolean("permiteExternos") ?: false,
-        emoji = getString("emoji") ?: ""
+        emoji = getString("emoji") ?: "",
+        carriles = (getLong("carriles") ?: 0L).toInt()
     )
 }
 
@@ -35,7 +36,7 @@ class FirebaseAreaRepository(
         return coleccion.document(id).get().await().toArea()
     }
 
-    override suspend fun crearArea(nombre: String, tipo: String, capacidad: Int, emoji: String): Area {
+    override suspend fun crearArea(nombre: String, tipo: String, capacidad: Int, emoji: String, carriles: Int): Area {
         val datos = mapOf(
             "nombre" to nombre,
             "tipo" to tipo,
@@ -43,11 +44,12 @@ class FirebaseAreaRepository(
             "disponibilidad" to DisponibilidadArea.DISPONIBLE.name,
             "permiteExternos" to false,
             "emoji" to emoji,
+            "carriles" to carriles.toLong(),
             "creadoEn" to FieldValue.serverTimestamp(),
             "actualizadoEn" to FieldValue.serverTimestamp()
         )
         val documento = coleccion.add(datos).await()
-        return Area(documento.id, nombre, tipo, capacidad, DisponibilidadArea.DISPONIBLE, false, emoji)
+        return Area(documento.id, nombre, tipo, capacidad, DisponibilidadArea.DISPONIBLE, false, emoji, carriles)
     }
 
     override suspend fun actualizarArea(area: Area): Area {
@@ -58,6 +60,7 @@ class FirebaseAreaRepository(
                 "capacidad" to area.capacidad.toLong(),
                 "disponibilidad" to area.disponibilidad.name,
                 "emoji" to area.emoji,
+                "carriles" to area.carriles.toLong(),
                 "actualizadoEn" to FieldValue.serverTimestamp()
             )
         ).await()
