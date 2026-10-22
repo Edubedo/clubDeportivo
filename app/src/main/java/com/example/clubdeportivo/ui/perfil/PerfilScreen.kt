@@ -65,6 +65,8 @@ import com.example.clubdeportivo.ui.components.Insignia
 import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.components.tipoInsigniaRol
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.Peligro
@@ -162,7 +164,9 @@ fun PerfilScreen(
             }
 
             Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                TextButton(enabled = !subiendoFoto, onClick = { mostrarOpcionesFoto = true }) {
+                TextButton(
+                    onClick = { selectorFoto.launch("image/*") }
+                ) {
                     Text(
                         text = if (fotoPerfil == null) "Agregar foto" else "Cambiar foto",
                         color = Marca,
@@ -184,7 +188,7 @@ fun PerfilScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            usuario?.rol?.let { Insignia(texto = it.nombreLegible(), tipo = TipoInsignia.MARCA) }
+            usuario?.rol?.let { Insignia(texto = it.nombreLegible(), tipo = tipoInsigniaRol(it)) }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -267,6 +271,7 @@ fun PerfilScreen(
                     BotonSecundario(
                         texto = "Cerrar sesión",
                         colorTexto = Peligro,
+                        conReflejo = false,
                         onClick = { confirmandoSalida = true }
                     )
                 }
@@ -329,6 +334,7 @@ fun PerfilScreen(
             mensaje = "¿Quieres cerrar tu sesión en este dispositivo?",
             textoConfirmar = "Cerrar sesión",
             textoCancelar = "Cancelar",
+            conReflejo = false,
             onConfirmar = {
                 confirmandoSalida = false
                 viewModel.cerrarSesion()

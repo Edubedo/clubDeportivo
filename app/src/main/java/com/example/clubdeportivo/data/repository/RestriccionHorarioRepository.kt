@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.data.repository
 
+import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.RestriccionHorario
 import kotlinx.coroutines.delay
@@ -9,30 +10,18 @@ interface RestriccionHorarioRepository {
 }
 
 /**
- * Horario de operación por tipo de área. Todas las áreas de un mismo tipo
- * comparten horario (no se maneja aún horario distinto por día de la semana).
- *
- *   Alberca: 6:00 a.m. - 9:00 p.m.
- *   Canchas (fútbol, básquet, tenis): 6:00 a.m. - 10:00 p.m.
+ * Todas las áreas comparten el horario actual de las canchas de fútbol.
  */
 class FakeRestriccionHorarioRepository : RestriccionHorarioRepository {
 
-    private val horarioPorTipo = mapOf(
-        "Natación" to ("06:00" to "21:00"),
-        "Fútbol" to ("06:00" to "22:00"),
-        "Básquetbol" to ("06:00" to "22:00"),
-        "Tenis" to ("06:00" to "22:00")
-    )
-
     override suspend fun obtenerHorarioDeArea(area: Area): RestriccionHorario {
         delay(150)
-        val (inicio, fin) = horarioPorTipo[area.tipo] ?: ("08:00" to "20:00")
         return RestriccionHorario(
             id = "rh-${area.id}",
             areaId = area.id,
             diaSemana = "TODOS",
-            horaInicio = inicio,
-            horaFin = fin
+            horaInicio = Catalogos.HORA_APERTURA_AREAS,
+            horaFin = Catalogos.HORA_CIERRE_AREAS
         )
     }
 }

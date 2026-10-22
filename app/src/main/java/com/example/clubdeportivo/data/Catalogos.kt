@@ -74,20 +74,20 @@ object Catalogos {
     fun paqueteFamiliarPorId(id: Int): PaqueteFamiliar? = paquetesFamiliares.find { it.id == id }
 
     // --- Reglas de reservación ---
-    const val MAX_RESERVAS_ACTIVAS_POR_SOCIO = 3
-    const val ANTICIPACION_MINIMA_HORAS = 2
+    const val MAX_RESERVAS_ACTIVAS_POR_SOCIO = 20
+    const val ANTICIPACION_MINIMA_HORAS = 0
     const val ANTICIPACION_MAXIMA_DIAS = 7
     const val DURACION_RESERVA_HORAS = 1
     const val MAX_HORAS_POR_RESERVA = 4
     const val CANCELACION_SIN_PENALIZACION_HORAS = 4
     const val MATERIAL_AUTOMATICO_ANTICIPACION_MINIMA_HORAS = 1
+    const val HORA_APERTURA_AREAS = "06:00"
+    const val HORA_CIERRE_AREAS = "22:00"
+    const val LUGARES_PARA_ALERTA_CUPO_BAJO = 2
 
     // --- Reglas de inasistencias (no-show) ---
     const val INASISTENCIAS_PARA_BLOQUEO = 3
     const val VENTANA_INASISTENCIAS_DIAS = 30
     const val DIAS_BLOQUEO_POR_INASISTENCIAS = 7
 
-    // --- Horario de reservas para visitantes externos aprobados ---
-    const val HORA_INICIO_EXTERNOS = "08:00"
-    const val HORA_FIN_EXTERNOS = "20:00"
 }

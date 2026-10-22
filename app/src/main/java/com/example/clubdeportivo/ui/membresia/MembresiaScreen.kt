@@ -1,6 +1,9 @@
 package com.example.clubdeportivo.ui.membresia
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -53,7 +57,26 @@ import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.MembershipBasic
+import com.example.clubdeportivo.ui.theme.MembershipBasicForeground
+import com.example.clubdeportivo.ui.theme.MembershipPremium
+import com.example.clubdeportivo.ui.theme.MembershipPremiumForeground
+import com.example.clubdeportivo.ui.theme.MembershipPro
+import com.example.clubdeportivo.ui.theme.MembershipProForeground
+import com.example.clubdeportivo.ui.theme.PackageBasicBorder
+import com.example.clubdeportivo.ui.theme.PackageBasicContainer
+import com.example.clubdeportivo.ui.theme.PackageBasicForeground
+import com.example.clubdeportivo.ui.theme.PackageFamilyBorder
+import com.example.clubdeportivo.ui.theme.PackageFamilyContainer
+import com.example.clubdeportivo.ui.theme.PackageFamilyForeground
+import com.example.clubdeportivo.ui.theme.PackageIntermediateBorder
+import com.example.clubdeportivo.ui.theme.PackageIntermediateContainer
+import com.example.clubdeportivo.ui.theme.PackageIntermediateForeground
+import com.example.clubdeportivo.ui.theme.PackagePremiumBorder
+import com.example.clubdeportivo.ui.theme.PackagePremiumContainer
+import com.example.clubdeportivo.ui.theme.PackagePremiumForeground
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
@@ -165,7 +188,7 @@ private fun PlanesTab(editable: Boolean, conTuMembresia: Boolean, viewModel: Pre
                 incluye = listOf(
                     "Acceso por un solo día",
                     "Áreas que admiten visitantes, con aprobación del club",
-                    "Horario de visitantes: ${Catalogos.HORA_INICIO_EXTERNOS} a ${Catalogos.HORA_FIN_EXTERNOS}"
+                    "Horario de visitantes: ${Catalogos.HORA_APERTURA_AREAS} a ${Catalogos.HORA_CIERRE_AREAS}"
                 ),
                 onEditar = editar(ClavesPrecio.VISITA, "Visita")
             )
@@ -253,12 +276,12 @@ private fun Seccion(texto: String) {
 }
 
 @Composable
-private fun Incluye(texto: String) {
+private fun Incluye(texto: String, accent: androidx.compose.ui.graphics.Color = Marca) {
     Row(verticalAlignment = Alignment.Top) {
         Icon(
             imageVector = Icons.Filled.CheckCircle,
             contentDescription = null,
-            tint = Marca,
+            tint = accent,
             modifier = Modifier
                 .padding(end = 8.dp, top = 2.dp)
                 .size(18.dp)
@@ -276,6 +299,25 @@ private fun TarjetaPlan(
     destacado: Boolean = false,
     onEditar: (() -> Unit)? = null
 ) {
+    val paquete = when {
+        titulo.contains("familiar", ignoreCase = true) || titulo.contains("grupal", ignoreCase = true) -> 3
+        titulo.contains("deluxe", ignoreCase = true) ||
+            titulo.contains("vip", ignoreCase = true) ||
+            titulo.contains("premium", ignoreCase = true) ||
+            titulo.contains("anual", ignoreCase = true) -> 2
+        titulo.contains("trimestral", ignoreCase = true) ||
+            titulo.contains("dúo", ignoreCase = true) ||
+            titulo.contains("duo", ignoreCase = true) ||
+            titulo.contains("intermedio", ignoreCase = true) ||
+            titulo.contains("pro", ignoreCase = true) -> 1
+        else -> 0
+    }
+    val (accent, accentForeground, accentContainer, accentBorder) = when (paquete) {
+        3 -> listOf(PackageFamilyForeground, PackageFamilyForeground, PackageFamilyContainer, PackageFamilyBorder)
+        2 -> listOf(PackagePremiumForeground, PackagePremiumForeground, PackagePremiumContainer, PackagePremiumBorder)
+        1 -> listOf(PackageIntermediateForeground, PackageIntermediateForeground, PackageIntermediateContainer, PackageIntermediateBorder)
+        else -> listOf(PackageBasicForeground, PackageBasicForeground, PackageBasicContainer, PackageBasicBorder)
+    }
     TarjetaClub(modifier = Modifier.fillMaxWidth(), destacada = destacado) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -283,14 +325,33 @@ private fun TarjetaPlan(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = titulo,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextoPrincipal,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp)
-                )
+                Row(
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(accentContainer, CircleShape)
+                            .border(1.dp, accentBorder, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Text(
+                        text = titulo,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextoPrincipal
+                    )
+                }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(precio, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Marca, maxLines = 1)
+                    Text(precio, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = accentForeground, maxLines = 1)
                     Text(periodo, style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
                 }
                 if (onEditar != null) {
@@ -301,7 +362,7 @@ private fun TarjetaPlan(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                incluye.forEach { Incluye(it) }
+                incluye.forEach { Incluye(it, accent) }
             }
         }
     }

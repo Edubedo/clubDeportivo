@@ -78,6 +78,7 @@ import com.example.clubdeportivo.ui.components.BurbujaTexto
 import com.example.clubdeportivo.ui.components.CampoTexto
 import com.example.clubdeportivo.ui.components.DialogoConfirmacion
 import com.example.clubdeportivo.ui.components.DialogoFormulario
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EspacioCampos
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
@@ -87,6 +88,7 @@ import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.Peligro
@@ -256,24 +258,26 @@ private fun AreaCard(
                 when (area.disponibilidad) {
                     DisponibilidadArea.MANTENIMIENTO -> Insignia(
                         texto = "En mantenimiento",
-                        tipo = TipoInsignia.ALERTA,
+                        tipo = TipoInsignia.MANTENIMIENTO,
                         icono = Icons.Default.Warning,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                     DisponibilidadArea.OCUPADA -> Insignia(
                         texto = "Ocupada",
-                        tipo = TipoInsignia.NEUTRO,
+                        tipo = TipoInsignia.NO_DISPONIBLE,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                     DisponibilidadArea.DISPONIBLE -> Insignia(
                         texto = "Disponible",
-                        tipo = TipoInsignia.EXITO,
+                        tipo = TipoInsignia.DISPONIBLE,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                 }
             }
             Box {
-                IconButton(onClick = { menuAbierto = true }) {
+                IconButton(
+                    onClick = { menuAbierto = true }
+                ) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = TextoSecundario)
                 }
                 DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
@@ -446,11 +450,23 @@ private fun SelectorEmoji(seleccionado: String, onSeleccion: (String) -> Unit) {
             val elegido = emoji == seleccionado
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (elegido) MarcaSuave else Color.Transparent)
-                    .border(if (elegido) 2.dp else 1.dp, if (elegido) Marca else BordeCampo, RoundedCornerShape(12.dp))
-                    .selectable(selected = elegido, role = Role.RadioButton, onClick = { onSeleccion(emoji) }),
+                    .let { base ->
+                        val selectable = base
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (elegido) MarcaSuave else Color.Transparent)
+                            .border(if (elegido) 2.dp else 1.dp, if (elegido) Marca else BordeCampo, RoundedCornerShape(12.dp))
+                            .selectable(selected = elegido, role = Role.RadioButton, onClick = { onSeleccion(emoji) })
+                        if (elegido) {
+                            modifierReflejo(
+                                selectable,
+                                enabled = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        } else {
+                            selectable
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Text(text = emoji, fontSize = 22.sp)

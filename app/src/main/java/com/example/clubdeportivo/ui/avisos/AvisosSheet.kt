@@ -44,6 +44,7 @@ import com.example.clubdeportivo.ui.components.Insignia
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
 import com.example.clubdeportivo.ui.theme.Peligro
@@ -155,6 +156,11 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
                             FilterChip(
                                 selected = destinatario == opcion,
                                 onClick = { destinatario = opcion },
+                                modifier = if (destinatario == opcion) {
+                                    modifierReflejo(Modifier, enabled = true, shape = RoundedCornerShape(50.dp))
+                                } else {
+                                    Modifier
+                                },
                                 label = { Text(opcion.etiqueta) },
                                 shape = RoundedCornerShape(50.dp),
                                 colors = FilterChipDefaults.filterChipColors(
@@ -272,7 +278,10 @@ private fun ListaAvisos(
         else -> {
             if (!verEnviados && viewModel.sinLeer > 0) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { viewModel.marcarTodosLeidos() }) {
+                    TextButton(
+                        onClick = { viewModel.marcarTodosLeidos() },
+                        modifier = modifierReflejo(Modifier, enabled = true)
+                    ) {
                         Text("Marcar todos como leídos", color = Marca, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -362,10 +371,14 @@ private fun TarjetaAviso(
 
             if (esEnviado && expandido) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onModificar) {
+                    TextButton(
+                        onClick = onModificar
+                    ) {
                         Text("Modificar", color = Marca, fontWeight = FontWeight.Bold)
                     }
-                    TextButton(onClick = onEliminar) {
+                    TextButton(
+                        onClick = onEliminar
+                    ) {
                         Text("Eliminar", color = Peligro, fontWeight = FontWeight.Bold)
                     }
                 }

@@ -59,9 +59,10 @@ class FirebaseReservaRepository(
     }
 
     override suspend fun contarReservasActivas(usuarioId: String): Int {
-        return obtenerReservasDeUsuario(usuarioId).count {
-            it.estado == EstadoReserva.CONFIRMADA || it.estado == EstadoReserva.PENDIENTE_APROBACION
-        }
+        return ReglasReserva.contarReservasActivasFuturas(
+            usuarioId = usuarioId,
+            reservas = obtenerReservasDeUsuario(usuarioId)
+        )
     }
 
     override suspend fun crearReserva(

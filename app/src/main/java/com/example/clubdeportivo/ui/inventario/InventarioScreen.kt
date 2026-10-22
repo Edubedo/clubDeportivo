@@ -76,6 +76,7 @@ import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.ui.components.BotonFlotanteAgregar
 import com.example.clubdeportivo.ui.components.botonFlotanteVisible
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -231,7 +232,10 @@ fun ArticuloCard(
                     )
                 }
 
-                IconButton(onClick = onEditar, modifier = Modifier.size(40.dp)) {
+                IconButton(
+                    onClick = onEditar,
+                    modifier = Modifier.size(40.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Editar ${articulo.nombre}",
@@ -239,7 +243,10 @@ fun ArticuloCard(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                IconButton(onClick = onEliminar, modifier = Modifier.size(40.dp)) {
+                IconButton(
+                    onClick = onEliminar,
+                    modifier = Modifier.size(40.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
                         contentDescription = "Eliminar ${articulo.nombre}",
@@ -296,7 +303,8 @@ fun BotonesCantidad(
             icono = Icons.Filled.Remove,
             descripcion = "Quitar una unidad",
             onClick = onMenos,
-            enabled = cantidad > 0
+            enabled = cantidad > 0,
+            conReflejo = false
         )
 
         Text(
@@ -312,7 +320,8 @@ fun BotonesCantidad(
         BotonIcono(
             icono = Icons.Filled.Add,
             descripcion = "Agregar una unidad",
-            onClick = onMas
+            onClick = onMas,
+            conReflejo = false
         )
     }
 }

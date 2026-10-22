@@ -6,6 +6,7 @@ import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.Torneo
+import java.util.Date
 
 /**
  * Todas las reglas de ocupación de un área en un solo lugar (sin Firebase ni Android, para poder
@@ -24,6 +25,14 @@ object ReglasReserva {
 
     fun esVigente(reserva: Reserva) =
         reserva.estado == EstadoReserva.CONFIRMADA || reserva.estado == EstadoReserva.PENDIENTE_APROBACION
+
+    /** Reservas futuras del socio que todavía cuentan para el límite personal. */
+    fun contarReservasActivasFuturas(usuarioId: String, reservas: List<Reserva>, ahora: Date = Date()): Int =
+        reservas.count {
+            it.usuarioId == usuarioId &&
+                esVigente(it) &&
+                Fechas.horasDesdeAhora(it.fecha, it.horaFin, ahora) > 0
+        }
 
     /** "HH:mm" a minutos desde medianoche; null si el texto no es una hora válida. */
     fun aMinutos(hora: String): Int? {
@@ -59,6 +68,8 @@ object ReglasReserva {
         val libres get() = (capacidad - ocupadas).coerceAtLeast(0)
         val lleno get() = libres == 0
         val disponible get() = torneo == null && !lleno
+        val pocosLugares get() =
+            torneo == null && ocupadas > 0 && libres in 1..Catalogos.LUGARES_PARA_ALERTA_CUPO_BAJO
     }
 
     fun estadoDeHora(area: Area, reservas: List<Reserva>, torneos: List<Torneo>, fecha: String, hora: Int): EstadoHora {

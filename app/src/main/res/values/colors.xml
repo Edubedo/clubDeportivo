@@ -3,9 +3,42 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Paleta de la app. Es la misma de ui/theme/Color.kt: un naranja de marca, gris cálido de fondo y blanco. -->
-    <color name="marca">#FFCC4A0C</color>
-    <color name="marca_suave">#FFFDEBDD</color>
-    <color name="fondo_app">#FFF5F5F4</color>
-    <color name="texto_principal">#FF1C1917</color>
+    <color name="deep_navy">#FF021024</color>
+    <color name="primary_navy">#FF052659</color>
+    <color name="action_blue">#FF0A3A82</color>
+    <color name="action_orange">#FFF96015</color>
+    <color name="action_orange_foreground">#FFC2410C</color>
+    <color name="slate_accent">#FF5483B3</color>
+    <color name="soft_blue_selection">#FFC1E8FF</color>
+    <color name="court_green">#FF16A34A</color>
+    <color name="success_container">#FFDCFCE7</color>
+    <color name="success_foreground">#FF15803D</color>
+    <color name="success_on_dark">#FF86EFAC</color>
+    <color name="alert_red">#FFDC2626</color>
+    <color name="alert_red_container">#FFFEE2E2</color>
+    <color name="alert_red_foreground">#FF991B1B</color>
+    <color name="alert_on_dark">#FFFCA5A5</color>
+    <color name="attention_amber">#FFF59E0B</color>
+    <color name="amber_container">#FFFEF3C7</color>
+    <color name="amber_foreground">#FF92400E</color>
+    <color name="membership_basic">#FF5483B3</color>
+    <color name="membership_basic_foreground">#FF2563EB</color>
+    <color name="membership_pro">#FF10B981</color>
+    <color name="membership_pro_foreground">#FF047857</color>
+    <color name="membership_premium">#FFF59E0B</color>
+    <color name="membership_premium_foreground">#FF92400E</color>
+    <color name="payment_transfer">#FF7C3AED</color>
+    <color name="payment_wallet">#FF06B6D4</color>
+    <color name="payment_cash">#FF16A34A</color>
+    <color name="payment_card">#FF2563EB</color>
+    <color name="activity_classes_container">#FFDBEAFE</color>
+    <color name="activity_classes_foreground">#FF1D4ED8</color>
+    <color name="activity_classes">#FF2563EB</color>
+    <color name="fondo_app">#FFF8FAFC</color>
+    <color name="superficie">#FFFFFFFF</color>
+    <color name="borde">#FFE2E8F0</color>
+    <color name="texto_principal">#FF021024</color>
+    <color name="texto_secundario">#FF475569</color>
+    <color name="marca">#FF052659</color>
+    <color name="marca_suave">#FFC1E8FF</color>
 </resources>

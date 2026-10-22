@@ -1,6 +1,9 @@
 package com.example.clubdeportivo.util
 
 import com.example.clubdeportivo.data.model.MotivoSuspension
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -29,6 +32,16 @@ class FechasYMotivosTest {
         assertEquals("octubre", Fechas.nombreMes("2026-10"))
         assertEquals("ene", Fechas.nombreMes("2026-01", corto = true))
         assertEquals("raro", Fechas.nombreMes("raro"))
+    }
+
+    @Test
+    fun `permite reservar horarios futuros del mismo dia aunque falte menos de dos horas`() {
+        val ahora = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+            .parse("2026-10-21 16:50")!!
+
+        assertTrue(Fechas.horasDesdeAhora("2026-10-21", "17:00", ahora) > 0)
+        assertTrue(Fechas.horasDesdeAhora("2026-10-21", "18:00", ahora) > 0)
+        assertTrue(Fechas.horasDesdeAhora("2026-10-21", "16:00", ahora) < 0)
     }
 
     @Test

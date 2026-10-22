@@ -31,6 +31,7 @@ import com.example.clubdeportivo.ui.components.DialogoFormulario
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.BordeCampo
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
@@ -54,10 +55,20 @@ internal fun SelectorMotivoSuspension(
     Column {
         MotivoSuspension.entries.forEach { motivo ->
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(role = Role.RadioButton) { onSeleccion(motivo) }
-                    .padding(vertical = 2.dp),
+                modifier = if (seleccion == motivo) {
+                    modifierReflejo(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(role = Role.RadioButton) { onSeleccion(motivo) }
+                            .padding(vertical = 2.dp),
+                        enabled = true
+                    )
+                } else {
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.RadioButton) { onSeleccion(motivo) }
+                        .padding(vertical = 2.dp)
+                },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(

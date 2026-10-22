@@ -22,6 +22,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.clubdeportivo.ui.theme.Alerta
+import com.example.clubdeportivo.ui.theme.AlertaSuave
+import com.example.clubdeportivo.ui.theme.Exito
+import com.example.clubdeportivo.ui.theme.ExitoSuave
+import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.Marca
+import com.example.clubdeportivo.ui.theme.Superficie
+import com.example.clubdeportivo.ui.theme.TextoPrincipal
+import com.example.clubdeportivo.ui.theme.TextoSecundario
 
 @Composable
 fun HomeScreen(
@@ -32,14 +41,14 @@ fun HomeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFEAF1F8))
+            .background(FondoApp)
             .verticalScroll(rememberScrollState())
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
-                .background(Color(0xFF192338))
+                .background(Marca)
         )
 
         Column(
@@ -51,13 +60,13 @@ fun HomeScreen(
                 text = "Club Deportivo",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF192338)
+                color = Marca
             )
 
             Text(
                 text = "Admin",
                 fontSize = 13.sp,
-                color = Color(0xFF31487A),
+                color = TextoSecundario,
                 fontWeight = FontWeight.Medium
             )
 
@@ -67,7 +76,7 @@ fun HomeScreen(
                 text = "Dashboard",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF192338)
+                color = TextoPrincipal
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -76,8 +85,8 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardCard(emoji = "🏟️", cantidad = "9", titulo = "Áreas", backgroundColor = Color.White, modifier = Modifier.weight(1f))
-                DashboardCard(emoji = "👥", cantidad = "3", titulo = "Personal", backgroundColor = Color.White, modifier = Modifier.weight(1f))
+                DashboardCard(emoji = "🏟️", cantidad = "9", titulo = "Áreas", backgroundColor = Superficie, modifier = Modifier.weight(1f))
+                DashboardCard(emoji = "👥", cantidad = "3", titulo = "Personal", backgroundColor = Superficie, modifier = Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -86,8 +95,8 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardCard(emoji = "👤", cantidad = "3", titulo = "Miembros", backgroundColor = Color.White, modifier = Modifier.weight(1f))
-                DashboardCard(emoji = "🗓️", cantidad = "2", titulo = "Reservas hoy", backgroundColor = Color.White, modifier = Modifier.weight(1f))
+                DashboardCard(emoji = "👤", cantidad = "3", titulo = "Miembros", backgroundColor = Superficie, modifier = Modifier.weight(1f))
+                DashboardCard(emoji = "🗓️", cantidad = "2", titulo = "Reservas hoy", backgroundColor = Superficie, modifier = Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -96,7 +105,7 @@ fun HomeScreen(
                 text = "Reservas recientes",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF192338)
+                color = Marca
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -142,13 +151,13 @@ fun DashboardCard(
                     text = cantidad,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF192338)
+                    color = TextoPrincipal
                 )
                 Text(
                     text = titulo,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF31487A)
+                    color = TextoSecundario
                 )
             }
         }
@@ -166,7 +175,7 @@ fun ReservaCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = Superficie),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -182,12 +191,12 @@ fun ReservaCard(
                         text = nombre,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF192338)
+                        color = TextoPrincipal
                     )
                     Text(
                         text = detalle,
                         fontSize = 12.sp,
-                        color = Color(0xFF31487A)
+                        color = TextoSecundario
                     )
                 }
             }
@@ -202,8 +211,8 @@ fun EstadoReserva(
     estado: String,
     confirmada: Boolean
 ) {
-    val colorFondo = if (confirmada) Color(0xFFD6E4FE) else Color(0xFFFFF3DB)
-    val colorTexto = if (confirmada) Color(0xFF1E2E4F) else Color(0xFFB45309)
+    val colorFondo = if (confirmada) ExitoSuave else AlertaSuave
+    val colorTexto = if (confirmada) Exito else Alerta
 
     Text(
         text = estado,

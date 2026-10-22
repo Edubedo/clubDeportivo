@@ -101,7 +101,7 @@ fun DisponibilidadScreen(viewModel: DisponibilidadViewModel = viewModel()) {
                 ) {
                     if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) {
                         item {
-                            Insignia(texto = "${area.nombre} está en mantenimiento: no admite reservas nuevas", tipo = TipoInsignia.ALERTA)
+                            Insignia(texto = "${area.nombre} está en mantenimiento: no admite reservas nuevas", tipo = TipoInsignia.MANTENIMIENTO)
                         }
                     }
                     items(viewModel.filas, key = { it.hora }) { fila -> FilaHoraCard(fila, area.capacidad) }
@@ -137,10 +137,10 @@ private fun FilaHoraCard(fila: FilaDisponibilidad, capacidad: Int) {
                 )
             }
             when {
-                estado.torneo != null -> Insignia("Torneo", TipoInsignia.MARCA)
-                estado.lleno -> Insignia("Lleno", TipoInsignia.PELIGRO)
-                estado.ocupadas > 0 -> Insignia("${estado.libres} libres", TipoInsignia.ALERTA)
-                else -> Insignia("Libre", TipoInsignia.EXITO)
+                estado.torneo != null -> Insignia("Ocupado · torneo", TipoInsignia.NO_DISPONIBLE)
+                estado.lleno -> Insignia("Lleno", TipoInsignia.NO_DISPONIBLE)
+                estado.pocosLugares -> Insignia("Pocos lugares · ${estado.libres} libres", TipoInsignia.ALERTA)
+                else -> Insignia("Disponible", TipoInsignia.DISPONIBLE)
             }
         }
     }

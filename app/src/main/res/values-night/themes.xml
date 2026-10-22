@@ -1,14 +1,16 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- La app tiene una sola apariencia (clara), también cuando el teléfono está en modo oscuro. -->
     <style name="Base.Theme.ClubDeportivo" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/marca</item>
+        <item name="colorPrimary">@color/primary_navy</item>
         <item name="colorOnPrimary">@color/white</item>
-        <item name="colorPrimaryContainer">@color/marca_suave</item>
-        <item name="colorOnPrimaryContainer">@color/marca</item>
-        <item name="colorSecondary">@color/marca</item>
-        <item name="colorOnSecondary">@color/white</item>
-        <item name="colorTertiary">@color/marca</item>
-        <item name="colorOnTertiary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/soft_blue_selection</item>
+        <item name="colorOnPrimaryContainer">@color/deep_navy</item>
+        <item name="colorSecondary">@color/slate_accent</item>
+        <item name="colorOnSecondary">@color/deep_navy</item>
+        <item name="colorTertiary">@color/court_green</item>
+        <item name="colorOnTertiary">@color/deep_navy</item>
+        <item name="colorError">@color/alert_red</item>
+        <item name="colorOnError">@color/white</item>
         <item name="android:colorBackground">@color/fondo_app</item>
         <item name="colorOnBackground">@color/texto_principal</item>
         <item name="colorSurface">@color/white</item>

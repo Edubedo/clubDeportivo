@@ -66,6 +66,9 @@ import com.example.clubdeportivo.ui.avisos.AvisosSheet
 import com.example.clubdeportivo.ui.avisos.AvisosViewModel
 import com.example.clubdeportivo.ui.areas.AreasDetailScreen
 import com.example.clubdeportivo.ui.areas.AreasScreen
+import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.modifierReflejo
+import com.example.clubdeportivo.ui.components.tipoInsigniaRol
 import com.example.clubdeportivo.ui.inventario.InventarioScreen
 import com.example.clubdeportivo.ui.login.LoginScreen
 import com.example.clubdeportivo.ui.membresia.MembresiaScreen
@@ -154,16 +157,12 @@ fun ClubDeportivoApp() {
                                         color = TextoPrincipal,
                                         maxLines = 1
                                     )
-                                    Text(
-                                        text = listOfNotNull(
-                                            usuario?.nombre?.trim()?.substringBefore(" ")?.takeIf { it.isNotBlank() },
-                                            rol?.nombreLegible()
-                                        ).joinToString(" · "),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = TextoSecundario,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        rol?.let { Insignia(it.nombreLegible(), tipoInsigniaRol(it)) }
+                                    }
                                 }
                             }
                         },
@@ -173,7 +172,9 @@ fun ClubDeportivoApp() {
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier.padding(end = 12.dp)
                             ) {
-                                IconButton(onClick = { mostrarAvisos = true }) {
+                                IconButton(
+                                    onClick = { mostrarAvisos = true }
+                                ) {
                                     BadgedBox(
                                         badge = {
                                             if (avisos.sinLeer > 0) {

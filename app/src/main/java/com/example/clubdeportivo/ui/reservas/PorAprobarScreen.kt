@@ -163,7 +163,8 @@ private fun TarjetaPorAprobar(reserva: Reserva, ocupada: Boolean, onAprobar: () 
                     fondo = ExitoSuave,
                     color = Exito,
                     onClick = { if (!ocupada) onAprobar() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    conReflejo = false
                 )
                 BotonTonal(
                     texto = "Rechazar",
@@ -171,7 +172,8 @@ private fun TarjetaPorAprobar(reserva: Reserva, ocupada: Boolean, onAprobar: () 
                     fondo = PeligroSuave,
                     color = Peligro,
                     onClick = { if (!ocupada) onRechazar() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    conReflejo = false
                 )
             }
         }

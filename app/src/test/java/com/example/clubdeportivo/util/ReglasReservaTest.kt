@@ -11,6 +11,9 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ReglasReservaTest {
 
@@ -43,6 +46,20 @@ class ReglasReservaTest {
         horaFin: String = "12:00",
         id: String = "t1"
     ) = Torneo(id, "Copa", "Tenis", areaId, inicio, fin, 8, 0, horaInicio, horaFin)
+
+    @Test
+    fun `el limite solo cuenta reservas futuras activas del usuario`() {
+        val ahora = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse("2026-10-21 16:00")!!
+        val reservas = listOf(
+            reserva(17, dia = "2026-10-21"),
+            reserva(18, dia = "2026-10-21", estado = EstadoReserva.PENDIENTE_APROBACION),
+            reserva(15, dia = "2026-10-21"),
+            reserva(17, dia = "2026-10-21", estado = EstadoReserva.CANCELADA),
+            reserva(17, dia = "2026-10-21").copy(usuarioId = "otro")
+        )
+
+        assertEquals(2, ReglasReserva.contarReservasActivasFuturas("u", reservas, ahora))
+    }
 
     @Test
     fun `una reserva en un area vacia es valida`() {
@@ -147,7 +164,9 @@ class ReglasReservaTest {
 
         assertEquals(1, estado.libres)
         assertTrue(estado.disponible)
+        assertTrue(estado.pocosLugares)
         assertFalse(ReglasReserva.estadoDeHora(cancha, listOf(reserva(9, personas = 4)), emptyList(), fecha, 9).disponible)
+        assertFalse(ReglasReserva.estadoDeHora(cancha, emptyList(), emptyList(), fecha, 9).pocosLugares)
     }
 
     @Test

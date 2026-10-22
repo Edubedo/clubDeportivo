@@ -69,8 +69,12 @@ import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TituloSeccion
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.theme.Alerta
 import com.example.clubdeportivo.ui.theme.AlertaSuave
+import com.example.clubdeportivo.ui.theme.AvailabilityBorder
+import com.example.clubdeportivo.ui.theme.AvailabilityContainer
+import com.example.clubdeportivo.ui.theme.AvailabilityForeground
 import com.example.clubdeportivo.ui.theme.Borde
 import com.example.clubdeportivo.ui.theme.BordeCampo
 import com.example.clubdeportivo.ui.theme.FondoApp
@@ -79,10 +83,14 @@ import com.example.clubdeportivo.ui.theme.MarcaSuave
 import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.PeligroSuave
 import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.StatusAmberBorder
 import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.ui.theme.TextoTenue
+import com.example.clubdeportivo.ui.theme.UnavailableBorder
+import com.example.clubdeportivo.ui.theme.UnavailableContainer
+import com.example.clubdeportivo.ui.theme.UnavailableForeground
 import com.example.clubdeportivo.ui.torneos.TorneosScreen
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.data.model.esAdministrador
@@ -355,7 +363,11 @@ private fun TarjetaOpcion(
     Surface(
         onClick = onClick,
         enabled = habilitada,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = if (seleccionada) {
+            modifierReflejo(Modifier.fillMaxWidth(), enabled = true, shape = RoundedCornerShape(16.dp))
+        } else {
+            Modifier.fillMaxWidth()
+        },
         shape = RoundedCornerShape(16.dp),
         color = when {
             !habilitada -> FondoApp
@@ -409,6 +421,11 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     val activa = fecha == ui.fecha
                     Surface(
                         onClick = { viewModel.elegirFecha(fecha) },
+                        modifier = if (activa) {
+                            modifierReflejo(Modifier, enabled = true, shape = RoundedCornerShape(12.dp))
+                        } else {
+                            Modifier
+                        },
                         shape = RoundedCornerShape(12.dp),
                         color = if (activa) Marca else Superficie,
                         border = if (activa) null else BorderStroke(1.dp, BordeCampo)
@@ -449,7 +466,9 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     modifier = Modifier.weight(1f)
                 )
                 if (desde != null) {
-                    TextButton(onClick = { viewModel.limpiarSeleccion() }) {
+                    TextButton(
+                        onClick = { viewModel.limpiarSeleccion() }
+                    ) {
                         Text("Limpiar", color = Marca, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -549,30 +568,40 @@ private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel
 @Composable
 private fun CeldaHora(celda: HoraUi, elegida: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val estado = celda.estado
-    val parcial = estado.ocupadas > 0 && !estado.lleno
+    val ocupada = estado.lleno || estado.torneo != null
+    val habilitada = celda.seleccionable && !ocupada
+    val pocosLugares = !celda.pasada && estado.pocosLugares
     val fondo = when {
         elegida -> Marca
-        estado.torneo != null -> MarcaSuave
-        estado.lleno -> PeligroSuave
+        ocupada -> UnavailableContainer
         celda.pasada -> FondoApp
-        parcial -> AlertaSuave
-        else -> Superficie
+        pocosLugares -> AlertaSuave
+        else -> AvailabilityContainer
     }
     val texto = when {
         elegida -> SobreMarca
-        estado.torneo != null -> Marca
-        estado.lleno -> Peligro
+        ocupada -> UnavailableForeground
         celda.pasada -> TextoTenue
-        else -> TextoPrincipal
+        pocosLugares -> Alerta
+        else -> AvailabilityForeground
     }
     val (numero, sufijo) = etiquetaHora(celda.hora)
-    // Siempre se puede tocar: si la hora no se puede reservar, el aviso explica por qué.
     Surface(
         onClick = onClick,
+        enabled = habilitada,
         modifier = modifier.height(52.dp),
         shape = RoundedCornerShape(10.dp),
         color = fondo,
-        border = BorderStroke(1.dp, if (elegida) Marca else BordeCampo)
+        border = BorderStroke(
+            if (elegida) 1.5.dp else 1.dp,
+            when {
+                elegida -> Marca
+                ocupada -> UnavailableBorder
+                celda.pasada -> Borde
+                pocosLugares -> StatusAmberBorder
+                else -> AvailabilityBorder
+            }
+        )
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text(numero, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = texto, maxLines = 1)
@@ -590,10 +619,10 @@ private fun Leyenda() {
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         listOf(
-            "Disponible" to Superficie,
+            "Disponible" to AvailabilityContainer,
             "Pocos lugares" to AlertaSuave,
-            "Cupo lleno" to PeligroSuave,
-            "Torneo" to MarcaSuave,
+            "Ocupado" to UnavailableContainer,
+            "Seleccionado" to Marca,
             "Ya pasó" to FondoApp
         ).forEach { (nombre, color) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -618,7 +647,13 @@ private fun Leyenda() {
 @Composable
 private fun ContadorPersonas(valor: Int, puedeBajar: Boolean, puedeSubir: Boolean, onMenos: () -> Unit, onMas: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        BotonIcono(Icons.Filled.Remove, "Una persona menos", onMenos, enabled = puedeBajar)
+        BotonIcono(
+            Icons.Filled.Remove,
+            "Una persona menos",
+            onMenos,
+            enabled = puedeBajar,
+            conReflejo = false
+        )
         Text(
             text = valor.toString(),
             fontSize = 18.sp,
@@ -627,6 +662,12 @@ private fun ContadorPersonas(valor: Int, puedeBajar: Boolean, puedeSubir: Boolea
             textAlign = TextAlign.Center,
             modifier = Modifier.width(36.dp)
         )
-        BotonIcono(Icons.Filled.Add, "Una persona más", onMas, enabled = puedeSubir)
+        BotonIcono(
+            Icons.Filled.Add,
+            "Una persona más",
+            onMas,
+            enabled = puedeSubir,
+            conReflejo = false
+        )
     }
 }
