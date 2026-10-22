@@ -1,13 +1,24 @@
 package com.example.clubdeportivo.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,11 +71,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -77,19 +95,70 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.ui.theme.Alerta
 import com.example.clubdeportivo.ui.theme.AlertaSuave
+import com.example.clubdeportivo.ui.theme.ActivityClasses
+import com.example.clubdeportivo.ui.theme.ActivityClassesContainer
+import com.example.clubdeportivo.ui.theme.ActivityClassesForeground
+import com.example.clubdeportivo.ui.theme.AlertRedContainer
+import com.example.clubdeportivo.ui.theme.AvailabilityBorder
+import com.example.clubdeportivo.ui.theme.AvailabilityContainer
+import com.example.clubdeportivo.ui.theme.AvailabilityForeground
+import com.example.clubdeportivo.ui.theme.AmberContainer
+import com.example.clubdeportivo.ui.theme.AmberForeground
+import com.example.clubdeportivo.ui.theme.ActionBlue
 import com.example.clubdeportivo.ui.theme.Borde
 import com.example.clubdeportivo.ui.theme.BordeCampo
+import com.example.clubdeportivo.ui.theme.DeepNavy
 import com.example.clubdeportivo.ui.theme.Exito
 import com.example.clubdeportivo.ui.theme.ExitoSuave
 import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.MetricAmberContainer
+import com.example.clubdeportivo.ui.theme.MetricAmberForeground
+import com.example.clubdeportivo.ui.theme.MetricBlueContainer
+import com.example.clubdeportivo.ui.theme.MetricBlueForeground
+import com.example.clubdeportivo.ui.theme.MetricGoldContainer
+import com.example.clubdeportivo.ui.theme.MetricGoldForeground
+import com.example.clubdeportivo.ui.theme.MetricGreenContainer
+import com.example.clubdeportivo.ui.theme.MetricGreenForeground
+import com.example.clubdeportivo.ui.theme.MetricOrangeContainer
+import com.example.clubdeportivo.ui.theme.MetricOrangeForeground
+import com.example.clubdeportivo.ui.theme.MetricPurpleContainer
+import com.example.clubdeportivo.ui.theme.MetricPurpleForeground
+import com.example.clubdeportivo.ui.theme.MetricRedContainer
+import com.example.clubdeportivo.ui.theme.MetricRedForeground
+import com.example.clubdeportivo.ui.theme.MetricVioletForeground
+import com.example.clubdeportivo.ui.theme.MaintenanceBorder
+import com.example.clubdeportivo.ui.theme.MaintenanceContainer
+import com.example.clubdeportivo.ui.theme.MaintenanceForeground
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
+import com.example.clubdeportivo.ui.theme.LoginFieldSurface
+import com.example.clubdeportivo.ui.theme.LoginMutedText
 import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.PeligroSuave
+import com.example.clubdeportivo.ui.theme.PrimaryNavy
+import com.example.clubdeportivo.ui.theme.SoftBlueSelection
 import com.example.clubdeportivo.ui.theme.SobreMarca
 import com.example.clubdeportivo.ui.theme.Superficie
+import com.example.clubdeportivo.ui.theme.UnavailableBorder
+import com.example.clubdeportivo.ui.theme.UnavailableContainer
+import com.example.clubdeportivo.ui.theme.UnavailableForeground
+import com.example.clubdeportivo.ui.theme.StatusAmberBorder
+import com.example.clubdeportivo.ui.theme.StatusAmberForeground
+import com.example.clubdeportivo.ui.theme.StatusRedBorder
+import com.example.clubdeportivo.ui.theme.StatusRedForeground
+import com.example.clubdeportivo.ui.theme.RoleAdminBorder
+import com.example.clubdeportivo.ui.theme.RoleAdminContainer
+import com.example.clubdeportivo.ui.theme.RoleAdminForeground
+import com.example.clubdeportivo.ui.theme.RoleManagerBorder
+import com.example.clubdeportivo.ui.theme.RoleManagerContainer
+import com.example.clubdeportivo.ui.theme.RoleManagerForeground
+import com.example.clubdeportivo.ui.theme.RoleMemberBorder
+import com.example.clubdeportivo.ui.theme.RoleMemberContainer
+import com.example.clubdeportivo.ui.theme.RoleMemberForeground
+import com.example.clubdeportivo.ui.theme.SlateAccent
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.ui.theme.TextoTenue
@@ -139,12 +208,12 @@ fun TituloSeccion(texto: String, modifier: Modifier = Modifier) {
 
 /** Etiqueta que va arriba de cada campo de formulario. */
 @Composable
-fun EtiquetaCampo(texto: String) {
+fun EtiquetaCampo(texto: String, color: Color = TextoSecundario) {
     Text(
         text = texto,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
-        color = TextoSecundario,
+        color = color,
         letterSpacing = 0.4.sp,
         modifier = Modifier.padding(bottom = 8.dp)
     )
@@ -167,6 +236,7 @@ fun CampoTexto(
     singleLine: Boolean = true,
     minLines: Int = 1,
     capitalizacion: KeyboardCapitalization = KeyboardCapitalization.None,
+    modoOscuro: Boolean = false,
     /** Acción del botón del teclado. Por omisión "Siguiente" (pasa al campo de abajo); usa Done en el último. */
     imeAction: ImeAction = if (singleLine) ImeAction.Next else ImeAction.Default,
     /** Se ejecuta al pulsar la acción final del teclado (Listo, Buscar, Ir). */
@@ -178,7 +248,7 @@ fun CampoTexto(
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
         placeholder = if (placeholder.isNotEmpty()) {
-            { Text(placeholder, color = TextoTenue) }
+            { Text(placeholder, color = if (modoOscuro) LoginMutedText else TextoTenue) }
         } else null,
         readOnly = readOnly,
         singleLine = singleLine,
@@ -210,20 +280,20 @@ fun CampoTexto(
         ),
         shape = RoundedCornerShape(RadioCampo),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = TextoPrincipal,
-            unfocusedTextColor = TextoPrincipal,
-            disabledTextColor = TextoSecundario,
-            focusedContainerColor = Superficie,
-            unfocusedContainerColor = Superficie,
-            disabledContainerColor = Superficie,
-            errorContainerColor = Superficie,
-            focusedBorderColor = Marca,
-            unfocusedBorderColor = BordeCampo,
-            cursorColor = Marca,
-            focusedLeadingIconColor = Marca,
-            unfocusedLeadingIconColor = TextoTenue,
-            focusedTrailingIconColor = Marca,
-            unfocusedTrailingIconColor = TextoTenue
+            focusedTextColor = if (modoOscuro) Color.White else TextoPrincipal,
+            unfocusedTextColor = if (modoOscuro) Color.White else TextoPrincipal,
+            disabledTextColor = if (modoOscuro) LoginMutedText else TextoSecundario,
+            focusedContainerColor = if (modoOscuro) LoginFieldSurface else Superficie,
+            unfocusedContainerColor = if (modoOscuro) LoginFieldSurface else Superficie,
+            disabledContainerColor = if (modoOscuro) LoginFieldSurface else Superficie,
+            errorContainerColor = if (modoOscuro) LoginFieldSurface else Superficie,
+            focusedBorderColor = if (modoOscuro) SlateAccent else Marca,
+            unfocusedBorderColor = if (modoOscuro) SlateAccent.copy(alpha = 0.55f) else BordeCampo,
+            cursorColor = if (modoOscuro) SoftBlueSelection else Marca,
+            focusedLeadingIconColor = if (modoOscuro) SoftBlueSelection else Marca,
+            unfocusedLeadingIconColor = if (modoOscuro) LoginMutedText else TextoTenue,
+            focusedTrailingIconColor = if (modoOscuro) SoftBlueSelection else Marca,
+            unfocusedTrailingIconColor = if (modoOscuro) LoginMutedText else TextoTenue
         )
     )
 }
@@ -245,7 +315,14 @@ fun CampoBusqueda(
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         trailingIcon = if (value.isNotEmpty()) {
             {
-                IconButton(onClick = { onValueChange("") }) {
+                IconButton(
+                    onClick = { onValueChange("") },
+                    modifier = modifierReflejo(
+                        Modifier,
+                        enabled = true,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                ) {
                     Icon(Icons.Filled.Close, contentDescription = "Borrar búsqueda")
                 }
             }
@@ -290,8 +367,14 @@ fun BotonFlotanteAgregar(
         enter = fadeIn() + slideInVertically { it },
         exit = fadeOut() + slideOutVertically { it }
     ) {
+        val interactionSource = remember { MutableInteractionSource() }
         ExtendedFloatingActionButton(
             onClick = onClick,
+            modifier = modifierReflejo(
+                Modifier,
+                enabled = true,
+                shape = RoundedCornerShape(16.dp)
+            ),
             icon = { Icon(Icons.Filled.Add, contentDescription = null) },
             text = { Text(texto, fontWeight = FontWeight.Bold) },
             containerColor = Marca,
@@ -307,7 +390,62 @@ fun IconoDesplegable() {
     Icon(imageVector = Icons.Filled.ExpandMore, contentDescription = null, tint = TextoTenue)
 }
 
-/** Botón principal de acción. Solo uno por pantalla o formulario. */
+@Composable
+fun modifierReflejo(
+    modifier: Modifier,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    enabled: Boolean,
+    shape: RoundedCornerShape = RoundedCornerShape(RadioBoton)
+): Modifier {
+    val pressed by interactionSource.collectIsPressedAsState()
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val shimmer by rememberInfiniteTransition(label = "buttonMirror").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "buttonMirrorProgress"
+    )
+    return modifier.clip(shape).drawWithContent {
+        drawContent()
+        if (enabled) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to SoftBlueSelection.copy(alpha = 0.28f),
+                        0.5f to Color.White.copy(alpha = 0.08f),
+                        1f to Color.Transparent
+                    )
+                )
+            )
+            val beamWidth = size.width * 0.44f
+            val startX = -beamWidth + (size.width + beamWidth) * shimmer
+            drawRect(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        SoftBlueSelection.copy(alpha = if (pressed || hovered) 0.52f else 0.36f),
+                        Color.White.copy(alpha = if (pressed || hovered) 0.62f else 0.44f),
+                        SoftBlueSelection.copy(alpha = if (pressed || hovered) 0.48f else 0.32f),
+                        Color.Transparent
+                    ),
+                    start = Offset(startX, size.height),
+                    end = Offset(startX + beamWidth, 0f)
+                )
+            )
+            drawLine(
+                color = SoftBlueSelection.copy(alpha = 0.58f),
+                start = Offset(0f, 0.5f),
+                end = Offset(size.width, 0.5f),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+    }
+}
+
+/** Botón principal azul con bisel especular y destello animado. */
 @Composable
 fun BotonPrimario(
     texto: String,
@@ -316,24 +454,117 @@ fun BotonPrimario(
     enabled: Boolean = true,
     cargando: Boolean = false
 ) {
-    Button(
-        onClick = onClick,
-        enabled = enabled && !cargando,
+    ShimmerCTAButton(texto, onClick, modifier, enabled, cargando)
+}
+
+@Composable
+fun ShimmerCTAButton(
+    texto: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    cargando: Boolean = false
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed || hovered) 0.98f else 1f,
+        animationSpec = tween(160),
+        label = "mirrorButtonScale"
+    )
+    val shimmer by rememberInfiniteTransition(label = "mirrorButtonShimmer").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "mirrorButtonProgress"
+    )
+    val haptics = LocalHapticFeedback.current
+    val buttonEnabled = enabled && !cargando
+    val shape = RoundedCornerShape(RadioBoton)
+
+    Surface(
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
+        enabled = buttonEnabled,
         modifier = modifier
             .fillMaxWidth()
-            .height(AlturaBoton),
-        shape = RoundedCornerShape(RadioBoton),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Marca,
-            contentColor = SobreMarca,
-            disabledContainerColor = Borde,
-            disabledContentColor = TextoTenue
-        )
+            .height(AlturaBoton)
+            .shadow(
+                elevation = if (buttonEnabled) 5.dp else 0.dp,
+                shape = shape,
+                ambientColor = PrimaryNavy.copy(alpha = 0.35f),
+                spotColor = PrimaryNavy.copy(alpha = 0.35f)
+            )
+            .scale(scale),
+        shape = shape,
+        color = if (buttonEnabled || cargando) PrimaryNavy else Borde,
+        contentColor = if (buttonEnabled || cargando) SobreMarca else TextoTenue,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        interactionSource = interactionSource
     ) {
-        if (cargando) {
-            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = SobreMarca, strokeWidth = 2.dp)
-        } else {
-            Text(text = texto, style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp), maxLines = 1)
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Canvas(modifier = Modifier.fillMaxSize().clip(shape)) {
+                if (buttonEnabled || cargando) {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(PrimaryNavy, ActionBlue)
+                        )
+                    )
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0f to Color.White.copy(alpha = 0.22f),
+                                0.5f to Color.White.copy(alpha = 0.03f),
+                                1f to Color.Transparent
+                            ),
+                        )
+                    )
+                    if (buttonEnabled) {
+                        val beamWidth = size.width * 0.38f
+                        val startX = -beamWidth + (size.width + beamWidth) * shimmer
+                        drawRect(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.White.copy(alpha = if (pressed || hovered) 0.38f else 0.26f),
+                                    Color.Transparent
+                                ),
+                                start = Offset(startX, size.height),
+                                end = Offset(startX + beamWidth, 0f)
+                            )
+                        )
+                    }
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.35f),
+                        start = Offset(0f, 0.5f),
+                        end = Offset(size.width, 0.5f),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+            }
+            if (cargando) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = SobreMarca,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = texto,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1
+                )
+            }
         }
     }
 }
@@ -345,14 +576,23 @@ fun BotonSecundario(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorTexto: Color = Marca
+    colorTexto: Color = Marca,
+    conReflejo: Boolean = true
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(AlturaBoton),
+        modifier = if (conReflejo) {
+            modifierReflejo(
+                modifier.fillMaxWidth().height(AlturaBoton),
+                interactionSource = interactionSource,
+                enabled = enabled
+            )
+        } else {
+            modifier.fillMaxWidth().height(AlturaBoton)
+        },
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(RadioBoton),
         border = BorderStroke(1.dp, BordeCampo),
         colors = ButtonDefaults.outlinedButtonColors(
@@ -372,11 +612,18 @@ fun BotonTonal(
     fondo: Color,
     color: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    conReflejo: Boolean = true
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
-        modifier = modifier.height(44.dp),
+        modifier = if (conReflejo) {
+            modifierReflejo(modifier.height(44.dp), interactionSource, enabled = true, shape = RoundedCornerShape(12.dp))
+        } else {
+            modifier.height(44.dp)
+        },
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(containerColor = fondo, contentColor = color),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)
@@ -424,12 +671,43 @@ fun TarjetaClub(
 }
 
 /** Tipos de insignia. El color solo comunica el estado, nunca decora. */
-enum class TipoInsignia(val fondo: Color, val texto: Color) {
-    EXITO(ExitoSuave, Exito),
-    ALERTA(AlertaSuave, Alerta),
-    PELIGRO(PeligroSuave, Peligro),
+enum class TipoInsignia(
+    val fondo: Color,
+    val texto: Color,
+    val borde: Color = Color.Transparent
+) {
+    EXITO(ExitoSuave, AvailabilityForeground, AvailabilityBorder),
+    ALERTA(AlertaSuave, StatusAmberForeground, StatusAmberBorder),
+    PELIGRO(PeligroSuave, StatusRedForeground, StatusRedBorder),
     MARCA(MarcaSuave, Marca),
-    NEUTRO(FondoApp, TextoSecundario)
+    NEUTRO(FondoApp, TextoSecundario),
+    CLASES(ActivityClassesContainer, ActivityClassesForeground),
+    TORNEO(AmberContainer, AmberForeground),
+    MANTENIMIENTO(MaintenanceContainer, MaintenanceForeground, MaintenanceBorder),
+    DISPONIBLE(AvailabilityContainer, AvailabilityForeground, AvailabilityBorder),
+    NO_DISPONIBLE(UnavailableContainer, UnavailableForeground, UnavailableBorder),
+    SUSPENDIDA(AmberContainer, StatusAmberForeground, StatusAmberBorder),
+    METRICA_ACTIVAS(MetricBlueContainer, MetricBlueForeground),
+    METRICA_ALTAS(MetricGreenContainer, MetricGreenForeground),
+    METRICA_VENCIMIENTOS(MetricAmberContainer, MetricAmberForeground),
+    METRICA_VENCIDAS(MetricRedContainer, MetricRedForeground),
+    METRICA_SUSPENDIDAS(MetricPurpleContainer, MetricPurpleForeground),
+    METRICA_RESERVAS(MetricBlueContainer, MetricBlueForeground),
+    METRICA_APROBAR(MetricAmberContainer, MetricOrangeForeground),
+    METRICA_MANTENIMIENTO(MetricOrangeContainer, MetricOrangeForeground),
+    METRICA_STOCK(MetricRedContainer, MetricRedForeground),
+    METRICA_PERSONAL(MetricPurpleContainer, MetricVioletForeground),
+    METRICA_TORNEOS(MetricGoldContainer, MetricGoldForeground),
+    ROL_ADMIN(RoleAdminContainer, RoleAdminForeground, RoleAdminBorder),
+    ROL_ENCARGADO(RoleManagerContainer, RoleManagerForeground, RoleManagerBorder),
+    ROL_SOCIO(RoleMemberContainer, RoleMemberForeground, RoleMemberBorder)
+}
+
+fun tipoInsigniaRol(rol: Rol): TipoInsignia = when (rol) {
+    Rol.ADMIN, Rol.SUPERADMIN -> TipoInsignia.ROL_ADMIN
+    Rol.ADMIN_AREA, Rol.AYUDANTE_AREA -> TipoInsignia.ROL_ENCARGADO
+    Rol.SOCIO -> TipoInsignia.ROL_SOCIO
+    Rol.VISITANTE_EXTERNO -> TipoInsignia.NEUTRO
 }
 
 /** Píldora pequeña de estado ("Confirmada", "Activo", "Vencida"...). */
@@ -440,7 +718,12 @@ fun Insignia(
     modifier: Modifier = Modifier,
     icono: ImageVector? = null
 ) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(50), color = tipo.fondo) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(50),
+        color = tipo.fondo,
+        border = tipo.borde.takeUnless { it == Color.Transparent }?.let { BorderStroke(1.dp, it) }
+    ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -506,12 +789,19 @@ fun BotonIcono(
     descripcion: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    conReflejo: Boolean = true
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.size(40.dp),
+        modifier = if (conReflejo) {
+            modifierReflejo(modifier.size(40.dp), interactionSource, enabled, RoundedCornerShape(10.dp))
+        } else {
+            modifier.size(40.dp)
+        },
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(10.dp),
         color = Superficie,
         border = BorderStroke(1.dp, BordeCampo)
@@ -563,7 +853,9 @@ fun DialogoFormulario(
                             .weight(1f)
                             .padding(end = 8.dp)
                     )
-                    IconButton(onClick = onCerrar) {
+                    IconButton(
+                        onClick = onCerrar
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "Cerrar",
@@ -599,7 +891,8 @@ fun DialogoConfirmacion(
     textoConfirmar: String,
     onConfirmar: () -> Unit,
     onCancelar: () -> Unit,
-    textoCancelar: String = "Volver"
+    textoCancelar: String = "Volver",
+    conReflejo: Boolean = true
 ) {
     AlertDialog(
         onDismissRequest = onCancelar,
@@ -608,12 +901,26 @@ fun DialogoConfirmacion(
         title = { Text(titulo, style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
         text = { Text(mensaje, style = MaterialTheme.typography.bodyMedium, color = TextoSecundario) },
         confirmButton = {
-            TextButton(onClick = onConfirmar) {
+            TextButton(
+                onClick = onConfirmar,
+                modifier = if (conReflejo) modifierReflejo(
+                    Modifier,
+                    enabled = true,
+                    shape = RoundedCornerShape(10.dp)
+                ) else Modifier
+            ) {
                 Text(textoConfirmar, color = Peligro, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancelar) {
+            TextButton(
+                onClick = onCancelar,
+                modifier = if (conReflejo) modifierReflejo(
+                    Modifier,
+                    enabled = true,
+                    shape = RoundedCornerShape(10.dp)
+                ) else Modifier
+            ) {
                 Text(textoCancelar, color = TextoSecundario, fontWeight = FontWeight.SemiBold)
             }
         }
@@ -699,9 +1006,18 @@ fun PestanasPildora(
     val fila: @Composable RowScope.() -> Unit = {
         opciones.forEachIndexed { indice, texto ->
             val activa = indice == seleccionada
+            val itemModifier = if (repartir) {
+                Modifier.weight(1f).height(44.dp)
+            } else {
+                Modifier.height(44.dp)
+            }
             Surface(
                 onClick = { onSeleccion(indice) },
-                modifier = if (repartir) Modifier.weight(1f).height(44.dp) else Modifier.height(44.dp),
+                modifier = if (activa) {
+                    modifierReflejo(itemModifier, enabled = true, shape = RoundedCornerShape(12.dp))
+                } else {
+                    itemModifier
+                },
                 shape = RoundedCornerShape(12.dp),
                 color = if (activa) Marca else Superficie,
                 border = if (activa) null else BorderStroke(1.dp, BordeCampo)

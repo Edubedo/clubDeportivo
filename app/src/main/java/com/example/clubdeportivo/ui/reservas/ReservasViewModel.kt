@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
 /** Una hora de la cuadrícula ("hora" = 6 es 06:00-07:00) con su estado de ocupación. */
 data class HoraUi(
     val estado: ReglasReserva.EstadoHora,
-    /** Ya no cumple la anticipación mínima (o ya pasó). */
+    /** El horario ya comenzó o terminó. */
     val pasada: Boolean
 ) {
     val hora get() = estado.hora
@@ -161,14 +161,10 @@ class ReservasViewModel(
         }
     }
 
-    /** Horario del área; los visitantes externos solo pueden reservar dentro de su ventana. */
+    /** Todas las áreas y tipos de usuario comparten el horario publicado por el área. */
     private suspend fun rangoDeApertura(area: Area): Pair<String, String> {
         val horario = restriccionHorarioRepository.obtenerHorarioDeArea(area)
-        return if (esVisitanteExterno) {
-            maxOf(Catalogos.HORA_INICIO_EXTERNOS, horario.horaInicio) to minOf(Catalogos.HORA_FIN_EXTERNOS, horario.horaFin)
-        } else {
-            horario.horaInicio to horario.horaFin
-        }
+        return horario.horaInicio to horario.horaFin
     }
 
     /** Vuelve a leer reservas y torneos y arma la cuadrícula de horas del área y día elegidos. */
@@ -198,7 +194,7 @@ class ReservasViewModel(
         val celda = actual.horas.firstOrNull { it.hora == hora } ?: return
         if (!celda.seleccionable) {
             _mensaje.value = when {
-                celda.pasada -> "Esa hora ya pasó o no cumple la anticipación mínima de ${Catalogos.ANTICIPACION_MINIMA_HORAS} horas."
+                celda.pasada -> "Esa hora ya comenzó."
                 celda.estado.torneo != null -> "A esa hora el área está reservada para el torneo \"${celda.estado.torneo.nombre}\"."
                 else -> "Esa hora ya alcanzó su cupo (${celda.estado.capacidad} personas). Elige otra hora."
             }
@@ -283,7 +279,7 @@ class ReservasViewModel(
         if (esVisitanteExterno && !area.permiteExternos) return "Esta área no admite reservaciones de visitantes externos."
         if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return "${area.nombre} está en mantenimiento."
         if (Fechas.horasDesdeAhora(fecha, horaInicio) < Catalogos.ANTICIPACION_MINIMA_HORAS) {
-            return "Ese horario ya no cumple la anticipación mínima de ${Catalogos.ANTICIPACION_MINIMA_HORAS} horas."
+            return "Ese horario ya comenzó."
         }
 
         if (!usuario.rol.esPersonal()) {
@@ -292,7 +288,7 @@ class ReservasViewModel(
                     "y estás bloqueado por ${Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS} días."
             }
             if (reservaRepository.contarReservasActivas(usuario.id) >= Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO) {
-                return "Ya tienes ${Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO} reservaciones activas. Cancela alguna antes de crear una nueva."
+                return "Has alcanzado el límite máximo de ${Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO} reservaciones activas permitidas."
             }
         }
 

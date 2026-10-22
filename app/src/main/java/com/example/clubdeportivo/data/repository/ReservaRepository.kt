@@ -93,10 +93,7 @@ class FakeReservaRepository : ReservaRepository {
 
     override suspend fun contarReservasActivas(usuarioId: String): Int {
         delay(150)
-        return reservas.count {
-            it.usuarioId == usuarioId &&
-                (it.estado == EstadoReserva.CONFIRMADA || it.estado == EstadoReserva.PENDIENTE_APROBACION)
-        }
+        return ReglasReserva.contarReservasActivasFuturas(usuarioId, reservas)
     }
 
     override suspend fun crearReserva(

@@ -24,8 +24,8 @@ object Fechas {
         formatoFechaHora().parse("$fecha $hora") ?: Date()
 
     /** Horas entre ahora y el momento indicado. Positivo = en el futuro. */
-    fun horasDesdeAhora(fecha: String, hora: String): Double =
-        (combinar(fecha, hora).time - System.currentTimeMillis()) / 3_600_000.0
+    fun horasDesdeAhora(fecha: String, hora: String, ahora: Date = Date()): Double =
+        (combinar(fecha, hora).time - ahora.time) / 3_600_000.0
 
     fun hoy(): String = formatoFecha().format(Date())
 

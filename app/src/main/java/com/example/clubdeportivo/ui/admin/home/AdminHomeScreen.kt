@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Event
@@ -45,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +56,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.MembresiaDetalle
+import com.example.clubdeportivo.data.model.MetodoPago
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.ui.components.BurbujaTexto
 import com.example.clubdeportivo.ui.components.EncabezadoPantalla
@@ -65,9 +68,20 @@ import com.example.clubdeportivo.ui.components.TipoInsignia
 import com.example.clubdeportivo.ui.components.TituloSeccion
 import com.example.clubdeportivo.ui.membresia.dinero
 import com.example.clubdeportivo.ui.theme.Borde
+import com.example.clubdeportivo.ui.theme.ActionBlue
+import com.example.clubdeportivo.ui.theme.ActionOrange
+import com.example.clubdeportivo.ui.theme.CourtBlueBright
+import com.example.clubdeportivo.ui.theme.AlertOnDark
+import com.example.clubdeportivo.ui.theme.DeepNavy
 import com.example.clubdeportivo.ui.theme.Exito
-import com.example.clubdeportivo.ui.theme.Marca
+import com.example.clubdeportivo.ui.theme.PaymentCard
+import com.example.clubdeportivo.ui.theme.PaymentCash
+import com.example.clubdeportivo.ui.theme.PaymentTransfer
+import com.example.clubdeportivo.ui.theme.SlateAccent
 import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.PrimaryNavy
+import com.example.clubdeportivo.ui.theme.SuccessOnDark
+import com.example.clubdeportivo.ui.theme.SoftBlueSelection
 import com.example.clubdeportivo.ui.theme.SobreMarca
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
@@ -140,7 +154,8 @@ internal fun PanelAdmin(
                             valor = resumen.activas.toString(),
                             titulo = "Membresías activas",
                             detalle = "${resumen.personasActivas} personas",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            tipo = TipoInsignia.METRICA_ACTIVAS
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -152,13 +167,14 @@ internal fun PanelAdmin(
                             icono = Icons.Filled.PersonAdd,
                             valor = resumen.altasMes.toString(),
                             titulo = "Altas este mes",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            tipo = TipoInsignia.METRICA_ALTAS
                         )
                         Metrica(
                             icono = Icons.Filled.HourglassTop,
                             valor = resumen.porVencer.size.toString(),
                             titulo = "Vencen en ${com.example.clubdeportivo.util.CalculoResumenAdmin.DIAS_POR_VENCER} días",
-                            tipo = if (resumen.porVencer.isNotEmpty()) TipoInsignia.ALERTA else TipoInsignia.MARCA,
+                            tipo = TipoInsignia.METRICA_VENCIMIENTOS,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -171,14 +187,14 @@ internal fun PanelAdmin(
                             icono = Icons.Filled.EventBusy,
                             valor = resumen.vencidas.toString(),
                             titulo = "Vencidas",
-                            tipo = if (resumen.vencidas > 0) TipoInsignia.PELIGRO else TipoInsignia.MARCA,
+                            tipo = TipoInsignia.METRICA_VENCIDAS,
                             modifier = Modifier.weight(1f)
                         )
                         Metrica(
                             icono = Icons.Filled.Pause,
                             valor = resumen.suspendidas.toString(),
                             titulo = "Suspendidas",
-                            tipo = if (resumen.suspendidas > 0) TipoInsignia.ALERTA else TipoInsignia.MARCA,
+                            tipo = TipoInsignia.METRICA_SUSPENDIDAS,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -254,12 +270,29 @@ private fun AvisoError() {
 /** La cifra principal: lo cobrado en el mes y cómo va frente al mes pasado. */
 @Composable
 private fun TarjetaIngresos(resumen: ResumenAdmin) {
-    TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = Marca) {
-        Column(modifier = Modifier.padding(20.dp)) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = DeepNavy) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(colors = listOf(PrimaryNavy, ActionBlue)),
+                    shape = RoundedCornerShape(16.dp)
+                )
+        ) {
+            Icon(
+                imageVector = Icons.Filled.AccountBalanceWallet,
+                contentDescription = null,
+                tint = SobreMarca.copy(alpha = 0.08f),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 8.dp)
+                    .size(104.dp)
+            )
+            Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = "Ingresos de ${Fechas.nombreMes(resumen.mes)}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = SobreMarca.copy(alpha = 0.85f)
+                color = SoftBlueSelection
             )
             Text(
                 text = dinero(resumen.ingresosMes),
@@ -276,28 +309,29 @@ private fun TarjetaIngresos(resumen: ResumenAdmin) {
                     Icon(
                         imageVector = if (variacion >= 0) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
                         contentDescription = null,
-                        tint = SobreMarca,
+                        tint = if (variacion >= 0) SuccessOnDark else AlertOnDark,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = "%.0f%% frente al mes pasado (%s)".format(kotlin.math.abs(variacion), dinero(resumen.ingresosMesAnterior)),
                         style = MaterialTheme.typography.bodySmall,
-                        color = SobreMarca
+                        color = if (variacion >= 0) SuccessOnDark else AlertOnDark
                     )
                 }
             } else {
                 Text(
                     text = "Aún no hay cobros del mes pasado para comparar.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SobreMarca.copy(alpha = 0.85f)
+                    color = SobreMarca.copy(alpha = 0.78f)
                 )
             }
             Text(
                 text = if (resumen.cobrosMes == 1) "1 cobro registrado" else "${resumen.cobrosMes} cobros registrados",
                 style = MaterialTheme.typography.bodySmall,
-                color = SobreMarca.copy(alpha = 0.85f),
+                color = SobreMarca.copy(alpha = 0.78f),
                 modifier = Modifier.padding(top = 2.dp)
             )
+            }
         }
     }
 }
@@ -324,7 +358,7 @@ private fun GraficaIngresos(resumen: ResumenAdmin) {
                             text = if (monto > 0) abreviar(monto) else "",
                             fontSize = 12.sp,
                             fontWeight = if (actual) FontWeight.Bold else FontWeight.Medium,
-                            color = if (actual) Marca else TextoSecundario,
+                            color = if (actual) CourtBlueBright else TextoSecundario,
                             maxLines = 1
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -334,7 +368,7 @@ private fun GraficaIngresos(resumen: ResumenAdmin) {
                                     .fillMaxWidth(0.7f)
                                     .height((alturaMaxima * (monto / maximo).toFloat()).coerceAtLeast(4.dp))
                                     .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                                    .background(if (actual) Marca else Marca.copy(alpha = 0.3f))
+                                    .background(if (actual) CourtBlueBright else SlateAccent)
                             )
                         }
                         Spacer(modifier = Modifier.height(6.dp))
@@ -469,9 +503,23 @@ private fun CobrosPorMetodo(resumen: ResumenAdmin) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val total = resumen.ingresosMes.takeIf { it > 0 } ?: 1.0
             resumen.ingresosPorMetodo.forEach { (metodo, monto) ->
+                val colorMetodo = when (metodo) {
+                    MetodoPago.EFECTIVO -> PaymentCash
+                    MetodoPago.TARJETA -> PaymentCard
+                    MetodoPago.TRANSFERENCIA -> PaymentTransfer
+                    null -> SlateAccent
+                }
                 Column {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(metodo?.etiqueta ?: "Sin especificar", style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(colorMetodo)
+                            )
+                            Text(metodo?.etiqueta ?: "Sin especificar", style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal)
+                        }
                         Text(dinero(monto), style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
                     }
                     Spacer(modifier = Modifier.height(6.dp))
@@ -487,7 +535,7 @@ private fun CobrosPorMetodo(resumen: ResumenAdmin) {
                                 .fillMaxHeight()
                                 .fillMaxWidth((monto / total).toFloat().coerceIn(0.02f, 1f))
                                 .clip(RoundedCornerShape(50))
-                                .background(Marca)
+                                .background(colorMetodo)
                         )
                     }
                 }
@@ -503,13 +551,19 @@ private fun OperacionDelDia(operacion: OperacionHoy) {
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Metrica(Icons.Filled.EventAvailable, texto(operacion.reservasHoy), "Reservas hoy", Modifier.weight(1f))
+        Metrica(
+            Icons.Filled.EventAvailable,
+            texto(operacion.reservasHoy),
+            "Reservas hoy",
+            Modifier.weight(1f),
+            tipo = TipoInsignia.METRICA_RESERVAS
+        )
         Metrica(
             icono = Icons.Filled.Event,
             valor = texto(operacion.pendientesDeAprobar),
             titulo = "Por aprobar",
             modifier = Modifier.weight(1f),
-            tipo = if ((operacion.pendientesDeAprobar ?: 0) > 0) TipoInsignia.ALERTA else TipoInsignia.MARCA
+            tipo = TipoInsignia.METRICA_APROBAR
         )
     }
     Spacer(modifier = Modifier.height(12.dp))
@@ -522,14 +576,15 @@ private fun OperacionDelDia(operacion: OperacionHoy) {
             valor = texto(operacion.areas),
             titulo = "Áreas",
             detalle = operacion.areasEnMantenimiento?.takeIf { it > 0 }?.let { "$it en mantenimiento" },
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            tipo = TipoInsignia.METRICA_MANTENIMIENTO
         )
         Metrica(
             icono = Icons.Filled.Inventory2,
             valor = texto(operacion.articulosConStockBajo),
             titulo = "Artículos con stock bajo",
             modifier = Modifier.weight(1f),
-            tipo = if ((operacion.articulosConStockBajo ?: 0) > 0) TipoInsignia.ALERTA else TipoInsignia.MARCA
+            tipo = TipoInsignia.METRICA_STOCK
         )
     }
     Spacer(modifier = Modifier.height(12.dp))
@@ -537,8 +592,20 @@ private fun OperacionDelDia(operacion: OperacionHoy) {
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Metrica(Icons.Filled.Groups, texto(operacion.personal), "Personal", Modifier.weight(1f))
-        Metrica(Icons.Filled.EmojiEvents, texto(operacion.torneosVigentes), "Torneos vigentes", Modifier.weight(1f))
+        Metrica(
+            Icons.Filled.Groups,
+            texto(operacion.personal),
+            "Personal",
+            Modifier.weight(1f),
+            tipo = TipoInsignia.METRICA_PERSONAL
+        )
+        Metrica(
+            Icons.Filled.EmojiEvents,
+            texto(operacion.torneosVigentes),
+            "Torneos vigentes",
+            Modifier.weight(1f),
+            tipo = TipoInsignia.METRICA_TORNEOS
+        )
     }
 }
 

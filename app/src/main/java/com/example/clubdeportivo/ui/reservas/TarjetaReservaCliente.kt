@@ -27,6 +27,7 @@ import com.example.clubdeportivo.ui.components.DialogoConfirmacion
 import com.example.clubdeportivo.ui.components.Insignia
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
@@ -86,7 +87,9 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                 Spacer(modifier = Modifier.height(12.dp))
             } else {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { confirmando = true }) {
+                    TextButton(
+                        onClick = { confirmando = true }
+                    ) {
                         Text(
                             if (pendiente) "Cancelar solicitud" else "Cancelar reserva",
                             color = Peligro,

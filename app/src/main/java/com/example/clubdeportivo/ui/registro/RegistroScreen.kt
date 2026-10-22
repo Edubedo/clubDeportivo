@@ -54,6 +54,7 @@ import com.example.clubdeportivo.ui.components.EspacioCampos
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.RequisitosContrasena
 import com.example.clubdeportivo.ui.components.TarjetaClub
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.theme.Exito
 import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.Marca
@@ -203,7 +204,10 @@ fun RegistroScreen(
                             color = TextoPrincipal,
                             modifier = Modifier.weight(1f)
                         )
-                        TextButton(onClick = { viewModel.cambiarCodigo() }) {
+                        TextButton(
+                            onClick = { viewModel.cambiarCodigo() },
+                            modifier = modifierReflejo(Modifier, enabled = true)
+                        ) {
                             Text("Cambiar", color = Marca, fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -244,7 +248,9 @@ fun RegistroScreen(
                         esContrasena = !passwordVisible,
                         leadingIcon = { Icon(imageVector = Icons.Outlined.Lock, contentDescription = null) },
                         trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            IconButton(
+                                onClick = { passwordVisible = !passwordVisible }
+                            ) {
                                 Icon(
                                     imageVector = if (passwordVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                                     contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
@@ -293,7 +299,10 @@ fun RegistroScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoSecundario
                     )
-                    TextButton(onClick = onVolverALogin) {
+                    TextButton(
+                        onClick = onVolverALogin,
+                        modifier = modifierReflejo(Modifier, enabled = true)
+                    ) {
                         Text(text = "Inicia sesión", color = Marca, fontWeight = FontWeight.Bold)
                     }
                 }

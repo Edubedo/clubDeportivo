@@ -2,51 +2,138 @@ package com.example.clubdeportivo.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/*
- * Paleta de la app: azules como identidad (marca, fondos, campos) y colores cálidos solo para comunicar:
- * Ámbar como acento y destacados, Naranja para alertas/pendientes, Rojo para peligro y Verde para éxito.
- * No agregues más tonos: si necesitas algo nuevo, elige uno de estos.
- */
+val DeepNavy = Color(0xFF021024)
+val PrimaryNavy = Color(0xFF052659)
+val ActionBlue = Color(0xFF0A3A82)
+val ActionOrange = Color(0xFFF96015)
+val ActionOrangeForeground = Color(0xFFC2410C)
+val SlateAccent = Color(0xFF5483B3)
+val SoftBlueSelection = Color(0xFFC1E8FF)
+val Background = Color(0xFFF8FAFC)
+val Surface = Color(0xFFFFFFFF)
+val BorderSubdued = Color(0xFFE2E8F0)
+val TextSecondary = Color(0xFF475569)
+val LoginBackground = Color(0xFF061B35)
+val LoginFieldSurface = Color(0xFF172F4D)
+val LoginMutedText = Color(0xFFA8C2DF)
+val LoginAccentShape = Color(0xFF123B66)
 
-// Paleta azul base (7 colores)
-private val AzulNoche = Color(0xFF001D39)
-private val AzulProfundo = Color(0xFF0A4174)
-private val AzulAcero = Color(0xFF49769F)
-private val VerdeAzulado = Color(0xFF4E8EA2)
-private val AzulGrisaceo = Color(0xFF6EA2B3)
-private val AzulCielo = Color(0xFF7BBDE8)
-private val AzulHielo = Color(0xFFBDD8E9)
+val CourtBlue = PrimaryNavy
+val CourtBlueBright = Color(0xFF2563EB)
+val CourtGreen = Color(0xFF16A34A)
+val SuccessForeground = Color(0xFF15803D)
+val SuccessContainer = Color(0xFFDCFCE7)
+val SuccessOnDark = Color(0xFF86EFAC)
+val AlertRed = Color(0xFFDC2626)
+val AlertRedForeground = Color(0xFF991B1B)
+val AlertRedContainer = Color(0xFFFEE2E2)
+val StatusRedForeground = Color(0xFFB91C1C)
+val StatusRedBorder = Color(0xFFFECACA)
+val AlertOnDark = Color(0xFFFCA5A5)
+val AttentionAmber = Color(0xFFF59E0B)
+val AmberForeground = Color(0xFF92400E)
+val AmberContainer = Color(0xFFFEF3C7)
+val StatusAmberForeground = Color(0xFFB45309)
+val StatusAmberBorder = Color(0xFFFDE68A)
 
-// Marca
-val Marca = AzulProfundo // contraste con texto blanco: ~9:1
-val MarcaOscura = AzulNoche // presionado, avisos emergentes, texto sobre fondos suaves
-val MarcaSuave = Color(0xFFE4EFF7) // avatares e iconos sobre blanco
-val SobreMarca = Color(0xFFFFFFFF)
+val MembershipBasic = SlateAccent
+val MembershipPro = Color(0xFF10B981)
+val MembershipPremium = AttentionAmber
+val MembershipBasicForeground = CourtBlueBright
+val MembershipProForeground = Color(0xFF047857)
+val MembershipPremiumForeground = AmberForeground
+val PaymentCash = CourtGreen
+val PaymentCard = CourtBlueBright
+val PaymentTransfer = Color(0xFF7C3AED)
+val PaymentWallet = Color(0xFF06B6D4)
+val ActivityClasses = CourtBlueBright
+val ActivityTournaments = AttentionAmber
+val ActivityMaintenance = SlateAccent
+val ActivityClassesContainer = Color(0xFFDBEAFE)
+val ActivityClassesForeground = Color(0xFF1D4ED8)
 
-// Azules de apoyo
-val Trigo = AzulCielo // elemento seleccionado (chips, navegación), con texto AzulNoche
-val Perla = AzulHielo // campos y filas dentro de tarjetas
-val Acero = AzulAcero // detalles sutiles, texto de énfasis azul (4.6:1 sobre blanco)
-val Turquesa = VerdeAzulado // iconos secundarios, gráficas
+val MetricBlueContainer = Color(0xFFEFF6FF)
+val MetricBlueForeground = Color(0xFF2563EB)
+val MetricGreenContainer = Color(0xFFDCFCE7)
+val MetricGreenForeground = Color(0xFF16A34A)
+val MetricAmberContainer = Color(0xFFFEF3C7)
+val MetricAmberForeground = Color(0xFFD97706)
+val MetricRedContainer = Color(0xFFFEE2E2)
+val MetricRedForeground = Color(0xFFDC2626)
+val MetricPurpleContainer = Color(0xFFF3E8FF)
+val MetricPurpleForeground = Color(0xFF7C3AED)
+val MetricOrangeContainer = Color(0xFFFFEDD5)
+val MetricOrangeForeground = Color(0xFFC2410C)
+val MetricVioletForeground = Color(0xFF9333EA)
+val MetricGoldContainer = Color(0xFFFEF9C3)
+val MetricGoldForeground = Color(0xFFCA8A04)
 
-// Acentos cálidos
-val Caledula = Color(0xFFF5B82E) // Ámbar. ACENTO: iconos activos, destacados, insignias. Con texto OSCURO (10:1)
-val CaledulaSuave = Color(0xFFFFF1CC) // fondo de datos destacados
-val Citrino = Color(0xFFB45309) // Naranja: alertas y texto de énfasis (5:1 sobre blanco)
+val RoleAdminContainer = Color(0xFFF3E8FF)
+val RoleAdminBorder = Color(0xFFE9D5FF)
+val RoleAdminForeground = Color(0xFF6B21A8)
+val RoleManagerContainer = Color(0xFFFCE7F3)
+val RoleManagerBorder = Color(0xFFFBCFE8)
+val RoleManagerForeground = Color(0xFF9D174D)
+val RoleMemberContainer = Color(0xFFFFEDD5)
+val RoleMemberBorder = Color(0xFFFED7AA)
+val RoleMemberForeground = Color(0xFFC2410C)
 
-// Neutros (azulados)
-val FondoApp = Color(0xFFEEF5FA)
-val Superficie = Color(0xFFFFFFFF)
-val Borde = Color(0xFFD3E4F0)
-val BordeCampo = AzulGrisaceo
-val TextoPrincipal = AzulNoche
-val TextoSecundario = Color(0xFF2F4A63)
-val TextoTenue = Color(0xFF3F5B75)
+val PackageBasicContainer = Color(0xFFEFF6FF)
+val PackageBasicBorder = Color(0xFFDBEAFE)
+val PackageBasicForeground = Color(0xFF2563EB)
+val PackageIntermediateContainer = Color(0xFFDCFCE7)
+val PackageIntermediateBorder = Color(0xFFBBF7D0)
+val PackageIntermediateForeground = Color(0xFF16A34A)
+val PackagePremiumContainer = Color(0xFFFEF3C7)
+val PackagePremiumBorder = Color(0xFFFDE68A)
+val PackagePremiumForeground = Color(0xFFD97706)
+val PackageFamilyContainer = Color(0xFFF3E8FF)
+val PackageFamilyBorder = Color(0xFFE9D5FF)
+val PackageFamilyForeground = Color(0xFF9333EA)
 
-// Estados: cada uno tiene su color, no se reutilizan para decoración
-val Exito = Color(0xFF15803D)
-val ExitoSuave = Color(0xFFDCFCE7)
-val Alerta = Citrino
-val AlertaSuave = Color(0xFFFEF3C7)
-val Peligro = Color(0xFFDC2626)
-val PeligroSuave = Color(0xFFFEE2E2)
+val AvailabilityContainer = Color(0xFFDCFCE7)
+val AvailabilityForeground = Color(0xFF15803D)
+val AvailabilityBorder = Color(0xFFBBF7D0)
+val UnavailableContainer = AlertRedContainer
+val UnavailableForeground = StatusRedForeground
+val UnavailableBorder = StatusRedBorder
+val MaintenanceContainer = AmberContainer
+val MaintenanceForeground = StatusAmberForeground
+val MaintenanceBorder = StatusAmberBorder
+val RevenueHighContainer = Color(0xFFECFDF5)
+val RevenueHighBorder = Color(0xFFA7F3D0)
+val RevenueHighForeground = Color(0xFF065F46)
+val RevenueMidContainer = Color(0xFFFFFBEB)
+val RevenueMidBorder = Color(0xFFFDE68A)
+val RevenueMidForeground = Color(0xFF92400E)
+val RevenueLowContainer = Color(0xFFFEF2F2)
+val RevenueLowBorder = Color(0xFFFECACA)
+val RevenueLowForeground = Color(0xFF991B1B)
+val RevenueHighBadge = Color(0xFF10B981)
+val RevenueMidBadge = Color(0xFFF59E0B)
+val RevenueLowBadge = Color(0xFFEF4444)
+
+val Marca = PrimaryNavy
+val MarcaOscura = DeepNavy
+val MarcaSuave = SoftBlueSelection
+val SobreMarca = Surface
+val Trigo = SoftBlueSelection
+val Perla = Background
+val Acero = SlateAccent
+val Turquesa = PaymentWallet
+val Caledula = AttentionAmber
+val CaledulaSuave = AmberContainer
+val Citrino = AmberForeground
+val FondoApp = Background
+val Superficie = Surface
+val Borde = BorderSubdued
+val BordeCampo = SlateAccent
+val TextoPrincipal = DeepNavy
+val TextoSecundario = TextSecondary
+val TextoTenue = TextSecondary
+val Exito = SuccessForeground
+val ExitoSuave = SuccessContainer
+val Alerta = AmberForeground
+val AlertaSuave = AmberContainer
+val Peligro = AlertRedForeground
+val PeligroSuave = AlertRedContainer

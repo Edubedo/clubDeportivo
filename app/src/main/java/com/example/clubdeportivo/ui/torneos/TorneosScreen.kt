@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import com.example.clubdeportivo.ui.components.botonFlotanteVisible
 import com.example.clubdeportivo.ui.components.BotonFlotanteAgregar
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.lazy.LazyListState
@@ -260,7 +261,7 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit, onEliminar: ()
                 }
                 IconButton(
                     onClick = onEliminar,
-                    modifier = Modifier.size(40.dp)
+                    modifier = modifierReflejo(Modifier.size(40.dp), enabled = true)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
@@ -600,12 +601,15 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
                 TextButton(onClick = {
                     estadoFecha.selectedDateMillis?.let { onFechaSeleccionada(millisAFecha(it)) }
                     mostrarCalendario = false
-                }) {
+                }, modifier = modifierReflejo(Modifier, enabled = true)) {
                     Text("Aceptar", color = Marca, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { mostrarCalendario = false }) {
+                TextButton(
+                    onClick = { mostrarCalendario = false },
+                    modifier = modifierReflejo(Modifier, enabled = true)
+                ) {
                     Text("Cancelar", color = TextoSecundario)
                 }
             }
@@ -695,13 +699,16 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { mostrarSelector = false }) {
+                        TextButton(
+                            onClick = { mostrarSelector = false },
+                            modifier = modifierReflejo(Modifier, enabled = true)
+                        ) {
                             Text("Cancelar", color = TextoSecundario)
                         }
                         TextButton(onClick = {
                             onHoraSeleccionada(partesAHora(horaElegida, minutoElegido))
                             mostrarSelector = false
-                        }) {
+                        }, modifier = modifierReflejo(Modifier, enabled = true)) {
                             Text("Aceptar", color = Marca, fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -819,7 +826,14 @@ private fun OpcionDropdown(texto: String, seleccionado: Boolean, onClick: () -> 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(8.dp)
+            .let { base ->
+                if (seleccionado) {
+                    modifierReflejo(base, enabled = true, shape = RoundedCornerShape(8.dp))
+                } else {
+                    base
+                }
+            },
         color = if (seleccionado) MarcaSuave else Superficie,
         onClick = onClick
     ) {

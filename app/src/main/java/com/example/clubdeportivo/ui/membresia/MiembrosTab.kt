@@ -70,6 +70,7 @@ import com.example.clubdeportivo.ui.components.CampoBusqueda
 import com.example.clubdeportivo.ui.components.CampoTexto
 import com.example.clubdeportivo.ui.components.DialogoConfirmacion
 import com.example.clubdeportivo.ui.components.DialogoFormulario
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EncabezadoPantalla
 import com.example.clubdeportivo.ui.components.EspacioCampos
@@ -302,7 +303,7 @@ private fun TarjetaMiembro(
     val tipoInsignia = when (estado) {
         EstadoMembresia.ACTIVA -> TipoInsignia.EXITO
         EstadoMembresia.VENCIDA -> TipoInsignia.PELIGRO
-        EstadoMembresia.SUSPENDIDA -> TipoInsignia.ALERTA
+        EstadoMembresia.SUSPENDIDA -> TipoInsignia.SUSPENDIDA
     }
     val conCodigo = detalle.personas.filter { it.codigo.isNotBlank() }
     val registrados = conCodigo.count { it.cuentaCreada }
@@ -376,7 +377,9 @@ private fun TarjetaMiembro(
                 }
             }
             Column {
-                IconButton(onClick = { menuAbierto = true }) {
+                IconButton(
+                    onClick = { menuAbierto = true }
+                ) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = TextoSecundario)
                 }
                 DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
@@ -587,7 +590,10 @@ private fun MembresiaFormDialog(
             }
 
             if (tipo == TipoMembresia.FAMILIAR && personas.size < maxPersonas) {
-                TextButton(onClick = { personas.add(PersonaForm(null, "", "", "", parentescoPorDefecto)) }) {
+                TextButton(
+                    onClick = { personas.add(PersonaForm(null, "", "", "", parentescoPorDefecto)) },
+                    modifier = modifierReflejo(Modifier, enabled = true)
+                ) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = Marca)
                     Text(
                         "  Agregar integrante (${personas.size} de $maxPersonas)",
@@ -653,13 +659,16 @@ private fun CamposPersona(
             }
         }
         if (onQuitar != null) {
-            IconButton(onClick = onQuitar) {
+            IconButton(onClick = onQuitar, modifier = modifierReflejo(Modifier, enabled = true)) {
                 Icon(Icons.Default.Close, contentDescription = "Quitar integrante", tint = TextoSecundario)
             }
         }
     }
     if (onRestablecerAcceso != null) {
-        TextButton(onClick = onRestablecerAcceso) {
+        TextButton(
+            onClick = onRestablecerAcceso,
+            modifier = modifierReflejo(Modifier, enabled = true)
+        ) {
             Text("Restablecer acceso", color = Marca, fontWeight = FontWeight.SemiBold)
         }
     }
@@ -728,7 +737,9 @@ private fun CodigosDialog(detalle: MembresiaDetalle, onCerrar: () -> Unit) {
                     TextButton(onClick = {
                         portapapeles.setText(AnnotatedString(persona.codigo))
                         Toast.makeText(contexto, "Código copiado", Toast.LENGTH_SHORT).show()
-                    }) { Text("Copiar", color = Marca, fontWeight = FontWeight.Bold) }
+                    }, modifier = modifierReflejo(Modifier, enabled = true)) {
+                        Text("Copiar", color = Marca, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

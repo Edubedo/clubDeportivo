@@ -50,6 +50,7 @@ import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
+import com.example.clubdeportivo.ui.components.tipoInsigniaRol
 import com.example.clubdeportivo.ui.theme.Exito
 import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.Marca
@@ -66,6 +67,7 @@ import com.example.clubdeportivo.ui.components.botonFlotanteVisible
 import com.example.clubdeportivo.ui.components.RequisitosContrasena
 import com.example.clubdeportivo.ui.components.CampoBusqueda
 import com.example.clubdeportivo.ui.components.BotonFlotanteAgregar
+import com.example.clubdeportivo.ui.components.modifierReflejo
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.IconButton
@@ -307,7 +309,9 @@ fun FormularioPersonalDialog(
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
-            TextButton(onClick = { selectorFoto.launch("image/*") }) {
+            TextButton(
+                onClick = { selectorFoto.launch("image/*") }
+            ) {
                 Text(
                     text = if (fotoPath == null) "Subir foto de perfil" else "Cambiar foto",
                     color = Marca,
@@ -420,7 +424,9 @@ fun FormularioPersonalDialog(
 
         // Campos de contraseña: al crear son parte del alta; al editar sirven para que el administrador la cambie sin correo.
         val iconoVer: @Composable () -> Unit = {
-            IconButton(onClick = { contrasenaVisible = !contrasenaVisible }) {
+            IconButton(
+                onClick = { contrasenaVisible = !contrasenaVisible }
+            ) {
                 Icon(
                     imageVector = if (contrasenaVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                     contentDescription = if (contrasenaVisible) "Ocultar contraseña" else "Mostrar contraseña"
@@ -478,7 +484,9 @@ fun FormularioPersonalDialog(
                 placeholder = "Crea una contraseña segura",
                 esContrasena = !contrasenaVisible,
                 trailingIcon = {
-                    IconButton(onClick = { contrasenaVisible = !contrasenaVisible }) {
+                    IconButton(
+                        onClick = { contrasenaVisible = !contrasenaVisible }
+                    ) {
                         Icon(
                             imageVector = if (contrasenaVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                             contentDescription = if (contrasenaVisible) "Ocultar contraseña" else "Mostrar contraseña"
@@ -594,12 +602,14 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
                     )
                     Insignia(
                         texto = persona.rol.nombreLegible(),
-                        tipo = TipoInsignia.NEUTRO,
+                        tipo = tipoInsigniaRol(persona.rol),
                         modifier = Modifier.weight(1f, fill = false)
                     )
                 }
 
-                TextButton(onClick = onEditClick) {
+                TextButton(
+                    onClick = onEditClick
+                ) {
                     Text(text = "Editar", color = Marca, fontWeight = FontWeight.Bold)
                 }
             }
