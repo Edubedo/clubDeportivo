@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.personal
 
+import android.util.Base64
 import android.util.Patterns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +30,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import coil3.compose.AsyncImage
 import com.example.clubdeportivo.data.model.DatosPersonal
 import com.example.clubdeportivo.data.model.Personal
@@ -61,7 +65,7 @@ import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.ui.theme.TextoTenue
 import com.example.clubdeportivo.util.Fechas
-import com.example.clubdeportivo.util.FotoPerfilManager
+import com.example.clubdeportivo.util.comprimirFotoPerfil
 import com.example.clubdeportivo.util.ReglasContrasena
 import com.example.clubdeportivo.ui.components.botonFlotanteVisible
 import com.example.clubdeportivo.ui.components.RequisitosContrasena
@@ -219,15 +223,18 @@ fun FormularioPersonalDialog(
     var confirmarContrasena by remember { mutableStateOf("") }
     var mensajeError by remember { mutableStateOf<String?>(null) }
 
-    val idFoto = remember { personaAEditar?.id ?: java.util.UUID.randomUUID().toString() }
-    var fotoPath by remember {
-        mutableStateOf<String?>(
-            personaAEditar?.let { FotoPerfilManager.obtenerFoto(context, it.id)?.absolutePath ?: it.fotoUrl }
-        )
-    }
+    // La foto viaja dentro del perfil como data URI (ver FirebaseFotoPerfilRepository); una ruta de archivo local
+    // de una versión anterior no existe en otros dispositivos, así que se descarta.
+    var fotoPath by remember { mutableStateOf(personaAEditar?.fotoUrl?.takeIf { it.startsWith("data:") }) }
+    val alcance = rememberCoroutineScope()
     val selectorFoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            fotoPath = FotoPerfilManager.guardarFoto(context = context, uri = uri, usuarioId = idFoto)?.absolutePath
+            alcance.launch {
+                val jpeg = withContext(Dispatchers.IO) { comprimirFotoPerfil(context.contentResolver, uri) }
+                if (jpeg != null) {
+                    fotoPath = "data:image/jpeg;base64," + Base64.encodeToString(jpeg, Base64.NO_WRAP)
+                }
+            }
         }
     }
 
@@ -517,10 +524,7 @@ fun FormularioPersonalDialog(
 
 @Composable
 private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
-    val context = LocalContext.current
-    val fotoPerfil = remember(persona.id) {
-        FotoPerfilManager.obtenerFoto(context, persona.id)?.absolutePath ?: persona.fotoUrl
-    }
+    val fotoPerfil = persona.fotoUrl?.takeIf { it.startsWith("data:") }
     val activo = persona.estado.uppercase() == "ACTIVO"
 
     val detalle = listOf(persona.tipoPersonal, persona.turno).filter { it.isNotBlank() }.joinToString(" · ")

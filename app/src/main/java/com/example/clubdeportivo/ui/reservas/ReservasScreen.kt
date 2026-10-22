@@ -93,12 +93,14 @@ import com.example.clubdeportivo.ui.theme.UnavailableContainer
 import com.example.clubdeportivo.ui.theme.UnavailableForeground
 import com.example.clubdeportivo.ui.torneos.TorneosScreen
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.data.model.esAdministrador
 
 @Composable
 fun ReservasScreen() {
     var pestana by rememberSaveable { mutableIntStateOf(0) }
-    // Solo el personal aprueba las reservas de visitantes.
-    val puedeAprobar = SesionManager.usuarioActual?.rol?.esPersonal() == true
+    val rol = SesionManager.usuarioActual?.rol
+    // Solo el personal que NO es administrador (los encargados de área) aprueba reservas.
+    val puedeAprobar = rol?.esPersonal() == true && rol.esAdministrador() == false
     val opciones = if (puedeAprobar) listOf("Espacio", "Torneo", "Por aprobar") else listOf("Espacio", "Torneo")
 
     Column(modifier = Modifier.fillMaxSize().background(FondoApp)) {
@@ -108,10 +110,10 @@ fun ReservasScreen() {
             onSeleccion = { pestana = it }
         )
 
-        when (pestana) {
+        when (pestana.coerceAtMost(opciones.lastIndex)) {
             0 -> ReservarEspacioScreen()
             1 -> TorneosScreen()
-            else -> PorAprobarScreen()
+            else -> if (puedeAprobar) PorAprobarScreen() else TorneosScreen()
         }
     }
 }
