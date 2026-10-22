@@ -91,15 +91,22 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
         preferencias.edit().putStringSet(claveLeidas(yo.id), leidas).apply()
     }
 
-    /** Destinatarios que esta persona puede elegir: el administrador, a cualquiera; el resto del personal, solo a socios. */
+    /** Los avisos internos se dirigen al personal o a los socios, no a una audiencia abierta. */
     fun destinatariosPermitidos(): List<DestinatarioNotificacion> =
         if (usuario?.rol?.esAdministrador() == true) {
-            DestinatarioNotificacion.entries
+            listOf(DestinatarioNotificacion.TODOS, DestinatarioNotificacion.EMPLEADOS, DestinatarioNotificacion.SOCIOS)
         } else {
             listOf(DestinatarioNotificacion.SOCIOS)
         }
 
-    fun publicar(titulo: String, texto: String, destinatario: DestinatarioNotificacion, alTerminar: () -> Unit) {
+    fun publicar(
+        titulo: String,
+        texto: String,
+        destinatario: DestinatarioNotificacion,
+        imagenUrl: String = "",
+        vigencia: String = "",
+        alTerminar: () -> Unit
+    ) {
         val yo = usuario ?: return
         if (enviando || titulo.isBlank() || texto.isBlank()) return
         viewModelScope.launch {
@@ -111,11 +118,13 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
                         mensaje = texto.trim(),
                         destinatario = destinatario,
                         autorId = yo.id,
-                        autorNombre = yo.nombre
+                        autorNombre = yo.nombre,
+                        imagenUrl = imagenUrl,
+                        vigencia = vigencia
                     )
                 )
                 todos = listOf(nuevo) + todos
-                mensaje = "Aviso enviado."
+                mensaje = "Publicación guardada."
                 alTerminar()
             } catch (e: Exception) {
                 mensaje = "No se pudo enviar el aviso. Intenta de nuevo."
@@ -124,14 +133,30 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
         }
     }
 
-    fun editar(id: String, titulo: String, texto: String, alTerminar: () -> Unit) {
+    fun editar(
+        id: String,
+        titulo: String,
+        texto: String,
+        imagenUrl: String = "",
+        vigencia: String = "",
+        destinatario: DestinatarioNotificacion = DestinatarioNotificacion.TODOS,
+        alTerminar: () -> Unit
+    ) {
         if (enviando || titulo.isBlank() || texto.isBlank()) return
         viewModelScope.launch {
             enviando = true
             try {
-                repositorio.actualizar(id, titulo.trim(), texto.trim())
-                todos = todos.map { if (it.id == id) it.copy(titulo = titulo.trim(), mensaje = texto.trim()) else it }
-                mensaje = "Aviso actualizado."
+                repositorio.actualizar(id, titulo.trim(), texto.trim(), imagenUrl, vigencia, destinatario)
+                todos = todos.map {
+                    if (it.id == id) it.copy(
+                        titulo = titulo.trim(),
+                        mensaje = texto.trim(),
+                        imagenUrl = imagenUrl,
+                        vigencia = vigencia,
+                        destinatario = destinatario
+                    ) else it
+                }
+                mensaje = "Publicación actualizada."
                 alTerminar()
             } catch (e: Exception) {
                 mensaje = "No se pudo guardar el cambio. Intenta de nuevo."

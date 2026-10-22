@@ -24,6 +24,7 @@ interface ReservaRepository {
         horaFin: String,
         esExterno: Boolean,
         personas: Int = 1,
+        carril: Int? = null,
         /** true = la reserva queda "en revisión" hasta que el encargado del área la apruebe (miembros y visitantes). */
         requiereAprobacion: Boolean = true
     ): Reserva
@@ -104,6 +105,7 @@ class FakeReservaRepository : ReservaRepository {
         horaFin: String,
         esExterno: Boolean,
         personas: Int,
+        carril: Int?,
         requiereAprobacion: Boolean
     ): Reserva {
         delay(500)
@@ -120,7 +122,8 @@ class FakeReservaRepository : ReservaRepository {
             horaFin = horaFin,
             estado = estadoInicial,
             esExterno = esExterno,
-            personas = personas
+            personas = personas,
+            carril = carril
         )
         reservas.add(nuevaReserva)
 

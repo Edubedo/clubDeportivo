@@ -5,9 +5,9 @@ Marca cada punto. Los marcados con ⚠️ son obligatorios: sin ellos la app **n
 ## 1. Firebase
 
 - [ ] ⚠️ **Publica las reglas nuevas.** Consola de Firebase → Firestore → Reglas → pega el contenido de
-      [`firestore.rules`](../firestore.rules) → Publicar. La app nueva usa las colecciones `registroCodigos`, `avisos` y
-      `pagos`; con las reglas anteriores el registro por código y los avisos fallan.
-      Antes de publicar corre `tools/pruebas-reglas` (36 pruebas; ver su README).
+      [`firestore.rules`](../firestore.rules) → Publicar. La app nueva usa las colecciones `registroCodigos`, `avisos`,
+      `publicaciones` y `pagos`; con las reglas anteriores el registro por código, avisos y publicaciones fallan.
+      Antes de publicar corre `tools/pruebas-reglas` (ver su README).
 - [ ] ⚠️ **Entra una vez como administrador** y abre el Dashboard: ahí corre la migración a la versión 6 que crea el
       registro de códigos de los miembros que ya existían. Hasta que lo hagas, esos miembros verán "No encontramos ese
       código" al registrarse.

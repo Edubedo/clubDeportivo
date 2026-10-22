@@ -177,6 +177,19 @@ service cloud.firestore {
       allow update, delete: if esAdmin() || (esPersonal() && resource.data.autorId == request.auth.uid);
     }
 
+    // Publicaciones del dashboard: datos distintos de los avisos/notificaciones internos.
+    match /publicaciones/{id} {
+      allow read: if esAdmin()
+                  || (conPerfil() && activo() && (
+                      (esDeCliente(rolActual()) && resource.data.audiencia in ['TODOS', 'SOCIOS'])
+                      || (esPersonal() && resource.data.audiencia in ['TODOS', 'PERSONAL'])
+                  ));
+      allow create: if esAdmin()
+                    && request.resource.data.autorId == request.auth.uid
+                    && request.resource.data.audiencia in ['TODOS', 'PERSONAL', 'SOCIOS'];
+      allow update, delete: if esAdmin() && resource.data.autorId == request.auth.uid;
+    }
+
     match /notificaciones/{id} {
       allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
       allow write: if esPersonal();

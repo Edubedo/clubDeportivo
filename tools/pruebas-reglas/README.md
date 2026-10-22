@@ -1,9 +1,9 @@
 # Pruebas de las reglas de seguridad
 
 Comprueban `firestore.rules` contra el emulador de Firestore (no tocan tu proyecto real). Cubren sobre todo el
-registro de miembros con código, el acceso por rol, los avisos y los precios.
+registro de miembros con código, el acceso por rol, los avisos, las publicaciones y los precios.
 
-Requisitos: Node 18+ y Java 11+ (el emulador de Firestore es Java).
+Requisitos: Node 18+ y JDK 21+ (el emulador de Firestore requiere Java 21 o superior).
 
 ```
 cd tools/pruebas-reglas

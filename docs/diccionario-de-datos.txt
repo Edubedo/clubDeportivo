@@ -2,7 +2,7 @@
 DICCIONARIO DE DATOS - CLUB DEPORTIVO
 Base de datos : Cloud Firestore (NoSQL, orientada a documentos) + Firebase Authentication
 Versión del esquema : 3   (se guarda en config/esquema; ver MigracionEsquema.kt)
-Actualizado : 2026-09-30
+Actualizado : 2026-10-22
 ====================================================================================================
 
 CONTENIDO
@@ -18,7 +18,7 @@ CONTENIDO
        4.6  pagos                     4.14  torneos
        4.7  precios                   4.15  inscripcionesTorneo
        4.8  reservas                  4.16  areas
-       4.17 config
+       4.17 config                   4.18 publicaciones
   5. Catálogo de valores (enumeraciones)
   6. Índices y consultas
   7. Reglas de negocio que dependen de los datos
@@ -533,6 +533,27 @@ Ajustes internos de la aplicación. Documento actual: config/esquema.
   Al subir MigracionEsquema.VERSION, la primera vez que entre personal del club la app completa los
   documentos existentes (solo agrega campos que faltan; ver encabezado de MigracionEsquema.kt).
 
+----------------------------------------------------------------------------------------------------
+4.18  publicaciones
+----------------------------------------------------------------------------------------------------
+Novedades de Athletic Club creadas desde el dashboard. Colección distinta de avisos y notificaciones.
+PK: id automático. Escribe: administrador. Lee: cada rol según la audiencia; administración puede leer todas.
+
+  Campo       Tipo       Req  Descripción
+  -----------  ---------- ---- ----------------------------------------------------------------------
+  titulo      String     S    Título.
+  descripcion String     S    Descripción completa.
+  imagenUrl   String     S    Portada JPEG comprimida como data URI.
+  audiencia   String     S    TODOS | PERSONAL | SOCIOS.
+  vigencia    String     N    Día final yyyy-MM-dd; no anterior al día de publicación.
+  autorId     String     S    uid del administrador autor.
+  fechaMillis Number     S    Fecha de creación para ordenar (milisegundos).
+  creadoEn    Timestamp  N    Alta del registro (servidor).
+  editadoEn   Timestamp  N    Última modificación (servidor).
+
+  Regla: solo un administrador puede crear, modificar o borrar sus propias publicaciones. Socios/visitantes leen
+         SOCIOS y TODOS; personal lee PERSONAL y TODOS.
+
 
 ====================================================================================================
 5. CATÁLOGO DE VALORES (ENUMERACIONES)
@@ -561,6 +582,7 @@ Ajustes internos de la aplicación. Documento actual: config/esquema.
   checkins.tipo           ENTRADA | SALIDA
   checkins.metodo         MANUAL | CODIGO
   notificaciones.tipo     RESERVA | MEMBRESIA | TORNEO | SISTEMA
+  publicaciones.audiencia TODOS | PERSONAL | SOCIOS
   restriccionesHorario.tipo  HORARIO_GENERAL (reservado: CIERRE_ESPECIAL)
   restriccionesHorario.dias  LUN | MAR | MIE | JUE | VIE | SAB | DOM
   inscripcionesTorneo.estado CONFIRMADA | CANCELADA

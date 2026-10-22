@@ -207,7 +207,9 @@ pasar a Storage o a un servicio como Cloudinary (solo cambia `FirebaseFotoPerfil
 **Datos de catálogo (áreas, torneos, inventario).** Firestore empieza vacío y así debe quedarse en producción: la app
 ya no siembra datos de ejemplo. Las áreas, los torneos y el inventario se dan de alta desde la propia app.
 
-Todo se administra desde la app: altas de miembros y personal, áreas, torneos, inventario, precios y avisos.
+Todo se administra desde la app: altas de miembros y personal, áreas, torneos, inventario, precios, avisos y publicaciones.
+Las publicaciones del dashboard se guardan en la colección independiente `publicaciones`; los avisos de la campana
+siguen usando `avisos`.
 
 ### Datos de ejemplo
 

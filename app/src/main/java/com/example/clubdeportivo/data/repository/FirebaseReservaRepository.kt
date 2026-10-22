@@ -28,6 +28,7 @@ private fun DocumentSnapshot.toReserva(): Reserva? {
         personas = (getLong("personas") ?: 1L)
             .toInt()
             .coerceAtLeast(1),
+        carril = getLong("carril")?.toInt(),
 
         usuarioNombre = getString("usuarioNombre") ?: "",
         areaNombre = getString("areaNombre") ?: "",
@@ -73,6 +74,7 @@ class FirebaseReservaRepository(
         horaFin: String,
         esExterno: Boolean,
         personas: Int,
+        carril: Int?,
         requiereAprobacion: Boolean
     ): Reserva {
         // Miembros y visitantes quedan "en revisión" hasta que el encargado del área apruebe o rechace; la reserva
@@ -96,6 +98,7 @@ class FirebaseReservaRepository(
             "horaFin" to horaFin,
             "duracionHoras" to horas.toLong(),
             "personas" to personas.toLong(),
+            "carril" to carril?.toLong(),
             "estado" to estadoInicial.name,
             "esExterno" to esExterno,
             "creadoEn" to FieldValue.serverTimestamp(),
@@ -106,7 +109,8 @@ class FirebaseReservaRepository(
             documento.id, usuarioId, areaId, fecha, horaInicio, horaFin, estadoInicial, esExterno, personas,
             usuarioNombre = persona.getString("nombre") ?: "",
             areaNombre = area.getString("nombre") ?: "",
-            deporte = area.getString("tipo") ?: ""
+            deporte = area.getString("tipo") ?: "",
+            carril = carril
         )
 
         // El material solo se asigna si la reserva queda CONFIRMADA (una pendiente de aprobación todavía no lo

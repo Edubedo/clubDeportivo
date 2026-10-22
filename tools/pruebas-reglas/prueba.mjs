@@ -1,6 +1,6 @@
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'fs';
-import { doc, getDoc, setDoc, updateDoc, getDocs, collection, writeBatch, addDoc, query, where, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, writeBatch, addDoc, query, where, deleteField } from 'firebase/firestore';
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-athletic',
@@ -115,6 +115,55 @@ await prueba('el personal NO crea un aviso a nombre de otro', () => assertFails(
 await prueba('el personal NO edita avisos ajenos; el admin sí', async () => {
   await assertFails(updateDoc(doc(ayudante, 'avisos/av1'), { titulo: 'hack' }));
   await assertSucceeds(updateDoc(doc(admin, 'avisos/av1'), { titulo: 'ok' }));
+});
+
+// ---- publicaciones del dashboard (independientes de avisos)
+await prueba('sin sesión NO se leen publicaciones', () => assertFails(getDocs(collection(anonimo, 'publicaciones'))));
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'publicaciones/pub-socio'), { titulo: 'Socios', autorId: 'admin1', audiencia: 'SOCIOS', fechaMillis: 3 });
+  await setDoc(doc(db, 'publicaciones/pub-personal'), { titulo: 'Personal', autorId: 'admin1', audiencia: 'PERSONAL', fechaMillis: 2 });
+  await setDoc(doc(db, 'publicaciones/pub-todos'), { titulo: 'Todos', autorId: 'admin1', audiencia: 'TODOS', fechaMillis: 1 });
+});
+await prueba('un socio consulta solo publicaciones para socios y todos', async () => {
+  const r = await assertSucceeds(getDocs(query(
+    collection(nuevo1, 'publicaciones'),
+    where('audiencia', 'in', ['SOCIOS', 'TODOS'])
+  )));
+  if (r.size !== 2) throw new Error('esperaba 2, hubo ' + r.size);
+});
+await prueba('un socio NO lee una publicación exclusiva para personal', () =>
+  assertFails(getDoc(doc(nuevo1, 'publicaciones/pub-personal'))));
+await prueba('el personal consulta solo publicaciones para personal y todos', async () => {
+  const r = await assertSucceeds(getDocs(query(
+    collection(ayudante, 'publicaciones'),
+    where('audiencia', 'in', ['PERSONAL', 'TODOS'])
+  )));
+  if (r.size !== 2) throw new Error('esperaba 2, hubo ' + r.size);
+});
+await prueba('el personal NO lee una publicación exclusiva para socios', () =>
+  assertFails(getDoc(doc(ayudante, 'publicaciones/pub-socio'))));
+await prueba('el administrador consulta todas las publicaciones', () =>
+  assertSucceeds(getDocs(collection(admin, 'publicaciones'))));
+await prueba('solo el administrador crea publicaciones para audiencias válidas', async () => {
+  await assertFails(addDoc(collection(ayudante, 'publicaciones'), {
+    titulo: 'Novedad', autorId: 'ayudante1', audiencia: 'PERSONAL'
+  }));
+  await assertFails(addDoc(collection(admin, 'publicaciones'), {
+    titulo: 'Novedad', autorId: 'admin1', audiencia: 'TODOS_INVALIDO'
+  }));
+  await assertSucceeds(addDoc(collection(admin, 'publicaciones'), {
+    titulo: 'Novedad', descripcion: 'Descripción', imagenUrl: 'data:image/jpeg;base64,abc',
+    autorId: 'admin1', audiencia: 'TODOS', vigencia: '2026-10-23', fechaMillis: Date.now()
+  }));
+});
+await prueba('solo el administrador autor modifica o borra sus publicaciones', async () => {
+  const id = (await addDoc(collection(admin, 'publicaciones'), {
+    titulo: 'Otra', autorId: 'admin1', audiencia: 'SOCIOS'
+  })).id;
+  await assertFails(updateDoc(doc(ayudante, 'publicaciones/' + id), { titulo: 'Editada' }));
+  await assertSucceeds(updateDoc(doc(admin, 'publicaciones/' + id), { titulo: 'Editada' }));
+  await assertSucceeds(deleteDoc(doc(admin, 'publicaciones/' + id)));
 });
 
 // ---- pagos, miembros, personal

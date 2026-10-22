@@ -21,7 +21,8 @@ data class Reserva(
     // Datos para mostrar la reserva
     val usuarioNombre: String = "",
     val areaNombre: String = "",
-    val deporte: String = ""
+    val deporte: String = "",
+    val carril: Int? = null
 )
 
 data class MaterialAsignado(

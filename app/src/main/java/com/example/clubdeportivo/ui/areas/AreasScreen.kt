@@ -195,8 +195,8 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                     Deportes.predefinidos.map { it to Deportes.emojiDe(it) }).distinctBy { it.first.lowercase() },
             nombreRepetido = { nombre, tipo -> viewModel.nombreRepetido(nombre, tipo, areaEnEdicion?.id) },
             onCerrar = { mostrarFormulario = false },
-            onGuardar = { nombre, tipo, capacidad, emoji, disponibilidad ->
-                viewModel.guardarArea(areaEnEdicion, nombre, tipo, capacidad, emoji, disponibilidad)
+            onGuardar = { nombre, tipo, capacidad, emoji, disponibilidad, carriles ->
+                viewModel.guardarArea(areaEnEdicion, nombre, tipo, capacidad, emoji, disponibilidad, carriles)
                 mostrarFormulario = false
             }
         )
@@ -317,7 +317,7 @@ private fun AreaFormDialog(
     deportesExistentes: List<Pair<String, String>>,
     nombreRepetido: (nombre: String, tipo: String) -> Boolean,
     onCerrar: () -> Unit,
-    onGuardar: (nombre: String, tipo: String, capacidad: Int, emoji: String, disponibilidad: DisponibilidadArea) -> Unit
+    onGuardar: (nombre: String, tipo: String, capacidad: Int, emoji: String, disponibilidad: DisponibilidadArea, carriles: Int) -> Unit
 ) {
     val esEdicion = areaExistente != null
     var modoNuevo by remember { mutableStateOf(false) }
@@ -327,12 +327,16 @@ private fun AreaFormDialog(
     var emojiNuevo by remember { mutableStateOf(Deportes.emojisSugeridos.first()) }
     var nombre by remember { mutableStateOf(areaExistente?.nombre ?: "") }
     var capacidad by remember { mutableStateOf((areaExistente?.capacidad ?: 10).toString()) }
+    var carriles by remember { mutableStateOf((areaExistente?.carriles ?: 0).takeIf { it > 0 }?.toString().orEmpty()) }
     var enMantenimiento by remember { mutableStateOf(areaExistente?.disponibilidad == DisponibilidadArea.MANTENIMIENTO) }
 
     val tipo = if (modoNuevo) deporteNuevo.trim() else deporteElegido
     val repetido = nombre.isNotBlank() && tipo.isNotBlank() && nombreRepetido(nombre, tipo)
+    val requiereCarriles = tipo.contains("natación", ignoreCase = true) ||
+        tipo.contains("alberca", ignoreCase = true) || tipo.contains("piscina", ignoreCase = true)
     val puedeGuardar = tipo.isNotBlank() && nombre.isNotBlank() && !repetido &&
             (!modoNuevo || emojiNuevo.isNotBlank()) && (capacidad.toIntOrNull() ?: 0) > 0
+            && (!requiereCarriles || (carriles.toIntOrNull() ?: 0) > 0)
 
     DialogoFormulario(
         titulo = if (esEdicion) "Editar área" else "Agregar área",
@@ -348,7 +352,8 @@ private fun AreaFormDialog(
                         tipo,
                         capacidad.toIntOrNull() ?: 1,
                         emoji,
-                        if (enMantenimiento) DisponibilidadArea.MANTENIMIENTO else DisponibilidadArea.DISPONIBLE
+                        if (enMantenimiento) DisponibilidadArea.MANTENIMIENTO else DisponibilidadArea.DISPONIBLE,
+                        carriles.toIntOrNull() ?: 0
                     )
                 }
             )
@@ -418,6 +423,21 @@ private fun AreaFormDialog(
             tipoTeclado = KeyboardType.Number,
             imeAction = ImeAction.Done
         )
+
+        if (requiereCarriles) {
+            EspacioCampos()
+            EtiquetaCampo("CARRILES DE LA ALBERCA")
+            CampoTexto(
+                value = carriles,
+                onValueChange = { carriles = it.filter(Char::isDigit).take(2) },
+                placeholder = "Ej: 6",
+                tipoTeclado = KeyboardType.Number,
+                imeAction = ImeAction.Done,
+                isError = carriles.isBlank() || (carriles.toIntOrNull() ?: 0) < 1,
+                mensajeError = if (carriles.isBlank()) "Indica cuántos carriles tiene esta alberca." else null
+            )
+            Text("Los socios elegirán un carril libre al reservar.", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+        }
 
         EspacioCampos()
 

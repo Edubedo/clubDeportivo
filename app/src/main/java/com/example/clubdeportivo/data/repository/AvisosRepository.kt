@@ -12,7 +12,14 @@ interface AvisosRepository {
     /** El personal ve todos los avisos; socios y visitantes solo los dirigidos a socios o a todos. Los más recientes primero. */
     suspend fun obtener(esPersonal: Boolean): List<Notificacion>
     suspend fun publicar(aviso: Notificacion): Notificacion
-    suspend fun actualizar(id: String, titulo: String, mensaje: String)
+    suspend fun actualizar(
+        id: String,
+        titulo: String,
+        mensaje: String,
+        imagenUrl: String = "",
+        vigencia: String = "",
+        destinatario: DestinatarioNotificacion
+    )
     suspend fun eliminar(id: String)
 }
 
@@ -26,7 +33,9 @@ private fun DocumentSnapshot.toAviso(): Notificacion? {
             .getOrDefault(DestinatarioNotificacion.TODOS),
         autorId = getString("autorId").orEmpty(),
         autorNombre = getString("autorNombre").orEmpty(),
-        fechaMillis = getLong("fechaMillis") ?: 0L
+        fechaMillis = getLong("fechaMillis") ?: 0L,
+        imagenUrl = getString("imagenUrl").orEmpty(),
+        vigencia = getString("vigencia").orEmpty()
     )
 }
 
@@ -54,15 +63,31 @@ class FirebaseAvisosRepository(
             "autorId" to aviso.autorId,
             "autorNombre" to aviso.autorNombre,
             "fechaMillis" to aviso.fechaMillis,
+            "imagenUrl" to aviso.imagenUrl,
+            "vigencia" to aviso.vigencia,
             "creadoEn" to FieldValue.serverTimestamp()
         )
         val documento = coleccion.add(datos).await()
         return aviso.copy(id = documento.id)
     }
 
-    override suspend fun actualizar(id: String, titulo: String, mensaje: String) {
+    override suspend fun actualizar(
+        id: String,
+        titulo: String,
+        mensaje: String,
+        imagenUrl: String,
+        vigencia: String,
+        destinatario: DestinatarioNotificacion
+    ) {
         coleccion.document(id).update(
-            mapOf("titulo" to titulo, "mensaje" to mensaje, "editadoEn" to FieldValue.serverTimestamp())
+            mapOf(
+                "titulo" to titulo,
+                "mensaje" to mensaje,
+                "imagenUrl" to imagenUrl,
+                "vigencia" to vigencia,
+                "destinatario" to destinatario.name,
+                "editadoEn" to FieldValue.serverTimestamp()
+            )
         ).await()
     }
 
