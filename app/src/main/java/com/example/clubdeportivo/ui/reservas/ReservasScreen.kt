@@ -101,10 +101,12 @@ import com.example.clubdeportivo.data.model.esCliente
 fun ReservasScreen(initialTab: Int = 0) {
     val rol = SesionManager.usuarioActual?.rol
     val esCliente = rol?.esCliente() == true
+    val esAdmin = rol?.esAdministrador() == true
     val puedeAprobar = rol?.esAdministrador() == true || rol?.esEncargado() == true
-    var pestana by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, 2)) }
+    var pestana by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, 3)) }
     val opciones = when {
         esCliente -> listOf("Espacio", "Torneo", "Mis reservas")
+        esAdmin -> listOf("Espacio", "Torneo", "Reservas", "Solicitudes")
         puedeAprobar -> listOf("Espacio", "Torneo", "Solicitudes")
         else -> listOf("Espacio", "Torneo")
     }
@@ -119,7 +121,13 @@ fun ReservasScreen(initialTab: Int = 0) {
         when (pestana.coerceAtMost(opciones.lastIndex)) {
             0 -> ReservarEspacioScreen()
             1 -> TorneosScreen()
-            2 -> if (esCliente) MisReservasScreen() else if (puedeAprobar) PorAprobarScreen() else TorneosScreen()
+            2 -> when {
+                esCliente -> MisReservasScreen()
+                esAdmin -> ReservasAdministradorScreen()
+                puedeAprobar -> PorAprobarScreen()
+                else -> TorneosScreen()
+            }
+            3 -> if (esAdmin) PorAprobarScreen() else TorneosScreen()
             else -> if (puedeAprobar) PorAprobarScreen() else TorneosScreen()
         }
     }
