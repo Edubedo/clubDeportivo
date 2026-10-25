@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.inventario.InventarioScreen
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Sección "Áreas": gestión de áreas e inventario. (Los torneos viven en "Reservas".) */
 @Composable
@@ -18,7 +20,7 @@ fun AreasDetailScreen() {
 
     Column(modifier = Modifier.fillMaxSize()) {
         PestanasPildora(
-            opciones = listOf("Áreas", "Inventario"),
+            opciones = listOf(Textos.get(R.string.areas), Textos.get(R.string.inventory)),
             seleccionada = pestana,
             onSeleccion = { pestana = it }
         )

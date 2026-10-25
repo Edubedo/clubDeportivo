@@ -8,6 +8,8 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.tasks.await
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Cuenta interna de acceso creada para una persona nueva: su código y el uid de su cuenta en Firebase Authentication. */
 internal data class CuentaDeAcceso(val codigo: String, val uid: String)
@@ -39,14 +41,14 @@ internal object CuentasDeAcceso {
             if (yaExiste) return@repeat
             try {
                 val uid = auth.createUserWithEmailAndPassword(ReglasMembresia.emailDeCodigo(codigo), codigo).await()
-                    .user?.uid ?: error("No se pudo crear la cuenta de acceso.")
+                    .user?.uid ?: error(Textos.get(R.string.the_access_account_could_not_be))
                 auth.signOut()
                 return CuentaDeAcceso(codigo, uid)
             } catch (e: FirebaseAuthUserCollisionException) {
                 // Ya existía una cuenta con ese código: se genera otro.
             }
         }
-        error("No se pudo generar un código único, inténtalo de nuevo.")
+        error(Textos.get(R.string.a_unique_code_could_not_be))
     }
 }
 

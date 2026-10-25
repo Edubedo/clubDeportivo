@@ -15,6 +15,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReglasMembresiaTest {
+    // Va primero: los demás campos de la clase pueden usar textos al crearse.
+    init { com.example.clubdeportivo.TextosDePrueba.instalar() }
+
 
     private fun membresia(
         estado: EstadoMembresia = EstadoMembresia.ACTIVA,

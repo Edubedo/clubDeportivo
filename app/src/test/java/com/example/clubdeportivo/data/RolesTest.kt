@@ -1,17 +1,27 @@
 package com.example.clubdeportivo.data
 
+import com.example.clubdeportivo.TextosDePrueba
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.Usuario
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.data.model.puedeVerDeporte
+import com.example.clubdeportivo.util.Textos
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RolesTest {
+
+    init { TextosDePrueba.instalar() }
+
+    @After
+    fun limpiarTextos() {
+        Textos.resolutorDePrueba = null
+    }
 
     private fun usuario(rol: Rol, area: String? = null) = Usuario("u", "Nombre", "a@b.c", rol, areaTrabajo = area)
 

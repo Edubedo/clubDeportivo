@@ -9,6 +9,8 @@ import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.repository.PreciosRepository
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Precios editados por el administrador (sobre los precios base del catálogo). */
 class PreciosViewModel(
@@ -30,7 +32,7 @@ class PreciosViewModel(
             try {
                 _editados.value = preciosRepository.obtenerEditados()
             } catch (e: Exception) {
-                _mensaje.value = "No se pudieron cargar los precios actualizados; se muestran los precios base."
+                _mensaje.value = Textos.get(R.string.the_updated_prices_could_not_be)
             }
         }
     }
@@ -40,16 +42,16 @@ class PreciosViewModel(
 
     fun guardar(clave: String, precio: Double) {
         if (!puedeEditar()) {
-            _mensaje.value = "Solo un administrador puede cambiar los precios."
+            _mensaje.value = Textos.get(R.string.only_an_administrator_can_change_price)
             return
         }
         viewModelScope.launch {
             try {
                 preciosRepository.guardar(clave, precio)
                 _editados.value = _editados.value.orEmpty() + (clave to precio)
-                _mensaje.value = "Precio actualizado."
+                _mensaje.value = Textos.get(R.string.price_updated)
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo guardar el precio."
+                _mensaje.value = Textos.get(R.string.the_price_could_not_be_saved)
             }
         }
     }

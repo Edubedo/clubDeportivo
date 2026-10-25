@@ -1,0 +1,4 @@
+<resources>
+    <!-- Mismo azul del fondo del login, para que el arranque y el login se sientan una sola pantalla. -->
+    <color name="splash_fondo">#FF061B35</color>
+</resources>

@@ -14,6 +14,8 @@ import com.example.clubdeportivo.data.repository.FamiliaRepository
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** El paquete familiar de quien tiene sesión; si es el titular, también el alta de sus familiares. */
 class FamiliaViewModel(
@@ -47,7 +49,7 @@ class FamiliaViewModel(
             try {
                 _familia.value = familiaRepository.obtenerFamilia(usuario.id)
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo cargar tu paquete familiar."
+                _mensaje.value = Textos.get(R.string.your_family_package_could_not_be)
             }
         }
     }
@@ -72,7 +74,7 @@ class FamiliaViewModel(
                 _familia.value = SesionManager.usuarioActual?.let { familiaRepository.obtenerFamilia(it.id) } ?: actual
             } catch (e: Exception) {
                 _errorFormulario.value = e.message?.takeIf { it.length < 140 && !it.contains("PERMISSION") }
-                    ?: "No se pudo dar de alta al familiar. Revisa tu conexión e inténtalo de nuevo."
+                    ?: Textos.get(R.string.the_family_member_could_not_be)
             }
             _guardando.value = false
         }

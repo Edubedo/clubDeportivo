@@ -10,6 +10,8 @@ import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 data class ReservasAdministradorUi(
     val cargando: Boolean = true,
@@ -49,7 +51,7 @@ class ReservasAdministradorViewModel(
             } catch (e: Exception) {
                 _ui.value = (_ui.value ?: ReservasAdministradorUi()).copy(
                     cargando = false,
-                    error = "No se pudieron cargar las reservas."
+                    error = Textos.get(R.string.the_bookings_could_not_be_loaded)
                 )
             }
         }

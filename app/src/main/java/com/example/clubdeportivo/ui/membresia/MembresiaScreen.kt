@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.membresia
 
+import com.example.clubdeportivo.data.model.etiquetaParentesco
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -81,6 +82,8 @@ import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 internal fun dinero(monto: Double) = "$%,.0f".format(monto)
 
@@ -100,7 +103,7 @@ private fun MembresiasAdmin() {
 
     Column(modifier = Modifier.fillMaxSize()) {
         PestanasPildora(
-            opciones = listOf("Miembros", "Planes y precios"),
+            opciones = listOf(Textos.get(R.string.members), Textos.get(R.string.plans_and_prices)),
             seleccionada = pestana,
             onSeleccion = { pestana = it }
         )
@@ -144,13 +147,13 @@ private fun PlanesTab(editable: Boolean, conTuMembresia: Boolean, viewModel: Pre
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MargenPantalla)
         ) {
-            EncabezadoPantalla(titulo = if (editable) "Planes y precios" else "Membresías")
+            EncabezadoPantalla(titulo = if (editable) Textos.get(R.string.plans_and_prices) else Textos.get(R.string.memberships))
 
             if (conTuMembresia) {
                 TuMembresia()
             }
 
-            Seccion("MEMBRESÍA INDIVIDUAL")
+            Seccion(Textos.get(R.string.individual_membership))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 PlanIndividual.entries.forEach { plan ->
                     val clave = ClavesPrecio.individual(plan)
@@ -158,7 +161,7 @@ private fun PlanesTab(editable: Boolean, conTuMembresia: Boolean, viewModel: Pre
                     TarjetaPlan(
                         titulo = titulo,
                         precio = dinero(ClavesPrecio.de(clave, editados)),
-                        periodo = "al mes",
+                        periodo = Textos.get(R.string.per_month),
                         incluye = Catalogos.beneficiosPlanIndividual(plan),
                         destacado = plan == PlanIndividual.DELUXE,
                         onEditar = editar(clave, titulo)
@@ -166,40 +169,40 @@ private fun PlanesTab(editable: Boolean, conTuMembresia: Boolean, viewModel: Pre
                 }
             }
 
-            Seccion("PAQUETES FAMILIARES")
+            Seccion(Textos.get(R.string.family_packages))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Catalogos.paquetesFamiliares.forEach { paquete ->
                     val clave = ClavesPrecio.familiar(paquete.id)
-                    val titulo = "Paquete ${paquete.nombre}"
+                    val titulo = Textos.get(R.string.k_package, paquete.nombre)
                     TarjetaPlan(
                         titulo = titulo,
                         precio = dinero(ClavesPrecio.de(clave, editados)),
-                        periodo = "al mes",
-                        incluye = listOf(paquete.descripcion, "Hasta ${paquete.maxIntegrantes} integrantes"),
+                        periodo = Textos.get(R.string.per_month),
+                        incluye = listOf(paquete.descripcion, Textos.get(R.string.up_to_members, paquete.maxIntegrantes)),
                         onEditar = editar(clave, titulo)
                     )
                 }
             }
 
-            Seccion("VISITA SENCILLA")
+            Seccion(Textos.get(R.string.single_visit))
             TarjetaPlan(
-                titulo = "Visita",
+                titulo = Textos.get(R.string.visit),
                 precio = dinero(ClavesPrecio.de(ClavesPrecio.VISITA, editados)),
-                periodo = "por visita",
+                periodo = Textos.get(R.string.per_visit),
                 incluye = listOf(
-                    "Acceso por un solo día",
-                    "Áreas que admiten visitantes, con aprobación del club",
-                    "Horario de visitantes: ${Catalogos.HORA_APERTURA_AREAS} a ${Catalogos.HORA_CIERRE_AREAS}"
+                    Textos.get(R.string.one_day_access),
+                    Textos.get(R.string.areas_that_admit_visitors_with_club),
+                    Textos.get(R.string.visitor_hours_to, Catalogos.HORA_APERTURA_AREAS, Catalogos.HORA_CIERRE_AREAS)
                 ),
-                onEditar = editar(ClavesPrecio.VISITA, "Visita")
+                onEditar = editar(ClavesPrecio.VISITA, Textos.get(R.string.visit))
             )
 
-            Seccion("CÓMO SE PAGA")
+            Seccion(Textos.get(R.string.how_to_pay))
             TarjetaClub(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Incluye("Membresías individuales y paquetes familiares: pago mensual.")
-                    Incluye("Visita: pago único de ${dinero(ClavesPrecio.de(ClavesPrecio.VISITA, editados))} por cada día de visita.")
-                    Incluye("Métodos de pago: ${Catalogos.METODOS_DE_PAGO.joinToString(", ")}.")
+                    Incluye(Textos.get(R.string.individual_memberships_and_family_pack))
+                    Incluye(Textos.get(R.string.visit_one_time_payment_of_for, dinero(ClavesPrecio.de(ClavesPrecio.VISITA, editados))))
+                    Incluye(Textos.get(R.string.manual_metodos_pago, Catalogos.METODOS_DE_PAGO.joinToString(", ")))
                 }
             }
 
@@ -227,10 +230,10 @@ private fun EditarPrecioDialog(nombre: String, precioActual: Double, precioBase:
     val nuevo = texto.toDoubleOrNull()
     val valido = nuevo != null && nuevo > 0
 
-    DialogoFormulario(titulo = "Editar precio", onCerrar = onCerrar) {
+    DialogoFormulario(titulo = Textos.get(R.string.edit_price), onCerrar = onCerrar) {
         Text(nombre, style = MaterialTheme.typography.titleMedium, color = TextoPrincipal)
         Text(
-            "Precio base del catálogo: ${dinero(precioBase)}",
+            Textos.get(R.string.catalog_base_price, dinero(precioBase)),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoSecundario,
             modifier = Modifier.padding(top = 2.dp)
@@ -238,17 +241,17 @@ private fun EditarPrecioDialog(nombre: String, precioActual: Double, precioBase:
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        EtiquetaCampo("PRECIO (MXN)")
+        EtiquetaCampo(Textos.get(R.string.price_mxn))
         CampoTexto(
             value = texto,
             onValueChange = { texto = it.filter(Char::isDigit).take(6) },
             tipoTeclado = KeyboardType.Number,
             isError = texto.isNotBlank() && !valido,
-            mensajeError = if (texto.isNotBlank() && !valido) "Escribe un precio mayor a 0" else null
+            mensajeError = if (texto.isNotBlank() && !valido) Textos.get(R.string.enter_a_price_greater_than_0) else null
         )
 
         Text(
-            "Se aplica a las nuevas altas y renovaciones. Quien ya tiene membresía conserva el precio que pagó hasta que renueve.",
+            Textos.get(R.string.applies_to_new_sign_ups_and),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoSecundario,
             modifier = Modifier.padding(top = 12.dp)
@@ -257,7 +260,7 @@ private fun EditarPrecioDialog(nombre: String, precioActual: Double, precioBase:
         Spacer(modifier = Modifier.height(24.dp))
 
         BotonPrimario(
-            texto = "Guardar precio",
+            texto = Textos.get(R.string.save_price),
             enabled = valido && nuevo != precioActual,
             onClick = { nuevo?.let(onGuardar) }
         )
@@ -301,7 +304,8 @@ private fun TarjetaPlan(
     onEditar: (() -> Unit)? = null
 ) {
     val paquete = when {
-        titulo.contains("familiar", ignoreCase = true) || titulo.contains("grupal", ignoreCase = true) -> 3
+        titulo.contains("familiar", ignoreCase = true) || titulo.contains("family", ignoreCase = true) ||
+            titulo.contains("grupal", ignoreCase = true) -> 3
         titulo.contains("deluxe", ignoreCase = true) ||
             titulo.contains("vip", ignoreCase = true) ||
             titulo.contains("premium", ignoreCase = true) ||
@@ -357,7 +361,7 @@ private fun TarjetaPlan(
                 }
                 if (onEditar != null) {
                     IconButton(onClick = onEditar) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Editar precio de $titulo", tint = TextoSecundario)
+                        Icon(Icons.Filled.Edit, contentDescription = Textos.get(R.string.edit_price_of, titulo), tint = TextoSecundario)
                     }
                 }
             }
@@ -381,7 +385,7 @@ private fun TuMembresia(viewModel: MembresiaViewModel = viewModel(), familiaView
     TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = MarcaSuave) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "TU MEMBRESÍA",
+                Textos.get(R.string.your_membership),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Marca,
@@ -421,7 +425,7 @@ private fun TuMembresia(viewModel: MembresiaViewModel = viewModel(), familiaView
                             .size(18.dp)
                     )
                     Text(
-                        "${integrante.nombre} (${integrante.parentesco})",
+                        "${integrante.nombre} (${etiquetaParentesco(integrante.parentesco)})",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoPrincipal
                     )

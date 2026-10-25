@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.membresia
 
+import com.example.clubdeportivo.data.model.etiquetaParentesco
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +54,8 @@ import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.ReglasMembresia
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /**
  * "Tu familia": las personas del paquete familiar. El titular las ve a todas y da de alta a las que faltan (cada una
@@ -72,13 +75,13 @@ internal fun TarjetaFamilia(viewModel: FamiliaViewModel) {
         TarjetaClub(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("TU FAMILIA", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextoSecundario, letterSpacing = 0.4.sp)
+                    Text(Textos.get(R.string.your_family), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextoSecundario, letterSpacing = 0.4.sp)
                     // Un integrante solo ve su propio lugar: el conteo del paquete es del titular.
-                    Insignia(if (datos.esTitular) "${datos.miembros.size} de ${datos.maxPersonas} integrantes" else "Integrante", TipoInsignia.NEUTRO)
+                    Insignia(if (datos.esTitular) Textos.get(R.string.of_members, datos.miembros.size, datos.maxPersonas) else "Integrante", TipoInsignia.NEUTRO)
                 }
                 if (datos.esTitular) {
                     Text(
-                        "Eres el titular del paquete: da de alta a tu familia y compárteles su enlace de acceso para que creen su cuenta.",
+                        Textos.get(R.string.you_are_the_package_holder_add),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoSecundario,
                         modifier = Modifier.padding(top = 6.dp)
@@ -93,13 +96,13 @@ internal fun TarjetaFamilia(viewModel: FamiliaViewModel) {
                     Spacer(modifier = Modifier.height(12.dp))
                     if (viewModel.puedeAgregar(datos)) {
                         BotonPrimario(
-                            texto = "Agregar familiar (${datos.lugaresLibres} ${if (datos.lugaresLibres == 1) "lugar libre" else "lugares libres"})",
+                            texto = Textos.get(R.string.manual_agregar_familiar_lugares, datos.lugaresLibres, if (datos.lugaresLibres == 1) Textos.get(R.string.free_spot) else Textos.get(R.string.free_spots)),
                             onClick = { viewModel.limpiarError(); agregando = true }
                         )
                     } else {
                         Text(
-                            if (datos.lugaresLibres == 0) "Tu paquete ya tiene a todos sus integrantes."
-                            else "Tu membresía no está activa: renuévala en recepción para agregar familiares.",
+                            if (datos.lugaresLibres == 0) Textos.get(R.string.your_package_already_has_all_its)
+                            else Textos.get(R.string.your_membership_is_not_active_renew),
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextoSecundario
                         )
@@ -137,15 +140,15 @@ private fun FilaIntegrante(persona: MiembroClub, puedeCompartir: Boolean, onComp
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(persona.nombre, style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
-            Text(persona.parentesco, style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+            Text(etiquetaParentesco(persona.parentesco), style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
         }
         if (puedeCompartir) {
-            Insignia("Falta crear cuenta", TipoInsignia.ALERTA)
+            Insignia(Textos.get(R.string.account_not_created_yet), TipoInsignia.ALERTA)
             TextButton(onClick = onCompartir, modifier = modifierReflejo(Modifier, enabled = true)) {
-                Text("Enlace", color = Marca, fontWeight = FontWeight.Bold)
+                Text(Textos.get(R.string.link), color = Marca, fontWeight = FontWeight.Bold)
             }
         } else {
-            Insignia(if (persona.cuentaCreada) "Con cuenta" else "Titular", if (persona.cuentaCreada) TipoInsignia.EXITO else TipoInsignia.NEUTRO)
+            Insignia(if (persona.cuentaCreada) Textos.get(R.string.with_account) else "Titular", if (persona.cuentaCreada) TipoInsignia.EXITO else TipoInsignia.NEUTRO)
         }
     }
 }
@@ -164,14 +167,14 @@ private fun DialogoAgregarFamiliar(
     var correo by remember { mutableStateOf("") }
 
     DialogoFormulario(
-        titulo = "Agregar familiar",
+        titulo = Textos.get(R.string.add_family_member),
         onCerrar = onCerrar,
         pie = {
             if (error != null) {
                 Text(error, color = Peligro, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 12.dp))
             }
             BotonPrimario(
-                texto = "Dar de alta y generar enlace",
+                texto = Textos.get(R.string.add_and_generate_link),
                 cargando = guardando,
                 enabled = nombre.isNotBlank() && parentesco.isNotBlank(),
                 onClick = { onGuardar(nombre, parentesco, telefono, correo) }
@@ -179,36 +182,36 @@ private fun DialogoAgregarFamiliar(
         }
     ) {
         Text(
-            "${if (lugaresLibres == 1) "Queda 1 lugar" else "Quedan $lugaresLibres lugares"} en tu paquete. " +
-                "Al darlo de alta recibirás un enlace para que cree su cuenta en la app.",
+            Textos.get(R.string.manual_en_tu_paquete, if (lugaresLibres == 1) Textos.get(R.string.n_1_spot_left) else Textos.get(R.string.spots_left, lugaresLibres)) +
+                Textos.get(R.string.once_added_you_will_get_a),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoSecundario
         )
         EspacioCampos()
-        EtiquetaCampo("NOMBRE COMPLETO")
-        CampoTexto(value = nombre, onValueChange = { nombre = it }, placeholder = "Nombre completo", capitalizacion = KeyboardCapitalization.Words)
+        EtiquetaCampo(Textos.get(R.string.full_name))
+        CampoTexto(value = nombre, onValueChange = { nombre = it }, placeholder = Textos.get(R.string.full_name_2), capitalizacion = KeyboardCapitalization.Words)
         EspacioCampos()
-        EtiquetaCampo("PARENTESCO")
+        EtiquetaCampo(Textos.get(R.string.lbl_parentesco))
         CampoTexto(
             value = parentesco,
             onValueChange = { parentesco = it },
-            placeholder = "Cónyuge, Hijo, Hija...",
+            placeholder = Textos.get(R.string.spouse_son_daughter),
             capitalizacion = KeyboardCapitalization.Sentences
         )
         EspacioCampos()
-        EtiquetaCampo("TELÉFONO (OPCIONAL)")
+        EtiquetaCampo(Textos.get(R.string.phone_optional))
         CampoTexto(
             value = telefono,
             onValueChange = { telefono = it.filter { c -> c.isDigit() || c == ' ' }.take(15) },
-            placeholder = "10 dígitos",
+            placeholder = Textos.get(R.string.n_10_digits),
             tipoTeclado = KeyboardType.Phone
         )
         EspacioCampos()
-        EtiquetaCampo("CORREO (OPCIONAL)")
+        EtiquetaCampo(Textos.get(R.string.email_optional))
         CampoTexto(
             value = correo,
             onValueChange = { correo = it },
-            placeholder = "correo@ejemplo.com",
+            placeholder = Textos.get(R.string.email_example_com),
             tipoTeclado = KeyboardType.Email,
             imeAction = ImeAction.Done
         )
@@ -224,40 +227,40 @@ private fun DialogoInvitacion(persona: MiembroClub, nombreTitular: String, onCer
     val mensaje = ReglasMembresia.mensajeDeInvitacion(persona.nombre, nombreTitular, persona.codigo)
 
     DialogoFormulario(
-        titulo = "Enlace de acceso",
+        titulo = Textos.get(R.string.access_link),
         onCerrar = onCerrar,
         pie = {
             BotonPrimario(
-                texto = "Compartir enlace",
+                texto = Textos.get(R.string.share_link),
                 onClick = {
                     val envio = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "Tu acceso al plan familiar")
+                        putExtra(Intent.EXTRA_SUBJECT, Textos.get(R.string.your_access_to_the_family_plan))
                         putExtra(Intent.EXTRA_TEXT, mensaje)
                     }
-                    contexto.startActivity(Intent.createChooser(envio, "Enviar enlace a ${persona.nombre}"))
+                    contexto.startActivity(Intent.createChooser(envio, Textos.get(R.string.send_link_to, persona.nombre)))
                 }
             )
             Spacer(modifier = Modifier.height(8.dp))
             BotonSecundario(
-                texto = "Copiar enlace",
+                texto = Textos.get(R.string.copy_link),
                 onClick = {
                     portapapeles.setText(AnnotatedString(mensaje))
-                    Toast.makeText(contexto, "Enlace copiado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(contexto, Textos.get(R.string.link_copied), Toast.LENGTH_SHORT).show()
                 }
             )
         }
     ) {
         Text(
-            "${persona.nombre} (${persona.parentesco}) ya está dado de alta. Mándale este enlace: al abrirlo en su teléfono " +
-                "la app le pide solo crear su correo y contraseña.",
+            Textos.get(R.string.has_been_added_send_them_this, persona.nombre, etiquetaParentesco(persona.parentesco)) +
+                Textos.get(R.string.the_app_only_asks_them_to),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoSecundario
         )
         Spacer(modifier = Modifier.height(16.dp))
         TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = MarcaSuave) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("CÓDIGO", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Marca, letterSpacing = 0.4.sp)
+                Text(Textos.get(R.string.code), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Marca, letterSpacing = 0.4.sp)
                 Text(persona.codigo, fontSize = 24.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold, color = TextoPrincipal)
                 Text(
                     enlace,
@@ -268,7 +271,7 @@ private fun DialogoInvitacion(persona: MiembroClub, nombreTitular: String, onCer
             }
         }
         Text(
-            "Si el enlace no abre la app, en Regístrate puede escribir el código a mano.",
+            Textos.get(R.string.if_the_link_doesn_t_open),
             style = MaterialTheme.typography.bodySmall,
             color = TextoSecundario,
             modifier = Modifier.padding(top = 10.dp)

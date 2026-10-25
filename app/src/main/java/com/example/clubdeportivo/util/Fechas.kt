@@ -7,12 +7,22 @@ import java.util.Locale
 
 /** Ayuda a comparar fechas/horas de texto ("yyyy-MM-dd", "HH:mm") sin depender de java.time (minSdk 24). */
 object Fechas {
-    private val NOMBRES_DIA = arrayOf("dom.", "lun.", "mar.", "mié.", "jue.", "vie.", "sáb.")
-    private val NOMBRES_MES = arrayOf("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
-    private val MESES_LARGOS = arrayOf(
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
+    // Los nombres salen según el idioma elegido en Perfil (no usan recursos de Android para poder probarse en la JVM).
+    private val ingles get() = PreferenciaIdioma.actual == Idioma.EN
+    private val NOMBRES_DIA
+        get() = if (ingles) arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+        else arrayOf("dom.", "lun.", "mar.", "mié.", "jue.", "vie.", "sáb.")
+    private val NOMBRES_MES
+        get() = if (ingles) arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        else arrayOf("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+    private val MESES_LARGOS
+        get() = if (ingles) arrayOf(
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ) else arrayOf(
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+        )
 
     private const val PATRON_FECHA_HORA = "yyyy-MM-dd HH:mm"
     private const val PATRON_FECHA = "yyyy-MM-dd"
@@ -55,15 +65,16 @@ object Fechas {
      * Si [fecha] no tiene el formato "yyyy-MM-dd" se devuelve tal cual.
      */
     fun legible(fecha: String): String {
-        if (fecha == hoy()) return "Hoy"
-        if (fecha == sumarDias(1)) return "Mañana"
+        if (fecha == hoy()) return if (ingles) "Today" else "Hoy"
+        if (fecha == sumarDias(1)) return if (ingles) "Tomorrow" else "Mañana"
         val base = runCatching { formatoFecha().parse(fecha) }.getOrNull() ?: return fecha
         val cal = Calendar.getInstance().apply { time = base }
         val dia = NOMBRES_DIA[cal.get(Calendar.DAY_OF_WEEK) - 1]
         val mes = NOMBRES_MES[cal.get(Calendar.MONTH)]
         val anio = cal.get(Calendar.YEAR)
         val sufijo = if (anio == Calendar.getInstance().get(Calendar.YEAR)) "" else " $anio"
-        return "$dia ${cal.get(Calendar.DAY_OF_MONTH)} $mes$sufijo"
+        val numero = cal.get(Calendar.DAY_OF_MONTH)
+        return if (ingles) "$dia $mes $numero$sufijo" else "$dia $numero $mes$sufijo"
     }
 
     /** "2026-10" -> "octubre" (o "oct" si [corto]). Devuelve [mes] tal cual si no tiene ese formato. */
@@ -89,8 +100,8 @@ object Fechas {
             diaCal.add(Calendar.DAY_OF_YEAR, offset)
             val fecha = formatoFecha().format(diaCal.time)
             val etiqueta = when (offset) {
-                0 -> "Hoy"
-                1 -> "Mañana"
+                0 -> if (ingles) "Today" else "Hoy"
+                1 -> if (ingles) "Tomorrow" else "Mañana"
                 else -> {
                     val diaSemana = nombresDia[diaCal.get(Calendar.DAY_OF_WEEK) - 1]
                     val dia = diaCal.get(Calendar.DAY_OF_MONTH)

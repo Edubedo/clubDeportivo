@@ -15,6 +15,8 @@ import com.example.clubdeportivo.data.repository.ReservaRepository
 import com.example.clubdeportivo.data.repository.TorneoRepository
 import com.example.clubdeportivo.util.Fechas
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Gestión de áreas (canchas, albercas, gimnasio...): alta, edición y baja sobre la colección real de áreas. */
 class AreasViewModel(
@@ -53,7 +55,7 @@ class AreasViewModel(
                     .groupingBy { it.areaId }
                     .eachCount()
             } catch (e: Exception) {
-                _mensaje.value = "No se pudieron cargar las áreas."
+                _mensaje.value = Textos.get(R.string.the_areas_could_not_be_loaded)
             }
             _cargando.value = false
         }
@@ -77,7 +79,7 @@ class AreasViewModel(
         carriles: Int = 0
     ) {
         if (nombreRepetido(nombre, tipo, existente?.id)) {
-            _mensaje.value = "Ya existe \"${nombre.trim()}\" en $tipo."
+            _mensaje.value = Textos.get(R.string.already_exists_in, nombre.trim(), tipo)
             return
         }
         viewModelScope.launch {
@@ -87,13 +89,13 @@ class AreasViewModel(
                     if (disponibilidad != creada.disponibilidad) {
                         areaRepository.actualizarArea(creada.copy(disponibilidad = disponibilidad))
                     }
-                    _mensaje.value = "Área agregada: ${nombre.trim()}"
+                    _mensaje.value = Textos.get(R.string.area_added, nombre.trim())
                 } else {
                     val hoy = Fechas.hoy()
                     val excedida = reservaRepository.obtenerReservasDeArea(existente.id)
                         .any { it.fecha >= hoy && it.personas > capacidad }
                     if (excedida) {
-                        _mensaje.value = "Hay reservas futuras para más personas que la nueva capacidad ($capacidad)."
+                        _mensaje.value = Textos.get(R.string.there_are_future_bookings_for_more, capacidad)
                         return@launch
                     }
                     areaRepository.actualizarArea(
@@ -106,11 +108,11 @@ class AreasViewModel(
                             carriles = carriles
                         )
                     )
-                    _mensaje.value = "Área actualizada: ${nombre.trim()}"
+                    _mensaje.value = Textos.get(R.string.area_updated, nombre.trim())
                 }
                 cargarAreas()
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo guardar el área."
+                _mensaje.value = Textos.get(R.string.the_area_could_not_be_saved)
             }
         }
     }
@@ -122,13 +124,13 @@ class AreasViewModel(
             try {
                 areaRepository.actualizarArea(area.copy(disponibilidad = nueva))
                 _mensaje.value = if (nueva == DisponibilidadArea.MANTENIMIENTO) {
-                    "${area.nombre} quedó en mantenimiento: ya no admite reservas nuevas. Las que ya existen se conservan."
+                    Textos.get(R.string.is_now_under_maintenance_it_no, area.nombre)
                 } else {
-                    "${area.nombre} está disponible otra vez."
+                    Textos.get(R.string.is_available_again, area.nombre)
                 }
                 cargarAreas()
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo cambiar el estatus del área."
+                _mensaje.value = Textos.get(R.string.the_area_status_could_not_be)
             }
         }
     }
@@ -140,14 +142,14 @@ class AreasViewModel(
                 val conReservas = reservaRepository.obtenerReservasDeArea(area.id).any { it.fecha >= hoy }
                 val conTorneo = torneoRepository.obtenerTorneos().any { it.areaId == area.id && it.fechaFin >= hoy }
                 if (conReservas || conTorneo) {
-                    _mensaje.value = "No se puede eliminar ${area.nombre}: tiene reservas o torneos pendientes."
+                    _mensaje.value = Textos.get(R.string.can_t_be_deleted_it_has, area.nombre)
                     return@launch
                 }
                 areaRepository.eliminarArea(area.id)
-                _mensaje.value = "Área eliminada: ${area.nombre}"
+                _mensaje.value = Textos.get(R.string.area_deleted, area.nombre)
                 cargarAreas()
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo eliminar el área."
+                _mensaje.value = Textos.get(R.string.the_area_could_not_be_deleted)
             }
         }
     }

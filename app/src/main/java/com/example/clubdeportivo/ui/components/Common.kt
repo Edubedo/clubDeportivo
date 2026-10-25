@@ -66,6 +66,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -95,6 +97,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.ui.theme.Alerta
 import com.example.clubdeportivo.ui.theme.AlertaSuave
@@ -324,7 +327,7 @@ fun CampoBusqueda(
                         shape = RoundedCornerShape(10.dp)
                     )
                 ) {
-                    Icon(Icons.Filled.Close, contentDescription = "Borrar búsqueda")
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.borrar_busqueda))
                 }
             }
         } else null
@@ -826,17 +829,44 @@ fun BotonIcono(
     }
 }
 
-/** Diálogo de formulario estándar. */
+/**
+ * Diálogo de formulario estándar. Cerrarlo con la X o el botón atrás pregunta primero "¿seguro que quieres salir?"
+ * (lo escrito se perdería); [confirmarSalida] = false lo desactiva para diálogos que solo muestran información.
+ */
 @Composable
 fun DialogoFormulario(
     titulo: String,
     onCerrar: () -> Unit,
     /** Zona fija bajo el formulario (botón de guardar y mensajes de error): siempre visible, sin tener que bajar. */
     pie: (@Composable ColumnScope.() -> Unit)? = null,
+    confirmarSalida: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    var confirmandoSalida by remember { mutableStateOf(false) }
+    val intentarCerrar: () -> Unit = {
+        if (confirmarSalida) {
+            confirmandoSalida = true
+        } else {
+            onCerrar()
+        }
+    }
+
+    if (confirmandoSalida) {
+        DialogoConfirmacion(
+            titulo = stringResource(R.string.salir_formulario_titulo),
+            mensaje = stringResource(R.string.salir_formulario_mensaje),
+            textoConfirmar = stringResource(R.string.salir_si),
+            textoCancelar = stringResource(R.string.seguir_editando),
+            onConfirmar = {
+                confirmandoSalida = false
+                onCerrar()
+            },
+            onCancelar = { confirmandoSalida = false }
+        )
+    }
+
     Dialog(
-        onDismissRequest = onCerrar,
+        onDismissRequest = intentarCerrar,
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)
     ) {
         Surface(
@@ -863,11 +893,11 @@ fun DialogoFormulario(
                             .padding(end = 8.dp)
                     )
                     IconButton(
-                        onClick = onCerrar
+                        onClick = intentarCerrar
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "Cerrar",
+                            contentDescription = stringResource(R.string.cerrar),
                             tint = TextoSecundario
                         )
                     }
@@ -900,7 +930,7 @@ fun DialogoConfirmacion(
     textoConfirmar: String,
     onConfirmar: () -> Unit,
     onCancelar: () -> Unit,
-    textoCancelar: String = "Volver",
+    textoCancelar: String = stringResource(R.string.volver),
     conReflejo: Boolean = true
 ) {
     AlertDialog(
@@ -942,12 +972,10 @@ fun EspacioCampos() {
     Spacer(modifier = Modifier.height(20.dp))
 }
 
-/** Indicador de carga centrado. */
+/** Pantalla de carga estándar (esqueleto de lista con el logo animado); ver [PantallaCarga]. */
 @Composable
-fun FullScreenLoading(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = Marca)
-    }
+fun FullScreenLoading(modifier: Modifier = Modifier, conMargen: Boolean = false) {
+    PantallaCarga(modifier = modifier, conMargen = conMargen)
 }
 
 /** Mensaje centrado para listas vacías, con un icono para que no se vea como una pantalla rota. */

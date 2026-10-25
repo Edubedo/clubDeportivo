@@ -1,5 +1,8 @@
 package com.example.clubdeportivo.data.model
 
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
+
 /**
  * Roles del club, de mayor a menor alcance:
  * - SUPERADMIN: nivel sistema, controla todo (igual que ADMIN en la app).
@@ -18,14 +21,15 @@ enum class Rol {
     VISITANTE_EXTERNO
 }
 
-fun Rol.nombreLegible(): String = when (this) {
-    Rol.SUPERADMIN -> "Superadministrador"
-    Rol.ADMIN -> "Administrador"
-    Rol.ADMIN_AREA -> "Encargado"
-    Rol.AYUDANTE_AREA -> "Encargado"
-    Rol.SOCIO -> "Miembro"
-    Rol.VISITANTE_EXTERNO -> "Visitante externo"
-}
+fun Rol.nombreLegible(): String = Textos.get(
+    when (this) {
+        Rol.SUPERADMIN -> R.string.rol_superadmin
+        Rol.ADMIN -> R.string.rol_admin
+        Rol.ADMIN_AREA, Rol.AYUDANTE_AREA -> R.string.rol_encargado
+        Rol.SOCIO -> R.string.rol_miembro
+        Rol.VISITANTE_EXTERNO -> R.string.rol_visitante
+    }
+)
 
 /** Roles del personal del club: no están sujetos a los límites de reservas pensados para socios y visitantes. */
 fun Rol.esPersonal(): Boolean = this != Rol.SOCIO && this != Rol.VISITANTE_EXTERNO

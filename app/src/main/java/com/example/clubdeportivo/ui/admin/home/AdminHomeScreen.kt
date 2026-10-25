@@ -1,5 +1,7 @@
 package com.example.clubdeportivo.ui.admin.home
 
+import com.example.clubdeportivo.ui.components.EsqueletoLista
+import com.example.clubdeportivo.ui.components.EsqueletoDashboard
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -134,6 +136,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Date
 import java.util.Locale
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 @Composable
 fun AdminHomeScreen(
@@ -191,9 +195,9 @@ internal fun PanelAdmin(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 EncabezadoPantalla(
-                    titulo = "Dashboard",
+                    titulo = Textos.get(R.string.dashboard),
                     modifier = Modifier.weight(1f),
-                    subtitulo = resumen?.let { "Resumen de ${Fechas.nombreMes(it.mes)}" } ?: "Resumen del club"
+                    subtitulo = resumen?.let { Textos.get(R.string.summary, Fechas.nombreMes(it.mes)) } ?: Textos.get(R.string.club_summary)
                 )
                 Button(
                     onClick = { mostrandoNovedades = true },
@@ -202,15 +206,13 @@ internal fun PanelAdmin(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Marca)
                 ) {
-                    Text("Publicaciones", fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(Textos.get(R.string.posts), fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
             }
 
             when {
                 resumen == null && cargando -> {
-                    Box(modifier = Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    EsqueletoDashboard()
                 }
                 resumen == null -> AvisoError()
                 else -> {
@@ -228,7 +230,7 @@ internal fun PanelAdmin(
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    TituloSeccion("Membresías")
+                    TituloSeccion(Textos.get(R.string.memberships))
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
@@ -237,8 +239,8 @@ internal fun PanelAdmin(
                         Metrica(
                             icono = Icons.Filled.CardMembership,
                             valor = resumen.activas.toString(),
-                            titulo = "Membresías activas",
-                            detalle = "${resumen.personasActivas} personas",
+                            titulo = Textos.get(R.string.active_memberships),
+                            detalle = Textos.get(R.string.people_3, resumen.personasActivas),
                             modifier = Modifier.weight(1f),
                             tipo = TipoInsignia.METRICA_ACTIVAS
                         )
@@ -251,14 +253,14 @@ internal fun PanelAdmin(
                         Metrica(
                             icono = Icons.Filled.PersonAdd,
                             valor = resumen.altasMes.toString(),
-                            titulo = "Altas este mes",
+                            titulo = Textos.get(R.string.new_sign_ups_this_month),
                             modifier = Modifier.weight(1f),
                             tipo = TipoInsignia.METRICA_ALTAS
                         )
                         Metrica(
                             icono = Icons.Filled.HourglassTop,
                             valor = resumen.porVencer.size.toString(),
-                            titulo = "Vencen en ${com.example.clubdeportivo.util.CalculoResumenAdmin.DIAS_POR_VENCER} días",
+                            titulo = Textos.get(R.string.expire_in_days, com.example.clubdeportivo.util.CalculoResumenAdmin.DIAS_POR_VENCER),
                             tipo = TipoInsignia.METRICA_VENCIMIENTOS,
                             modifier = Modifier.weight(1f)
                         )
@@ -271,27 +273,27 @@ internal fun PanelAdmin(
                         Metrica(
                             icono = Icons.Filled.EventBusy,
                             valor = resumen.vencidas.toString(),
-                            titulo = "Vencidas",
+                            titulo = Textos.get(R.string.expired_2),
                             tipo = TipoInsignia.METRICA_VENCIDAS,
                             modifier = Modifier.weight(1f)
                         )
                         Metrica(
                             icono = Icons.Filled.Pause,
                             valor = resumen.suspendidas.toString(),
-                            titulo = "Suspendidas",
+                            titulo = Textos.get(R.string.suspended_2),
                             tipo = TipoInsignia.METRICA_SUSPENDIDAS,
                             modifier = Modifier.weight(1f)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    TituloSeccion("Por vencer esta semana")
+                    TituloSeccion(Textos.get(R.string.expiring_this_week))
                     Spacer(modifier = Modifier.height(12.dp))
                     ListaPorVencer(resumen.porVencer)
 
                     if (resumen.ingresosPorMetodo.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(24.dp))
-                        TituloSeccion("Cobros por método")
+                        TituloSeccion(Textos.get(R.string.payments_by_method))
                         Spacer(modifier = Modifier.height(12.dp))
                         CobrosPorMetodo(resumen)
                     }
@@ -299,23 +301,19 @@ internal fun PanelAdmin(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            TituloSeccion("Hoy en el club")
+            TituloSeccion(Textos.get(R.string.at_the_club_today))
             Spacer(modifier = Modifier.height(12.dp))
             OperacionDelDia(operacion)
 
             Spacer(modifier = Modifier.height(24.dp))
-            TituloSeccion("Próximas reservas")
+            TituloSeccion(Textos.get(R.string.upcoming_bookings))
             Spacer(modifier = Modifier.height(12.dp))
             val proximas = proximasReservas
             when {
-                proximas == null -> TarjetaClub(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-                    }
-                }
+                proximas == null -> EsqueletoLista(cantidad = 2)
                 proximas.isEmpty() -> TarjetaClub(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "No hay reservas próximas.",
+                        text = Textos.get(R.string.no_upcoming_bookings),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoSecundario,
                         modifier = Modifier.padding(20.dp)
@@ -339,21 +337,21 @@ private fun AccionesAdmin(
     var dialogo by remember { mutableStateOf<String?>(null) }
     var recordatorioEnviado by remember { mutableStateOf(false) }
 
-    TituloSeccion("Requiere tu atención")
+    TituloSeccion(Textos.get(R.string.needs_your_attention))
     Spacer(Modifier.height(12.dp))
     Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         TarjetaAtencion(
             cantidad = pendientes?.toString() ?: "—",
-            titulo = "Solicitudes pendientes",
-            detalle = "Reservas por aprobar",
+            titulo = Textos.get(R.string.pending_requests_2),
+            detalle = Textos.get(R.string.bookings_to_approve),
             color = ActionOrange,
             modifier = Modifier.weight(1f),
             onClick = onIrReservas
         )
         TarjetaAtencion(
             cantidad = porVencer.size.toString(),
-            titulo = "Membresías por vencer",
-            detalle = "En los próximos 7 días",
+            titulo = Textos.get(R.string.memberships_expiring),
+            detalle = Textos.get(R.string.in_the_next_7_days),
             color = AzulAccion,
             modifier = Modifier.weight(1f),
             onClick = { dialogo = "membresias" }
@@ -363,31 +361,31 @@ private fun AccionesAdmin(
     when (dialogo) {
         "membresias" -> AlertDialog(
             onDismissRequest = { dialogo = null },
-            title = { Text("Membresías por vencer", color = TextoPrincipal, fontWeight = FontWeight.Bold) },
+            title = { Text(Textos.get(R.string.memberships_expiring), color = TextoPrincipal, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (porVencer.isEmpty()) {
-                        Text("No hay membresías por vencer esta semana.", color = TextoSecundario)
+                        Text(Textos.get(R.string.no_memberships_expiring_this_week), color = TextoSecundario)
                     } else {
                         porVencer.take(7).forEach { detalle ->
                             Column {
-                                Text(detalle.titular?.nombre ?: "Miembro del club", color = TextoPrincipal, fontWeight = FontWeight.SemiBold)
-                                Text("Vence el ${Fechas.legible(detalle.membresia.fechaVencimiento)}", color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
+                                Text(detalle.titular?.nombre ?: Textos.get(R.string.club_member), color = TextoPrincipal, fontWeight = FontWeight.SemiBold)
+                                Text(Textos.get(R.string.expires_on, Fechas.legible(detalle.membresia.fechaVencimiento)), color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
                     if (recordatorioEnviado) {
-                        Text("Recordatorios preparados para los miembros de esta lista.", color = Exito, style = MaterialTheme.typography.bodySmall)
+                        Text(Textos.get(R.string.reminders_prepared_for_the_members_on), color = Exito, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { recordatorioEnviado = true }) {
-                    Text(if (recordatorioEnviado) "Enviado" else "Enviar recordatorios")
+                    Text(if (recordatorioEnviado) Textos.get(R.string.sent_2) else Textos.get(R.string.send_reminders))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { dialogo = null; onIrMembresia() }) { Text("Ver membresías") }
+                TextButton(onClick = { dialogo = null; onIrMembresia() }) { Text(Textos.get(R.string.view_memberships)) }
             }
         )
     }
@@ -414,23 +412,23 @@ private fun NovedadesAdminScreen(
     ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 EncabezadoPantalla(
-                    titulo = "Publicaciones",
+                    titulo = Textos.get(R.string.posts),
                     modifier = Modifier.weight(1f),
-                    subtitulo = "Novedades del club"
+                    subtitulo = Textos.get(R.string.club_news_2)
                 )
                 FilledTonalButton(
                     onClick = { publicacionEditando = null; mostrarFormulario = true },
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text("Crear", maxLines = 1)
+                Text(Textos.get(R.string.create), maxLines = 1)
             }
         }
 
         if (publicaciones.isEmpty()) {
             TarjetaClub(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Todavía no hay publicaciones. Crea una novedad para compartirla con el club.",
+                    Textos.get(R.string.there_are_no_posts_yet_create),
                     modifier = Modifier.padding(18.dp),
                     color = TextoSecundario
                 )
@@ -451,12 +449,12 @@ private fun NovedadesAdminScreen(
                             )
                         }
                         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                            Insignia("Publicada", TipoInsignia.EXITO)
+                            Insignia(Textos.get(R.string.published), TipoInsignia.EXITO)
                             Spacer(Modifier.height(7.dp))
                             Text(aviso.titulo, style = MaterialTheme.typography.titleMedium, color = TextoPrincipal, fontWeight = FontWeight.Bold)
                             Text(
-                                "Para: ${aviso.audiencia.etiqueta}" +
-                                    aviso.vigencia.takeIf { it.isNotBlank() }?.let { " · Hasta ${Fechas.legible(it)}" }.orEmpty(),
+                                Textos.get(R.string.for_3, aviso.audiencia.etiqueta) +
+                                    aviso.vigencia.takeIf { it.isNotBlank() }?.let { Textos.get(R.string.until, Fechas.legible(it)) }.orEmpty(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextoSecundario
                             )
@@ -468,7 +466,7 @@ private fun NovedadesAdminScreen(
                                     onClick = { publicacionDetalle = aviso },
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
-                                    Text("Ver detalles", color = Marca)
+                                    Text(Textos.get(R.string.view_details), color = Marca)
                                     Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Marca, modifier = Modifier.size(16.dp))
                                 }
                             }
@@ -482,9 +480,9 @@ private fun NovedadesAdminScreen(
     publicacionesViewModel.error?.let { mensaje ->
         AlertDialog(
             onDismissRequest = publicacionesViewModel::limpiarError,
-            title = { Text("No se pudo completar la acción", color = TextoPrincipal, fontWeight = FontWeight.Bold) },
+            title = { Text(Textos.get(R.string.the_action_could_not_be_completed), color = TextoPrincipal, fontWeight = FontWeight.Bold) },
             text = { Text(mensaje, color = TextoSecundario) },
-            confirmButton = { TextButton(onClick = publicacionesViewModel::limpiarError) { Text("Entendido") } }
+            confirmButton = { TextButton(onClick = publicacionesViewModel::limpiarError) { Text(Textos.get(R.string.got_it)) } }
         )
     }
 
@@ -535,26 +533,26 @@ private fun NovedadesAdminScreen(
                                 contentScale = ContentScale.Crop
                             )
                         }
-                        Insignia("Publicada", TipoInsignia.EXITO)
+                        Insignia(Textos.get(R.string.published), TipoInsignia.EXITO)
                         Text(publicacion.titulo, color = TextoPrincipal, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Text(publicacion.descripcion, color = TextoSecundario, style = MaterialTheme.typography.bodyLarge)
-                        Text("Audiencia: ${publicacion.audiencia.etiqueta}", color = TextoSecundario)
-                        if (publicacion.vigencia.isNotBlank()) Text("Vigente hasta: ${Fechas.legible(publicacion.vigencia)}", color = TextoSecundario)
+                        Text(Textos.get(R.string.audience, publicacion.audiencia.etiqueta), color = TextoSecundario)
+                        if (publicacion.vigencia.isNotBlank()) Text(Textos.get(R.string.valid_until, Fechas.legible(publicacion.vigencia)), color = TextoSecundario)
                     }
                     Spacer(Modifier.height(12.dp))
                     Button(
                         onClick = { publicacionDetalle = null; publicacionEditando = publicacion; mostrarFormulario = true },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Editar") }
+                    ) { Text(Textos.get(R.string.edit)) }
                     OutlinedButton(
                         onClick = { publicacionDetalle = null; publicacionParaBorrar = publicacion },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Borrar publicación", color = Peligro) }
+                    ) { Text(Textos.get(R.string.delete_post), color = Peligro) }
                     OutlinedButton(
                         onClick = { publicacionDetalle = null },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
-                    ) { Text("Cerrar") }
+                    ) { Text(Textos.get(R.string.close)) }
                 }
             }
         }
@@ -563,24 +561,24 @@ private fun NovedadesAdminScreen(
     publicacionParaBorrar?.let { publicacion ->
         AlertDialog(
             onDismissRequest = { publicacionParaBorrar = null },
-            title = { Text("Borrar publicación", color = TextoPrincipal, fontWeight = FontWeight.Bold) },
-            text = { Text("¿Quieres borrar «${publicacion.titulo}»? Esta acción no se puede deshacer.", color = TextoSecundario) },
+            title = { Text(Textos.get(R.string.delete_post), color = TextoPrincipal, fontWeight = FontWeight.Bold) },
+            text = { Text(Textos.get(R.string.do_you_want_to_delete_this, publicacion.titulo), color = TextoSecundario) },
             confirmButton = {
                 TextButton(onClick = {
                     publicacionesViewModel.eliminar(publicacion)
                     publicacionParaBorrar = null
-                }) { Text("Borrar", color = Peligro) }
+                }) { Text(Textos.get(R.string.delete_2), color = Peligro) }
             },
-            dismissButton = { TextButton(onClick = { publicacionParaBorrar = null }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { publicacionParaBorrar = null }) { Text(Textos.get(R.string.cancel)) } }
         )
     }
 
     if (publicacionGuardada) {
         AlertDialog(
             onDismissRequest = { publicacionGuardada = false },
-            title = { Text("Novedad guardada", color = TextoPrincipal, fontWeight = FontWeight.Bold) },
-            text = { Text("La publicación se guardó correctamente.", color = TextoSecundario) },
-            confirmButton = { TextButton(onClick = { publicacionGuardada = false }) { Text("Listo") } }
+            title = { Text(Textos.get(R.string.news_saved), color = TextoPrincipal, fontWeight = FontWeight.Bold) },
+            text = { Text(Textos.get(R.string.the_post_was_saved_successfully), color = TextoSecundario) },
+            confirmButton = { TextButton(onClick = { publicacionGuardada = false }) { Text(Textos.get(R.string.done)) } }
         )
     }
 }
@@ -644,11 +642,11 @@ private fun FormularioPublicacion(
                 comprimiendoImagen = true
                 val jpeg = withContext(Dispatchers.IO) { comprimirImagenPublicacion(contexto.contentResolver, uri) }
                 if (jpeg == null) {
-                    errorImagen = "No se pudo leer la imagen. Elige otro archivo."
+                    errorImagen = Textos.get(R.string.the_image_could_not_be_read)
                 } else {
                     val dataUri = "data:image/jpeg;base64," + Base64.encodeToString(jpeg, Base64.NO_WRAP)
                     if (dataUri.length > MAX_PORTADA_FIRESTORE_CARACTERES) {
-                        errorImagen = "La portada sigue siendo muy pesada. Elige una imagen más pequeña."
+                        errorImagen = Textos.get(R.string.the_cover_is_still_too_large)
                     } else {
                         imagen = dataUri
                         errorImagen = null
@@ -669,7 +667,7 @@ private fun FormularioPublicacion(
         ) {
             Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
                 Text(
-                    if (inicial == null) "Publicar una novedad" else "Editar novedad",
+                    if (inicial == null) Textos.get(R.string.publish_news) else Textos.get(R.string.edit_news),
                     color = TextoPrincipal,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
@@ -681,37 +679,37 @@ private fun FormularioPublicacion(
                 ) {
                 OutlinedButton(onClick = { selectorImagen.launch("image/*") }, enabled = !comprimiendoImagen, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Filled.Image, contentDescription = null)
-                    Text(if (comprimiendoImagen) "Preparando imagen…" else if (imagen.isBlank()) "Elegir foto de portada" else "Cambiar foto de portada")
+                    Text(if (comprimiendoImagen) Textos.get(R.string.preparing_image) else if (imagen.isBlank()) Textos.get(R.string.choose_cover_photo) else Textos.get(R.string.change_cover_photo))
                 }
                 if (imagen.isNotBlank()) {
-                    AsyncImage(model = imagen, contentDescription = "Vista previa de portada", modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
+                    AsyncImage(model = imagen, contentDescription = Textos.get(R.string.cover_preview), modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
                 }
                 errorImagen?.let { Text(it, color = Peligro, style = MaterialTheme.typography.bodySmall) }
-                OutlinedTextField(value = titulo, onValueChange = { titulo = it.take(60) }, label = { Text("Título") }, singleLine = true)
+                OutlinedTextField(value = titulo, onValueChange = { titulo = it.take(60) }, label = { Text(Textos.get(R.string.title_2)) }, singleLine = true)
                 OutlinedTextField(
                     value = descripcion,
                     onValueChange = { descripcion = it.take(300) },
-                    label = { Text("Descripción") },
+                    label = { Text(Textos.get(R.string.description)) },
                     minLines = 3,
                     maxLines = 5,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedButton(onClick = { mostrarCalendario = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Filled.DateRange, contentDescription = null)
-                    Text(if (vigencia.isBlank()) "Elegir vigencia" else "Vigente hasta ${Fechas.legible(vigencia)}")
+                    Text(if (vigencia.isBlank()) Textos.get(R.string.choose_end_date) else Textos.get(R.string.valid_until_2, Fechas.legible(vigencia)))
                 }
                 if (errorVigencia || (vigencia.isNotBlank() && vigencia < Fechas.hoy())) {
-                    Text("La vigencia debe ser hoy o una fecha futura.", color = Peligro, style = MaterialTheme.typography.bodySmall)
+                    Text(Textos.get(R.string.the_end_date_must_be_today), color = Peligro, style = MaterialTheme.typography.bodySmall)
                 }
-                Text("Audiencia", color = TextoSecundario, style = MaterialTheme.typography.labelMedium)
+                Text(Textos.get(R.string.audience_2), color = TextoSecundario, style = MaterialTheme.typography.labelMedium)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     listOf(
-                        AudienciaPublicacion.TODOS to "Todos",
-                        AudienciaPublicacion.PERSONAL to "Personal",
-                        AudienciaPublicacion.SOCIOS to "Socio"
+                        AudienciaPublicacion.TODOS to Textos.get(R.string.all_2),
+                        AudienciaPublicacion.PERSONAL to Textos.get(R.string.staff),
+                        AudienciaPublicacion.SOCIOS to Textos.get(R.string.members_2)
                     ).forEach { (destinatario, etiqueta) ->
                         FilterChip(selected = audiencia == destinatario, onClick = { audiencia = destinatario }, label = { Text(etiqueta) })
                     }
@@ -723,7 +721,7 @@ private fun FormularioPublicacion(
                         onClick = onCerrar,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
-                    ) { Text("Cancelar") }
+                    ) { Text(Textos.get(R.string.cancel)) }
                     Button(
                         onClick = {
                             if (vigencia.isNotBlank() && vigencia < Fechas.hoy()) {
@@ -735,7 +733,7 @@ private fun FormularioPublicacion(
                         modifier = Modifier.weight(1f),
                         enabled = titulo.isNotBlank() && descripcion.isNotBlank() && imagen.isNotBlank() &&
                             (vigencia.isBlank() || vigencia >= Fechas.hoy()) && !comprimiendoImagen && !enviando
-                    ) { Text(if (enviando) "Guardando…" else if (inicial != null) "Guardar" else "Publicar") }
+                    ) { Text(if (enviando) Textos.get(R.string.saving) else if (inicial != null) Textos.get(R.string.save) else Textos.get(R.string.publish)) }
                 }
             }
         }
@@ -761,10 +759,10 @@ private fun FormularioPublicacion(
                             mostrarCalendario = false
                         }
                     }
-                }) { Text("Aceptar") }
+                }) { Text(Textos.get(R.string.ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { mostrarCalendario = false }) { Text("Cancelar") }
+                TextButton(onClick = { mostrarCalendario = false }) { Text(Textos.get(R.string.cancel)) }
             }
         ) {
             DatePicker(state = estadoFecha)
@@ -805,10 +803,10 @@ private fun AvisoError() {
         ) {
             Icon(Icons.Filled.ErrorOutline, contentDescription = null, tint = Peligro, modifier = Modifier.size(22.dp))
             Column {
-                Text("No pudimos cargar los ingresos", style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
+                Text(Textos.get(R.string.we_couldn_t_load_the_income), style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
                 Text(
-                    "Revisa tu conexión y desliza hacia abajo para volver a intentarlo. " +
-                        "Así evitamos mostrarte cifras incompletas.",
+                    Textos.get(R.string.check_your_connection_and_pull_down) +
+                        Textos.get(R.string.this_way_we_avoid_showing_you),
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoSecundario,
                     modifier = Modifier.padding(top = 4.dp)
@@ -841,7 +839,7 @@ private fun TarjetaIngresos(resumen: ResumenAdmin) {
             )
             Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                text = "Ingresos de ${Fechas.nombreMes(resumen.mes)}",
+                text = Textos.get(R.string.income, Fechas.nombreMes(resumen.mes)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = SoftBlueSelection
             )
@@ -864,20 +862,20 @@ private fun TarjetaIngresos(resumen: ResumenAdmin) {
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "%.0f%% frente al mes pasado (%s)".format(kotlin.math.abs(variacion), dinero(resumen.ingresosMesAnterior)),
+                        text = Textos.get(R.string.n_0f_vs_last_month_s).format(kotlin.math.abs(variacion), dinero(resumen.ingresosMesAnterior)),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (variacion >= 0) SuccessOnDark else AlertOnDark
                     )
                 }
             } else {
                 Text(
-                    text = "Aún no hay cobros del mes pasado para comparar.",
+                    text = Textos.get(R.string.there_are_no_payments_from_last),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.78f)
                 )
             }
             Text(
-                text = if (resumen.cobrosMes == 1) "1 cobro registrado" else "${resumen.cobrosMes} cobros registrados",
+                text = if (resumen.cobrosMes == 1) Textos.get(R.string.n_1_payment_recorded) else Textos.get(R.string.payments_recorded, resumen.cobrosMes),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.78f),
                 modifier = Modifier.padding(top = 2.dp)
@@ -895,7 +893,7 @@ private fun GraficaIngresos(resumen: ResumenAdmin) {
 
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Ingresos por mes", style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
+            Text(Textos.get(R.string.income_by_month), style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -995,7 +993,7 @@ private fun ListaPorVencer(lista: List<MembresiaDetalle>) {
             ) {
                 Icon(Icons.Filled.Schedule, contentDescription = null, tint = Exito, modifier = Modifier.size(20.dp))
                 Text(
-                    text = "Ninguna membresía vence en los próximos días.",
+                    text = Textos.get(R.string.no_membership_expires_in_the_next),
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoSecundario
                 )
@@ -1012,7 +1010,7 @@ private fun ListaPorVencer(lista: List<MembresiaDetalle>) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = detalle.titular?.nombre ?: "Sin nombre",
+                            text = detalle.titular?.nombre ?: Textos.get(R.string.no_name),
                             style = MaterialTheme.typography.titleSmall,
                             color = TextoPrincipal,
                             maxLines = 1,
@@ -1028,7 +1026,7 @@ private fun ListaPorVencer(lista: List<MembresiaDetalle>) {
                     }
                     Insignia(
                         texto = when (vence) {
-                            hoy -> "Vence hoy"
+                            hoy -> Textos.get(R.string.expires_today)
                             else -> Fechas.legible(vence)
                         },
                         tipo = if (vence == hoy) TipoInsignia.PELIGRO else TipoInsignia.ALERTA
@@ -1038,7 +1036,7 @@ private fun ListaPorVencer(lista: List<MembresiaDetalle>) {
             if (lista.size > 5) {
                 HorizontalDivider(color = Borde)
                 Text(
-                    text = "y ${lista.size - 5} más en Membresías",
+                    text = Textos.get(R.string.and_more_in_memberships, lista.size - 5),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario,
                     modifier = Modifier.padding(16.dp)
@@ -1069,7 +1067,7 @@ private fun CobrosPorMetodo(resumen: ResumenAdmin) {
                                     .clip(CircleShape)
                                     .background(colorMetodo)
                             )
-                            Text(metodo?.etiqueta ?: "Sin especificar", style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal)
+                            Text(metodo?.etiqueta ?: Textos.get(R.string.not_specified_2), style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal)
                         }
                         Text(dinero(monto), style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
                     }
@@ -1105,14 +1103,14 @@ private fun OperacionDelDia(operacion: OperacionHoy) {
         Metrica(
             Icons.Filled.EventAvailable,
             texto(operacion.reservasHoy),
-            "Reservas hoy",
+            Textos.get(R.string.bookings_today),
             Modifier.weight(1f),
             tipo = TipoInsignia.METRICA_RESERVAS
         )
         Metrica(
             icono = Icons.Filled.Event,
             valor = texto(operacion.pendientesDeAprobar),
-            titulo = "Por aprobar",
+            titulo = Textos.get(R.string.to_approve),
             modifier = Modifier.weight(1f),
             tipo = TipoInsignia.METRICA_APROBAR
         )
@@ -1125,15 +1123,15 @@ private fun OperacionDelDia(operacion: OperacionHoy) {
         Metrica(
             icono = Icons.Filled.Place,
             valor = texto(operacion.areas),
-            titulo = "Áreas",
-            detalle = operacion.areasEnMantenimiento?.takeIf { it > 0 }?.let { "$it en mantenimiento" },
+            titulo = Textos.get(R.string.areas),
+            detalle = operacion.areasEnMantenimiento?.takeIf { it > 0 }?.let { Textos.get(R.string.under_maintenance_2, it) },
             modifier = Modifier.weight(1f),
             tipo = TipoInsignia.METRICA_MANTENIMIENTO
         )
         Metrica(
             icono = Icons.Filled.Inventory2,
             valor = texto(operacion.articulosConStockBajo),
-            titulo = "Artículos con stock bajo",
+            titulo = Textos.get(R.string.low_stock_items),
             modifier = Modifier.weight(1f),
             tipo = TipoInsignia.METRICA_STOCK
         )
@@ -1146,14 +1144,14 @@ private fun OperacionDelDia(operacion: OperacionHoy) {
         Metrica(
             Icons.Filled.Groups,
             texto(operacion.personal),
-            "Personal",
+            Textos.get(R.string.staff),
             Modifier.weight(1f),
             tipo = TipoInsignia.METRICA_PERSONAL
         )
         Metrica(
             Icons.Filled.EmojiEvents,
             texto(operacion.torneosVigentes),
-            "Torneos vigentes",
+            Textos.get(R.string.active_tournaments),
             Modifier.weight(1f),
             tipo = TipoInsignia.METRICA_TORNEOS
         )
@@ -1175,7 +1173,7 @@ private fun ReservaResumen(reserva: Reserva) {
             BurbujaTexto(texto = Deportes.emojiDe(reserva.deporte))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = reserva.usuarioNombre.ifBlank { "Usuario" },
+                    text = reserva.usuarioNombre.ifBlank { Textos.get(R.string.user) },
                     style = MaterialTheme.typography.titleSmall,
                     color = TextoPrincipal,
                     maxLines = 1,
@@ -1195,7 +1193,7 @@ private fun ReservaResumen(reserva: Reserva) {
                 )
             }
             Insignia(
-                texto = if (pendiente) "Pendiente" else "Confirmada",
+                texto = if (pendiente) Textos.get(R.string.pending) else Textos.get(R.string.confirmed_2),
                 tipo = if (pendiente) TipoInsignia.ALERTA else TipoInsignia.EXITO
             )
         }

@@ -50,6 +50,8 @@ import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +64,7 @@ fun ReservasAdministradorScreen(
     val reservas = ui.reservas.filter { ui.areaIdSeleccionada == null || it.areaId == ui.areaIdSeleccionada }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = MargenPantalla)) {
-        EncabezadoPantalla(titulo = "Reservas")
+        EncabezadoPantalla(titulo = Textos.get(R.string.bookings))
 
         if (ui.cargando && ui.areas.isEmpty()) {
             FullScreenLoading()
@@ -75,10 +77,10 @@ fun ReservasAdministradorScreen(
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
         ) {
             OutlinedTextField(
-                value = areaSeleccionada?.let { Deportes.titulo(it.tipo, it.nombre) } ?: "Todas las áreas",
+                value = areaSeleccionada?.let { Deportes.titulo(it.tipo, it.nombre) } ?: Textos.get(R.string.all_areas),
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Área") },
+                label = { Text(Textos.get(R.string.area_2)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownAbierto) },
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
@@ -88,7 +90,7 @@ fun ReservasAdministradorScreen(
                 onDismissRequest = { dropdownAbierto = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Todas las áreas") },
+                    text = { Text(Textos.get(R.string.all_areas)) },
                     onClick = {
                         viewModel.seleccionarArea(null)
                         dropdownAbierto = false
@@ -114,11 +116,11 @@ fun ReservasAdministradorScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 EmptyState(mensaje = ui.error.orEmpty(), icono = Icons.Outlined.EventBusy)
-                TextButton(onClick = viewModel::cargar) { Text("Reintentar") }
+                TextButton(onClick = viewModel::cargar) { Text(Textos.get(R.string.retry)) }
             }
             reservas.isEmpty() -> EmptyState(
-                mensaje = if (areaSeleccionada == null) "No hay reservas registradas." else
-                    "No hay reservas para ${areaSeleccionada.nombre}.",
+                mensaje = if (areaSeleccionada == null) Textos.get(R.string.there_are_no_bookings_yet) else
+                    Textos.get(R.string.there_are_no_bookings_for, areaSeleccionada.nombre),
                 icono = Icons.Outlined.EventBusy
             )
             else -> LazyColumn(
@@ -136,7 +138,7 @@ fun ReservasAdministradorScreen(
 
 @Composable
 private fun TarjetaReservaAdministrador(reserva: Reserva) {
-    val nombre = reserva.usuarioNombre.ifBlank { "Usuario" }
+    val nombre = reserva.usuarioNombre.ifBlank { Textos.get(R.string.user) }
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -160,9 +162,9 @@ private fun TarjetaReservaAdministrador(reserva: Reserva) {
                     )
                 }
                 when (reserva.estado) {
-                    EstadoReserva.CONFIRMADA -> Insignia("Confirmada", TipoInsignia.EXITO, icono = Icons.Filled.Check)
+                    EstadoReserva.CONFIRMADA -> Insignia(Textos.get(R.string.confirmed_2), TipoInsignia.EXITO, icono = Icons.Filled.Check)
                     EstadoReserva.PENDIENTE_APROBACION ->
-                        Insignia("En revisión", TipoInsignia.ALERTA, icono = Icons.Filled.Schedule)
+                        Insignia(Textos.get(R.string.under_review_2), TipoInsignia.ALERTA, icono = Icons.Filled.Schedule)
                     else -> Insignia(reserva.estado.name, TipoInsignia.NEUTRO)
                 }
             }
@@ -176,8 +178,8 @@ private fun TarjetaReservaAdministrador(reserva: Reserva) {
             if (reserva.personas > 1 || reserva.carril != null) {
                 Text(
                     text = listOfNotNull(
-                        if (reserva.personas > 1) "${reserva.personas} personas" else null,
-                        reserva.carril?.let { "Carril $it" }
+                        if (reserva.personas > 1) Textos.get(R.string.people_4, reserva.personas) else null,
+                        reserva.carril?.let { Textos.get(R.string.lane, it) }
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario,

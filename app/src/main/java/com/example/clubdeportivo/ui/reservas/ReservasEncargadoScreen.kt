@@ -55,6 +55,8 @@ import com.example.clubdeportivo.ui.theme.PeligroSuave
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 @Composable
 fun ReservasEncargadoScreen(
@@ -71,12 +73,12 @@ fun ReservasEncargadoScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         EncabezadoPantalla(
-            titulo = "Reservas en mi área",
-            subtitulo = areaTrabajo.ifBlank { "Sin área asignada" },
+            titulo = Textos.get(R.string.bookings_in_my_area),
+            subtitulo = areaTrabajo.ifBlank { Textos.get(R.string.no_area_assigned) },
             modifier = Modifier.padding(horizontal = MargenPantalla)
         )
         PestanasPildora(
-            opciones = listOf("Solicitudes", "Reservas", "Horarios"),
+            opciones = listOf(Textos.get(R.string.requests), Textos.get(R.string.bookings), Textos.get(R.string.schedules)),
             seleccionada = pestana,
             onSeleccion = { pestana = it }
         )
@@ -93,7 +95,7 @@ fun ReservasEncargadoScreen(
             cargando -> FullScreenLoading()
             error != null -> EmptyState(mensaje = error.orEmpty(), icono = Icons.Outlined.EventBusy)
             reservas.none { it.estado == EstadoReserva.CONFIRMADA } -> EmptyState(
-                mensaje = "No hay reservas confirmadas en $areaTrabajo.",
+                mensaje = Textos.get(R.string.there_are_no_confirmed_bookings_in, areaTrabajo),
                 icono = Icons.Outlined.EventBusy
             )
             else -> LazyColumn(
@@ -102,7 +104,7 @@ fun ReservasEncargadoScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(reservas.filter { it.estado == EstadoReserva.CONFIRMADA }, key = { it.id }) { reserva ->
-                    val nombre = reserva.usuarioNombre.ifBlank { "Usuario" }
+                    val nombre = reserva.usuarioNombre.ifBlank { Textos.get(R.string.user) }
 
                     ReservaEncargadoCard(
                         inicial = nombre.firstOrNull()?.uppercase() ?: "?",
@@ -172,9 +174,9 @@ private fun ReservaEncargadoCard(
                 }
 
                 when (asistencia) {
-                    "ASISTIO" -> Insignia("Asistió", TipoInsignia.EXITO, icono = Icons.Filled.Check)
-                    "NO_ASISTIO" -> Insignia("No se presentó", TipoInsignia.PELIGRO, icono = Icons.Filled.Close)
-                    else -> Insignia("Por confirmar", TipoInsignia.ALERTA, icono = Icons.Filled.Schedule)
+                    "ASISTIO" -> Insignia(Textos.get(R.string.attended), TipoInsignia.EXITO, icono = Icons.Filled.Check)
+                    "NO_ASISTIO" -> Insignia(Textos.get(R.string.didn_t_show_up), TipoInsignia.PELIGRO, icono = Icons.Filled.Close)
+                    else -> Insignia(Textos.get(R.string.to_confirm), TipoInsignia.ALERTA, icono = Icons.Filled.Schedule)
                 }
             }
 
@@ -187,7 +189,7 @@ private fun ReservaEncargadoCard(
 
             if (asistencia == null && !yaEmpezo) {
                 Text(
-                    text = "La asistencia se registra cuando empieza la reserva.",
+                    text = Textos.get(R.string.attendance_is_recorded_when_the_bookin),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario,
                     modifier = Modifier.padding(top = 8.dp)
@@ -198,7 +200,7 @@ private fun ReservaEncargadoCard(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     BotonTonal(
-                        texto = "Asistió",
+                        texto = Textos.get(R.string.attended),
                         icono = Icons.Filled.Check,
                         fondo = ExitoSuave,
                         color = Exito,
@@ -206,7 +208,7 @@ private fun ReservaEncargadoCard(
                         modifier = Modifier.weight(1f)
                     )
                     BotonTonal(
-                        texto = "No vino",
+                        texto = Textos.get(R.string.didn_t_come),
                         icono = Icons.Filled.Close,
                         fondo = PeligroSuave,
                         color = Peligro,

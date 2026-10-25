@@ -6,6 +6,36 @@
     <string name="login_email_hint">Correo electrónico</string>
     <string name="login_password_hint">Contraseña</string>
     <string name="login_button">Ingresar</string>
+    <string name="login_area_privada">ÁREA PRIVADA</string>
+    <string name="login_slogan">Tu club,\nmás cerca.</string>
+    <string name="login_subtitulo">Gestiona tus actividades, pagos y reservas.</string>
+    <string name="login_correo_etiqueta">CORREO</string>
+    <string name="login_correo_placeholder">nombre@correo.com</string>
+    <string name="login_password_etiqueta">CONTRASEÑA</string>
+    <string name="login_password_placeholder">Tu contraseña</string>
+    <string name="ocultar_contrasena">Ocultar contraseña</string>
+    <string name="mostrar_contrasena">Mostrar contraseña</string>
+    <string name="login_olvide_contrasena">¿Olvidaste tu contraseña?</string>
+    <string name="login_sin_cuenta">¿Eres miembro y aún no tienes cuenta?</string>
+    <string name="login_registrate_codigo">Regístrate con tu código</string>
+    <string name="login_error_correo">Escribe un correo electrónico válido</string>
+    <string name="login_error_password">Escribe tu contraseña</string>
+    <string name="login_error_correo_enlace">Escribe tu correo para enviarte el enlace</string>
+    <string name="login_correo_enviado">Te enviamos un correo a %1$s para cambiar tu contraseña.</string>
+    <string name="login_cuenta_desactivada">Tu cuenta está desactivada. Contacta a un administrador.</string>
+    <string name="login_sin_perfil">Tu cuenta no tiene un perfil guardado. Contacta a un administrador.</string>
+
+    <!-- Errores de Firebase -->
+    <string name="err_cuenta_existente">Ya existe una cuenta con ese correo. Inicia sesión o usa otro correo.</string>
+    <string name="err_password_debil">La contraseña es muy débil. Usa 8+ caracteres con mayúscula, número y símbolo.</string>
+    <string name="err_credenciales">Correo o contraseña incorrectos.</string>
+    <string name="err_correo_invalido">El correo no es válido. Revísalo e intenta de nuevo.</string>
+    <string name="err_sin_cuenta">No existe una cuenta con ese correo.</string>
+    <string name="err_demasiados_intentos">Demasiados intentos. Espera unos minutos e inténtalo de nuevo.</string>
+    <string name="err_sin_conexion">Sin conexión. Revisa tu internet e intenta de nuevo.</string>
+    <string name="err_sin_permiso">No tienes permiso para hacer esto. Si crees que es un error, avisa al administrador del club.</string>
+    <string name="err_generico_corto">Algo salió mal. Intenta de nuevo en un momento.</string>
+    <string name="err_generico">Algo salió mal. Revisa tu conexión e intenta de nuevo.</string>
 
     <!-- Menú inferior -->
     <string name="nav_home">Inicio</string>
@@ -13,6 +43,12 @@
     <string name="nav_reservas">Reservas</string>
     <string name="nav_torneos">Torneos</string>
     <string name="nav_perfil">Perfil</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_personal">Personal</string>
+    <string name="nav_membres_corto">Membres.</string>
+    <string name="nav_reservar">Reservar</string>
+    <string name="nav_mi_area">Mi área</string>
+    <string name="nav_membresia">Membresía</string>
 
     <!-- Títulos de pantalla (barra superior) -->
     <string name="home_title">Inicio</string>
@@ -22,7 +58,83 @@
     <string name="membresia_title">Mi membresía</string>
     <string name="torneos_title">Torneos</string>
     <string name="perfil_title">Mi perfil</string>
+    <string name="titulo_inventario">Inventario</string>
+    <string name="titulo_membresias">Membresías</string>
 
     <string name="logout_button">Cerrar sesión</string>
+    <string name="logout_confirmar">¿Quieres cerrar tu sesión en este dispositivo?</string>
     <string name="reintentar_button">Reintentar</string>
+
+    <!-- Roles -->
+    <string name="rol_superadmin">Superadministrador</string>
+    <string name="rol_admin">Administrador</string>
+    <string name="rol_encargado">Encargado</string>
+    <string name="rol_miembro">Miembro</string>
+    <string name="rol_visitante">Visitante externo</string>
+
+    <!-- Sesión cerrada por el sistema -->
+    <string name="sesion_cerrada_titulo">Sesión cerrada</string>
+    <string name="sesion_cuenta_suspendida">Tu cuenta fue suspendida por un administrador. Ya no puedes usar la app con ella.</string>
+    <string name="sesion_cuenta_eliminada">Tu cuenta ya no existe en el club.</string>
+    <string name="sesion_no_valida">Tu sesión ya no es válida. Inicia sesión de nuevo.</string>
+    <string name="entendido">Entendido</string>
+    <string name="enlace_cierra_sesion">Cierra sesión para crear una cuenta nueva con el enlace de acceso.</string>
+
+    <!-- Barra superior -->
+    <string name="avisos">Avisos</string>
+    <string name="avisos_sin_leer">Avisos, %1$d sin leer</string>
+    <string name="abrir_perfil">Abrir perfil</string>
+    <string name="foto_perfil">Foto de perfil</string>
+
+    <!-- Confirmaciones al salir de un proceso -->
+    <string name="salir_proceso_titulo">¿Seguro que quieres salir?</string>
+    <string name="salir_proceso_mensaje">Hay un proceso a medias. Si sales ahora, se perderá lo que llevas.</string>
+    <string name="salir_reserva_mensaje">Tu reserva todavía no está confirmada. Si sales ahora, se perderán el deporte, la cancha y el horario que elegiste.</string>
+    <string name="salir_formulario_titulo">¿Salir sin guardar?</string>
+    <string name="salir_formulario_mensaje">Si sales ahora, se perderá lo que escribiste.</string>
+    <string name="salir_si">Sí, salir</string>
+    <string name="seguir_aqui">Seguir aquí</string>
+    <string name="seguir_editando">Seguir editando</string>
+    <string name="cerrar">Cerrar</string>
+    <string name="volver">Volver</string>
+    <string name="cancelar">Cancelar</string>
+    <string name="listo">Listo</string>
+    <string name="borrar_busqueda">Borrar búsqueda</string>
+    <string name="guardar_cambios">Guardar cambios</string>
+
+    <!-- Perfil -->
+    <string name="agregar_foto">Agregar foto</string>
+    <string name="cambiar_foto">Cambiar foto</string>
+    <string name="quitar_foto">Quitar foto</string>
+    <string name="tomar_foto">Tomar foto</string>
+    <string name="elegir_galeria">Elegir de la galería</string>
+    <string name="perfil_info_personal">Información personal</string>
+    <string name="perfil_actualiza_datos">Actualiza los datos de tu perfil</string>
+    <string name="perfil_nombre_etiqueta">NOMBRE</string>
+    <string name="perfil_nombre_placeholder">Nombre</string>
+    <string name="perfil_correo_etiqueta">CORREO ELECTRÓNICO</string>
+    <string name="perfil_correo_fijo">Es tu usuario de acceso y no se puede cambiar.</string>
+    <string name="perfil_rol_etiqueta">ROL</string>
+    <string name="perfil_camara_error">No se pudo abrir la cámara en este dispositivo.</string>
+    <string name="perfil_nombre_vacio">El nombre no puede estar vacío.</string>
+    <string name="perfil_actualizado">Perfil actualizado correctamente.</string>
+    <string name="perfil_imagen_error">No se pudo leer la imagen elegida.</string>
+    <string name="apariencia_titulo">Apariencia</string>
+    <string name="apariencia_descripcion">Elige el modo claro u oscuro, o deja que siga al teléfono.</string>
+    <string name="tema_automatico">Automático</string>
+    <string name="tema_claro">Claro</string>
+    <string name="tema_oscuro">Oscuro</string>
+    <string name="idioma_titulo">Idioma</string>
+    <string name="idioma_descripcion">Elige el idioma de toda la app.</string>
+    <string name="sesion_titulo">Sesión</string>
+    <string name="sesion_descripcion">Cierra tu sesión en este dispositivo.</string>
+
+    <!-- Miembros del club -->
+    <string name="miembro_dar_baja">Dar de baja</string>
+    <string name="miembro_baja_titulo">Dar de baja al miembro</string>
+    <string name="miembro_baja_mensaje">%1$s ya no podrá iniciar sesión y, si tiene la app abierta, se le cerrará la sesión. La membresía queda suspendida. Puedes revertirlo con \"Reactivar\".</string>
+    <string name="miembro_motivo_baja">Baja del miembro</string>
+    <string name="miembro_baja_ok">Miembro dado de baja. Ya no puede iniciar sesión.</string>
+    <string name="miembro_baja_error">No se pudo dar de baja al miembro.</string>
+    <string name="miembro_registrado">Miembro registrado</string>
 </resources>

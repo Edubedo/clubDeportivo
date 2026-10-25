@@ -5,10 +5,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.repository.AuthRepository
+import com.example.clubdeportivo.ui.ArranqueApp
 import com.example.clubdeportivo.util.Resultado
+import com.example.clubdeportivo.util.Textos
 import kotlinx.coroutines.launch
 
 /**
@@ -44,12 +47,16 @@ class LoginViewModel(
 
     init {
         viewModelScope.launch {
-            val usuario = authRepository.restaurarSesion()
-            if (usuario != null) {
-                SesionManager.iniciarSesion(usuario)
-                _loginExitoso.value = true
+            try {
+                val usuario = authRepository.restaurarSesion()
+                if (usuario != null) {
+                    SesionManager.iniciarSesion(usuario)
+                    _loginExitoso.value = true
+                }
+            } finally {
+                _restaurando.value = false
+                ArranqueApp.sesionRevisada = true
             }
-            _restaurando.value = false
         }
     }
 
@@ -59,14 +66,14 @@ class LoginViewModel(
         val emailLimpio = email.trim()
 
         if (emailLimpio.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(emailLimpio).matches()) {
-            _emailError.value = "Escribe un correo electrónico válido"
+            _emailError.value = Textos.get(R.string.login_error_correo)
             esValido = false
         } else {
             _emailError.value = null
         }
 
         if (password.isEmpty()) {
-            _passwordError.value = "Escribe tu contraseña"
+            _passwordError.value = Textos.get(R.string.login_error_password)
             esValido = false
         } else {
             _passwordError.value = null
@@ -94,14 +101,14 @@ class LoginViewModel(
     fun olvideContrasena(email: String) {
         val emailLimpio = email.trim()
         if (emailLimpio.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(emailLimpio).matches()) {
-            _emailError.value = "Escribe tu correo para enviarte el enlace"
+            _emailError.value = Textos.get(R.string.login_error_correo_enlace)
             return
         }
         _emailError.value = null
         viewModelScope.launch {
             _cargando.value = true
             _aviso.value = when (val resultado = authRepository.enviarRestablecimiento(emailLimpio)) {
-                is Resultado.Exito -> "Te enviamos un correo a $emailLimpio para cambiar tu contraseña."
+                is Resultado.Exito -> Textos.get(R.string.login_correo_enviado, emailLimpio)
                 is Resultado.Error -> resultado.mensaje
             }
             _cargando.value = false

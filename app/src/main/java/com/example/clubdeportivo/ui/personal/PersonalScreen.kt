@@ -1,5 +1,7 @@
 package com.example.clubdeportivo.ui.personal
 
+import com.example.clubdeportivo.data.model.etiquetaTipoPersonal
+import com.example.clubdeportivo.data.model.etiquetaTurno
 import android.util.Base64
 import android.util.Patterns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -79,12 +81,14 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.foundation.lazy.rememberLazyListState
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Tipos de personal que se pueden dar de alta por ahora. */
 private val TIPOS_DE_ALTA = listOf("Instructor")
 private val TURNOS = listOf("Matutino", "Vespertino")
 private val ESTADOS = listOf("ACTIVO", "INACTIVO")
-private const val SIN_AREA = "Sin área asignada"
+private val SIN_AREA get() = Textos.get(R.string.no_area_assigned)
 
 @Composable
 fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
@@ -130,7 +134,7 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             BotonFlotanteAgregar(
-                texto = "Agregar personal",
+                texto = Textos.get(R.string.add_staff),
                 visible = listState.botonFlotanteVisible(),
                 onClick = {
                     enEdicion = null
@@ -145,21 +149,21 @@ fun PersonalScreen(viewModel: PersonalViewModel = viewModel()) {
                 .padding(paddingValues)
                 .padding(horizontal = MargenPantalla)
         ) {
-            EncabezadoPantalla(titulo = "Personal")
+            EncabezadoPantalla(titulo = Textos.get(R.string.staff))
 
             if (personal.isNotEmpty()) {
                 CampoBusqueda(
                     value = busqueda,
                     onValueChange = { busqueda = it },
-                    placeholder = "Buscar por nombre, correo o área"
+                    placeholder = Textos.get(R.string.search_by_name_email_or_area)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
             when {
                 cargando && personal.isEmpty() -> FullScreenLoading()
-                personal.isEmpty() -> EmptyState("Todavía no hay personal registrado.")
-                visibles.isEmpty() -> EmptyState("Nadie coincide con la búsqueda.", icono = Icons.Default.Search)
+                personal.isEmpty() -> EmptyState(Textos.get(R.string.there_is_no_staff_registered_yet))
+                visibles.isEmpty() -> EmptyState(Textos.get(R.string.nobody_matches_the_search), icono = Icons.Default.Search)
                 else -> LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -249,7 +253,7 @@ fun FormularioPersonalDialog(
     var contrasenaVisible by remember { mutableStateOf(false) }
 
     DialogoFormulario(
-        titulo = if (esEdicion) "Editar personal" else "Agregar personal",
+        titulo = if (esEdicion) Textos.get(R.string.edit_staff) else Textos.get(R.string.add_staff),
         onCerrar = onCerrar,
         pie = {
             (mensajeError ?: aviso)?.let {
@@ -262,16 +266,16 @@ fun FormularioPersonalDialog(
             }
 
             BotonPrimario(
-                texto = if (esEdicion) "Guardar cambios" else "Agregar personal",
+                texto = if (esEdicion) Textos.get(R.string.save_changes) else Textos.get(R.string.add_staff),
                 cargando = guardando,
                 onClick = {
                     val error = when {
-                        nombre.isBlank() -> "Escribe el nombre."
-                        telefono.isNotBlank() && telefono.count { it.isDigit() } < 10 -> "El teléfono debe tener al menos 10 dígitos."
-                        rol != Rol.ADMIN && area == SIN_AREA -> "Elige el área que va a encargar."
-                        !esEdicion && !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() -> "Escribe un correo válido."
+                        nombre.isBlank() -> Textos.get(R.string.enter_the_name)
+                        telefono.isNotBlank() && telefono.count { it.isDigit() } < 10 -> Textos.get(R.string.the_phone_must_have_at_least)
+                        rol != Rol.ADMIN && area == SIN_AREA -> Textos.get(R.string.choose_the_area_they_will_manage)
+                        !esEdicion && !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() -> Textos.get(R.string.enter_a_valid_email)
                         !esEdicion && ReglasContrasena.primerError(contrasena) != null -> ReglasContrasena.primerError(contrasena)
-                        !esEdicion && contrasena != confirmarContrasena -> "Las contraseñas no coinciden."
+                        !esEdicion && contrasena != confirmarContrasena -> Textos.get(R.string.the_passwords_don_t_match)
                         else -> null
                     }
                     mensajeError = error
@@ -307,12 +311,12 @@ fun FormularioPersonalDialog(
                 if (fotoPath != null) {
                     AsyncImage(
                         model = fotoPath,
-                        contentDescription = "Foto de perfil",
+                        contentDescription = Textos.get(R.string.profile_photo),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Icon(Icons.Default.Person, contentDescription = "Foto", tint = TextoTenue)
+                    Icon(Icons.Default.Person, contentDescription = Textos.get(R.string.photo), tint = TextoTenue)
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -320,7 +324,7 @@ fun FormularioPersonalDialog(
                 onClick = { selectorFoto.launch("image/*") }
             ) {
                 Text(
-                    text = if (fotoPath == null) "Subir foto de perfil" else "Cambiar foto",
+                    text = if (fotoPath == null) Textos.get(R.string.upload_profile_photo) else Textos.get(R.string.change_photo),
                     color = Marca,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp
@@ -330,17 +334,17 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo("NOMBRE COMPLETO")
+        EtiquetaCampo(Textos.get(R.string.full_name))
         CampoTexto(
             value = nombre,
             onValueChange = { nombre = it },
-            placeholder = "Juan Pérez",
+            placeholder = Textos.get(R.string.john_smith),
             capitalizacion = KeyboardCapitalization.Words
         )
 
         EspacioCampos()
 
-        EtiquetaCampo("TELÉFONO")
+        EtiquetaCampo(Textos.get(R.string.phone))
         CampoTexto(
             value = telefono,
             onValueChange = { telefono = it.filter { c -> c.isDigit() || c == ' ' }.take(15) },
@@ -350,11 +354,11 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo(if (esEdicion) "CORREO (ES SU USUARIO DE ACCESO)" else "CORREO (SERÁ SU USUARIO DE ACCESO)")
+        EtiquetaCampo(if (esEdicion) Textos.get(R.string.email_their_sign_in) else Textos.get(R.string.email_will_be_their_sign_in))
         CampoTexto(
             value = correo,
             onValueChange = { correo = it },
-            placeholder = "correo@gmail.com",
+            placeholder = Textos.get(R.string.email_gmail_com),
             tipoTeclado = KeyboardType.Email,
             readOnly = esEdicion,
             imeAction = if (esEdicion) ImeAction.Done else ImeAction.Next
@@ -362,7 +366,7 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo("ROL DE ACCESO")
+        EtiquetaCampo(Textos.get(R.string.access_role))
         PestanasPildora(
             opciones = ROLES_DE_PERSONAL.map { it.nombreLegible() },
             seleccionada = ROLES_DE_PERSONAL.indexOf(rol).coerceAtLeast(0),
@@ -370,17 +374,17 @@ fun FormularioPersonalDialog(
             margenHorizontal = 0.dp
         )
         Text(
-            text = if (rol == Rol.ADMIN) "Acceso total: dashboard, personal, áreas, reservas, membresías y precios."
-            else "Solo ve lo de su área: las reservas de su área (las aprueba o rechaza), el área y su inventario. Necesita un área asignada.",
+            text = if (rol == Rol.ADMIN) Textos.get(R.string.full_access_dashboard_staff_areas_book)
+            else Textos.get(R.string.only_sees_their_own_area_its),
             style = MaterialTheme.typography.bodySmall,
             color = TextoSecundario
         )
 
         EspacioCampos()
 
-        EtiquetaCampo("ESTADO")
+        EtiquetaCampo(Textos.get(R.string.lbl_estado))
         PestanasPildora(
-            opciones = listOf("Activo", "Inactivo"),
+            opciones = listOf(Textos.get(R.string.active), Textos.get(R.string.inactive)),
             seleccionada = ESTADOS.indexOf(estado).coerceAtLeast(0),
             onSeleccion = { estado = ESTADOS[it] },
             margenHorizontal = 0.dp
@@ -388,9 +392,9 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo("TIPO DE PERSONAL")
+        EtiquetaCampo(Textos.get(R.string.staff_type))
         PestanasPildora(
-            opciones = tipos,
+            opciones = tipos.map { etiquetaTipoPersonal(it) },
             seleccionada = tipos.indexOf(tipo).coerceAtLeast(0),
             onSeleccion = { tipo = tipos[it] },
             margenHorizontal = 0.dp
@@ -398,9 +402,9 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo("TURNO")
+        EtiquetaCampo(Textos.get(R.string.lbl_turno))
         PestanasPildora(
-            opciones = TURNOS,
+            opciones = TURNOS.map { etiquetaTurno(it) },
             seleccionada = TURNOS.indexOf(turno).coerceAtLeast(0),
             onSeleccion = { turno = TURNOS[it] },
             margenHorizontal = 0.dp
@@ -408,7 +412,7 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo(if (rol == Rol.ADMIN) "ÁREA DE TRABAJO (OPCIONAL)" else "ÁREA A SU CARGO")
+        EtiquetaCampo(if (rol == Rol.ADMIN) Textos.get(R.string.work_area_optional) else Textos.get(R.string.area_in_charge))
         ExposedDropdownMenuBox(expanded = areaExpandida, onExpandedChange = { areaExpandida = it }) {
             CampoTexto(
                 value = area,
@@ -436,16 +440,16 @@ fun FormularioPersonalDialog(
             ) {
                 Icon(
                     imageVector = if (contrasenaVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                    contentDescription = if (contrasenaVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                    contentDescription = if (contrasenaVisible) Textos.get(R.string.hide_password) else Textos.get(R.string.show_password)
                 )
             }
         }
         if (esEdicion) {
-            EtiquetaCampo("CAMBIAR CONTRASEÑA")
+            EtiquetaCampo(Textos.get(R.string.change_password))
             CampoTexto(
                 value = contrasena,
                 onValueChange = { contrasena = it },
-                placeholder = "Contraseña nueva",
+                placeholder = Textos.get(R.string.new_password),
                 esContrasena = !contrasenaVisible,
                 trailingIcon = iconoVer
             )
@@ -456,18 +460,18 @@ fun FormularioPersonalDialog(
                 CampoTexto(
                     value = confirmarContrasena,
                     onValueChange = { confirmarContrasena = it },
-                    placeholder = "Repite la contraseña nueva",
+                    placeholder = Textos.get(R.string.repeat_the_new_password),
                     esContrasena = !contrasenaVisible,
                     imeAction = ImeAction.Done,
                     isError = confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena,
-                    mensajeError = if (confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena) "Las contraseñas no coinciden" else null
+                    mensajeError = if (confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena) Textos.get(R.string.the_passwords_don_t_match_2) else null
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 BotonSecundario(
-                    texto = "Cambiar contraseña",
+                    texto = Textos.get(R.string.change_password_2),
                     onClick = {
                         val error = ReglasContrasena.primerError(contrasena)
-                            ?: if (contrasena != confirmarContrasena) "Las contraseñas no coinciden." else null
+                            ?: if (contrasena != confirmarContrasena) Textos.get(R.string.the_passwords_don_t_match) else null
                         mensajeError = error
                         if (error == null && personaAEditar != null) {
                             onCambiarContrasena(personaAEditar, contrasena)
@@ -478,17 +482,17 @@ fun FormularioPersonalDialog(
                 )
             }
             Text(
-                text = "Se cambia al instante y no se envía ningún correo. Avísale su contraseña nueva; sus sesiones abiertas se cierran.",
+                text = Textos.get(R.string.it_changes_instantly_and_no_email),
                 style = MaterialTheme.typography.bodySmall,
                 color = TextoSecundario,
                 modifier = Modifier.padding(top = 8.dp)
             )
         } else {
-            EtiquetaCampo("CONTRASEÑA")
+            EtiquetaCampo(Textos.get(R.string.password))
             CampoTexto(
                 value = contrasena,
                 onValueChange = { contrasena = it },
-                placeholder = "Crea una contraseña segura",
+                placeholder = Textos.get(R.string.create_a_strong_password),
                 esContrasena = !contrasenaVisible,
                 trailingIcon = {
                     IconButton(
@@ -496,7 +500,7 @@ fun FormularioPersonalDialog(
                     ) {
                         Icon(
                             imageVector = if (contrasenaVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                            contentDescription = if (contrasenaVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                            contentDescription = if (contrasenaVisible) Textos.get(R.string.hide_password) else Textos.get(R.string.show_password)
                         )
                     }
                 }
@@ -507,15 +511,15 @@ fun FormularioPersonalDialog(
 
             EspacioCampos()
 
-            EtiquetaCampo("CONFIRMAR CONTRASEÑA")
+            EtiquetaCampo(Textos.get(R.string.confirm_password))
             CampoTexto(
                 value = confirmarContrasena,
                 onValueChange = { confirmarContrasena = it },
-                placeholder = "Repite la contraseña",
+                placeholder = Textos.get(R.string.repeat_the_password),
                 esContrasena = !contrasenaVisible,
                 imeAction = ImeAction.Done,
                 isError = confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena,
-                mensajeError = if (confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena) "Las contraseñas no coinciden" else null
+                mensajeError = if (confirmarContrasena.isNotEmpty() && confirmarContrasena != contrasena) Textos.get(R.string.the_passwords_don_t_match_2) else null
             )
         }
 
@@ -527,7 +531,7 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
     val fotoPerfil = persona.fotoUrl?.takeIf { it.startsWith("data:") }
     val activo = persona.estado.uppercase() == "ACTIVO"
 
-    val detalle = listOf(persona.tipoPersonal, persona.turno).filter { it.isNotBlank() }.joinToString(" · ")
+    val detalle = listOf(etiquetaTipoPersonal(persona.tipoPersonal), etiquetaTurno(persona.turno)).filter { it.isNotBlank() }.joinToString(" · ")
 
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -542,7 +546,7 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
                     if (fotoPerfil != null) {
                         AsyncImage(
                             model = fotoPerfil,
-                            contentDescription = "Foto de ${persona.nombre}",
+                            contentDescription = Textos.get(R.string.photo_of, persona.nombre),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -579,7 +583,7 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
                     }
                     if (persona.fechaIngreso.isNotBlank()) {
                         Text(
-                            text = "Ingreso: ${Fechas.legible(persona.fechaIngreso)}",
+                            text = Textos.get(R.string.joined, Fechas.legible(persona.fechaIngreso)),
                             style = MaterialTheme.typography.bodySmall,
                             color = TextoSecundario
                         )
@@ -587,7 +591,7 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
                 }
 
                 Insignia(
-                    texto = if (activo) "Activo" else "Inactivo",
+                    texto = if (activo) Textos.get(R.string.active) else Textos.get(R.string.inactive),
                     tipo = if (activo) TipoInsignia.EXITO else TipoInsignia.ALERTA
                 )
             }
@@ -614,7 +618,7 @@ private fun PersonalCard(persona: Personal, onEditClick: () -> Unit) {
                 TextButton(
                     onClick = onEditClick
                 ) {
-                    Text(text = "Editar", color = Marca, fontWeight = FontWeight.Bold)
+                    Text(text = Textos.get(R.string.edit), color = Marca, fontWeight = FontWeight.Bold)
                 }
             }
         }

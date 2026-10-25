@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="manual_usuario_hasta">"%1$s · until %2$s"</string>
+    <string name="manual_agregar_familiar_lugares">"Add family member (%1$s %2$s)"</string>
+    <string name="manual_en_tu_paquete">"%1$s in your package. "</string>
+    <string name="manual_metodos_pago">"Payment methods: %1$s."</string>
+    <string name="manual_paquete_nombre">"%1$s package"</string>
+    <string name="manual_familiar">"family"</string>
+    <string name="manual_motivo_punto">"Reason: %1$s. "</string>
+    <string name="manual_cuenta_actual">"Their current account (%1$s) will stop working. "</string>
+    <string name="manual_rechazar_de">"Reject the booking of %1$s on "</string>
+    <string name="manual_membresia_suspendida">"Your membership is suspended (%1$s). Talk to the front desk."</string>
+    <string name="manual_invitacion_hola">"Hi %1$s, %2$s added you to their Athletic Club family plan.\n\n"</string>
+    <string name="password_updated_for">"Password updated for "</string>
+    <string name="manual_ultima_actualizacion">"October 24, 2026"</string>
+    <string name="parentesco_titular">"Holder"</string>
+    <string name="parentesco_integrante">"Member"</string>
+    <string name="turno_matutino">"Morning"</string>
+    <string name="turno_vespertino">"Evening"</string>
+    <string name="tipo_personal_limpieza">"Cleaning"</string>
+    <string name="tipo_personal_ayudante">"Area assistant"</string>
+    <string name="tipo_personal_administrador">"Area administrator"</string>
+    <string name="lbl_cantidad">"QUANTITY"</string>
+    <string name="lbl_carril">"LANE"</string>
+    <string name="lbl_deporte">"SPORT"</string>
+    <string name="lbl_disciplina">"DISCIPLINE"</string>
+    <string name="lbl_estado">"STATUS"</string>
+    <string name="lbl_estatus">"STATUS"</string>
+    <string name="lbl_fecha">"DATE"</string>
+    <string name="lbl_horario">"SCHEDULE"</string>
+    <string name="lbl_mensaje">"MESSAGE"</string>
+    <string name="lbl_paquete">"PACKAGE"</string>
+    <string name="lbl_parentesco">"RELATIONSHIP"</string>
+    <string name="lbl_personas">"PEOPLE"</string>
+    <string name="lbl_precio">"PRICE"</string>
+    <string name="lbl_titular">"HOLDER"</string>
+    <string name="lbl_turno">"SHIFT"</string>
+</resources>

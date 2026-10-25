@@ -1,8 +1,13 @@
 package com.example.clubdeportivo.ui
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Build
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,9 +38,11 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,8 +67,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.data.GuardianSesion
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.esEncargado
+import com.example.clubdeportivo.notificaciones.Notificador
+import com.example.clubdeportivo.notificaciones.PreferenciasNotificaciones
+import com.example.clubdeportivo.notificaciones.ProgramadorRecordatorios
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.ui.admin.home.AdminHomeScreen
@@ -67,7 +81,9 @@ import com.example.clubdeportivo.ui.avisos.AvisosSheet
 import com.example.clubdeportivo.ui.avisos.AvisosViewModel
 import com.example.clubdeportivo.ui.areas.AreasDetailScreen
 import com.example.clubdeportivo.ui.areas.AreasScreen
+import com.example.clubdeportivo.ui.components.DialogoSalidaProceso
 import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.ProcesoEnCurso
 import com.example.clubdeportivo.ui.components.modifierReflejo
 import com.example.clubdeportivo.ui.components.tipoInsigniaRol
 import com.example.clubdeportivo.ui.inventario.InventarioScreen
@@ -100,7 +116,12 @@ import com.example.clubdeportivo.ui.theme.TextoTenue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit = {}) {
+fun ClubDeportivoApp(
+    codigoEntrante: String? = null,
+    onCodigoUsado: () -> Unit = {},
+    rutaEntrante: String? = null,
+    onRutaUsada: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -134,6 +155,42 @@ fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit =
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(usuario?.id) { avisos.cargar() }
     LaunchedEffect(usuario?.id) { publicaciones.cargar() }
+
+    // Recordatorios: con sesión se pide (una vez) el permiso de notificaciones y se revisa si hay algo que avisar.
+    val contexto = LocalContext.current
+    val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(usuario?.id) {
+        if (usuario == null) return@LaunchedEffect
+        if (Build.VERSION.SDK_INT >= 33 && !Notificador.puedeNotificar(contexto) &&
+            !PreferenciasNotificaciones.yaPidioPermiso(contexto)
+        ) {
+            PreferenciasNotificaciones.marcarPermisoPedido(contexto)
+            pedirPermiso.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        ProgramadorRecordatorios.revisarAhora(contexto)
+    }
+    // Al tocar una notificación se abre la pantalla que corresponde (si esa persona tiene acceso a ella).
+    LaunchedEffect(rutaEntrante, usuario?.id) {
+        val ruta = rutaEntrante ?: return@LaunchedEffect
+        val actual = SesionManager.usuarioActual ?: return@LaunchedEffect
+        if (rutaPermitida(actual.rol, ruta)) navegarAPestana(navController, ruta, menuPara(actual.rol).first().route)
+        onRutaUsada()
+    }
+
+    // Mientras haya sesión se vigila el perfil: si un administrador suspende o borra la cuenta, la sesión se cierra sola.
+    DisposableEffect(usuario?.id) {
+        usuario?.id?.let { GuardianSesion.vigilar(it) } ?: GuardianSesion.detener()
+        onDispose { }
+    }
+    // Sin sesión (cerrada por la persona o por el guardián) no se puede quedar dentro de la app: vuelve al login.
+    LaunchedEffect(usuario == null, currentRoute) {
+        if (usuario == null) {
+            mostrarAvisos = false
+            if (currentRoute != null && currentRoute != Destinations.LOGIN && currentRoute != Destinations.REGISTRO) {
+                navController.navigate(Destinations.LOGIN) { popUpTo(0) { inclusive = true } }
+            }
+        }
+    }
     LaunchedEffect(avisos.mensaje) {
         avisos.mensaje?.let {
             snackbarHostState.showSnackbar(it)
@@ -142,11 +199,12 @@ fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit =
     }
 
     // Enlace de acceso de un plan familiar: sin sesión abre el registro con el código ya puesto.
+    val avisoCerrarSesionParaEnlace = stringResource(R.string.enlace_cierra_sesion)
     LaunchedEffect(codigoEntrante) {
         if (codigoEntrante != null && SesionManager.usuarioActual == null) {
             navController.navigate(Destinations.REGISTRO) { launchSingleTop = true }
         } else if (codigoEntrante != null) {
-            snackbarHostState.showSnackbar("Cierra sesión para crear una cuenta nueva con el enlace de acceso.")
+            snackbarHostState.showSnackbar(avisoCerrarSesionParaEnlace)
             onCodigoUsado()
         }
     }
@@ -176,7 +234,7 @@ fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit =
                                 }
                                 Column(modifier = Modifier.padding(start = 12.dp)) {
                                     Text(
-                                        text = "Athletic Club",
+                                        text = stringResource(R.string.app_name),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = TextoPrincipal,
                                         maxLines = 1
@@ -210,7 +268,7 @@ fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit =
                                     ) {
                                         Icon(
                                             imageVector = Icons.Outlined.Notifications,
-                                            contentDescription = if (avisos.sinLeer > 0) "Avisos, ${avisos.sinLeer} sin leer" else "Avisos",
+                                            contentDescription = if (avisos.sinLeer > 0) stringResource(R.string.avisos_sin_leer, avisos.sinLeer) else stringResource(R.string.avisos),
                                             tint = TextoSecundario
                                         )
                                     }
@@ -218,10 +276,12 @@ fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit =
                                 AvatarUsuario(
                                     nombre = usuario?.nombre.orEmpty(),
                                     onClick = {
-                                        if (menu.any { it.route == Destinations.PERFIL }) {
-                                            navegarAPestana(navController, Destinations.PERFIL, menu.first().route)
-                                        } else {
-                                            navController.navigate(Destinations.PERFIL) { launchSingleTop = true }
+                                        ProcesoEnCurso.intentar {
+                                            if (menu.any { it.route == Destinations.PERFIL }) {
+                                                navegarAPestana(navController, Destinations.PERFIL, menu.first().route)
+                                            } else {
+                                                navController.navigate(Destinations.PERFIL) { launchSingleTop = true }
+                                            }
                                         }
                                     }
                                 )
@@ -250,7 +310,7 @@ fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit =
                                 (item.route == Destinations.RESERVAS && currentRoute == Destinations.MIS_RESERVAS)
                             NavigationBarItem(
                                 selected = seleccionado,
-                                onClick = { navegarAPestana(navController, item.route, menu.first().route) },
+                                onClick = { ProcesoEnCurso.intentar { navegarAPestana(navController, item.route, menu.first().route) } },
                                 icon = {
                                     Icon(
                                         imageVector = if (seleccionado) item.iconSelected else item.iconUnselected,
@@ -259,7 +319,7 @@ fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit =
                                 },
                                 label = {
                                     Text(
-                                        text = item.label,
+                                        text = stringResource(item.label),
                                         fontSize = if (rol?.esAdministrador() == true) 10.sp else 12.sp,
                                         fontWeight = if (seleccionado) FontWeight.SemiBold else FontWeight.Medium,
                                         maxLines = 1
@@ -361,10 +421,36 @@ fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit =
                 )
             }
         }
+
+        // El botón atrás del teléfono también pregunta antes de abandonar un proceso a medias (por ejemplo, una reserva).
+        // Va aquí, después del NavHost, a propósito: el último BackHandler registrado es el primero en recibir el gesto
+        // y el NavHost registra el suyo dentro de este mismo Scaffold.
+        val actividad = vista.context.buscarActividad()
+        BackHandler(enabled = ProcesoEnCurso.activo) {
+            ProcesoEnCurso.intentar { if (!navController.popBackStack()) actividad?.finish() }
+        }
     }
 
     if (mostrarAvisos) {
         AvisosSheet(onCerrar = { mostrarAvisos = false }, viewModel = avisos)
+    }
+
+    DialogoSalidaProceso()
+
+    // La sesión se cerró sola (cuenta suspendida o eliminada): se le explica a la persona por qué la sacaron.
+    SesionManager.motivoExpulsion?.let { motivo ->
+        AlertDialog(
+            onDismissRequest = { SesionManager.onExpulsionMostrada() },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Superficie,
+            title = { Text(stringResource(R.string.sesion_cerrada_titulo), style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
+            text = { Text(motivo, style = MaterialTheme.typography.bodyMedium, color = TextoSecundario) },
+            confirmButton = {
+                TextButton(onClick = { SesionManager.onExpulsionMostrada() }) {
+                    Text(stringResource(R.string.entendido), color = Marca, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        )
     }
 }
 
@@ -378,13 +464,13 @@ private fun AvatarUsuario(nombre: String, onClick: () -> Unit) {
             .size(36.dp)
             .clip(CircleShape)
             .background(MarcaSuave)
-            .clickable(onClickLabel = "Abrir perfil", onClick = onClick),
+            .clickable(onClickLabel = stringResource(R.string.abrir_perfil), onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         if (foto != null) {
             AsyncImage(
                 model = foto,
-                contentDescription = "Foto de perfil",
+                contentDescription = stringResource(R.string.foto_perfil),
                 modifier = Modifier.size(36.dp),
                 contentScale = ContentScale.Crop
             )

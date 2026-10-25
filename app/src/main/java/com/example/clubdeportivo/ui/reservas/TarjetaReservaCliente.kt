@@ -32,6 +32,8 @@ import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Reserva vigente con su estado y la opción de cancelarla (siempre pide confirmación antes). */
 @Composable
@@ -64,16 +66,16 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                         color = TextoSecundario
                     )
                     Text(
-                        text = if (reserva.personas == 1) "1 persona" else "${reserva.personas} personas",
+                        text = if (reserva.personas == 1) Textos.get(R.string.n_1_person) else Textos.get(R.string.people_4, reserva.personas),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario
                     )
                 }
                 Insignia(
                     texto = when {
-                        pendiente -> "En revisión"
-                        rechazada -> "Rechazada"
-                        else -> "Confirmada"
+                        pendiente -> Textos.get(R.string.under_review_2)
+                        rechazada -> Textos.get(R.string.rejected)
+                        else -> Textos.get(R.string.confirmed_2)
                     },
                     tipo = when {
                         pendiente -> TipoInsignia.ALERTA
@@ -91,7 +93,7 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                         onClick = { confirmando = true }
                     ) {
                         Text(
-                            if (pendiente) "Cancelar solicitud" else "Cancelar reserva",
+                            if (pendiente) Textos.get(R.string.cancel_request) else Textos.get(R.string.cancel_booking),
                             color = Peligro,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -103,10 +105,10 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
 
     if (confirmando) {
         DialogoConfirmacion(
-            titulo = "Cancelar reserva",
-            mensaje = "¿Cancelar \"${reserva.titulo}\" del ${Fechas.legible(reserva.fecha)} a las ${reserva.horaInicio}? " +
-                    "Si faltan menos de ${Catalogos.CANCELACION_SIN_PENALIZACION_HORAS} horas, cuenta como cancelación tardía.",
-            textoConfirmar = "Cancelar reserva",
+            titulo = Textos.get(R.string.cancel_booking),
+            mensaje = Textos.get(R.string.cancel_on_at, reserva.titulo, Fechas.legible(reserva.fecha), reserva.horaInicio) +
+                    Textos.get(R.string.if_there_are_less_than_hours, Catalogos.CANCELACION_SIN_PENALIZACION_HORAS),
+            textoConfirmar = Textos.get(R.string.cancel_booking),
             onConfirmar = {
                 confirmando = false
                 onCancelar()

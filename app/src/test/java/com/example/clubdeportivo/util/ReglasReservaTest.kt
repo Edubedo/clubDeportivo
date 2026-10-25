@@ -16,6 +16,9 @@ import java.util.Date
 import java.util.Locale
 
 class ReglasReservaTest {
+    // Va primero: los demás campos de la clase pueden usar textos al crearse.
+    init { com.example.clubdeportivo.TextosDePrueba.instalar() }
+
 
     private val cancha = Area("a1", "Cancha tenis 1", "Tenis", 4, DisponibilidadArea.DISPONIBLE)
     private val fecha = "2026-10-10"

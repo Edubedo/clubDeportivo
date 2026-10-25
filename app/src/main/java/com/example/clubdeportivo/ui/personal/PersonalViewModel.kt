@@ -17,9 +17,11 @@ import com.example.clubdeportivo.util.ReglasContrasena
 import com.example.clubdeportivo.util.Resultado
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Texto con el que empieza el aviso de éxito al cambiar una contraseña (la pantalla lo pinta en verde). */
-const val MENSAJE_CONTRASENA_CAMBIADA = "Contraseña actualizada para "
+val MENSAJE_CONTRASENA_CAMBIADA: String get() = Textos.get(R.string.password_updated_for)
 
 /** Personal del club: lista, altas (con cuenta de acceso real) y ediciones. Todo sobre la colección `usuarios`. */
 class PersonalViewModel(
@@ -62,13 +64,13 @@ class PersonalViewModel(
                 // Por si es la primera vez tras la fusión de empleados en usuarios (no hace nada si ya está hecha).
                 MigracionEsquema.asegurar(FirebaseFirestore.getInstance())
             } catch (e: Exception) {
-                Log.w("Esquema", "No se pudo migrar la estructura de la base de datos", e)
+                Log.w("Esquema", Textos.get(R.string.the_database_structure_could_not_be), e)
             }
             try {
                 _areas.value = areaRepository.obtenerAreas().map { it.tipo.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
                 _personal.value = personalRepository.obtenerPersonal()
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo cargar el personal. Revisa tu conexión."
+                _mensaje.value = Textos.get(R.string.the_staff_could_not_be_loaded)
             }
             _cargando.value = false
         }
@@ -78,17 +80,17 @@ class PersonalViewModel(
         val yo = SesionManager.usuarioActual
         _avisoFormulario.value = null
         if (yo?.rol?.esAdministrador() != true) {
-            _avisoFormulario.value = "Solo los administradores pueden gestionar al personal."
+            _avisoFormulario.value = Textos.get(R.string.only_administrators_can_manage_staff)
             return
         }
         // Evita que un administrador se quite a sí mismo el acceso y deje la sección sin nadie que la controle.
         if (existente?.id == yo.id && (datos.estado != "ACTIVO" || !datos.rol.esAdministrador())) {
-            _avisoFormulario.value = "No puedes desactivarte ni quitarte el rol de administrador a ti mismo."
+            _avisoFormulario.value = Textos.get(R.string.you_can_t_deactivate_yourself_or)
             return
         }
         // Un encargado trabaja solo con lo de su área: sin área no vería reservas, áreas ni inventario.
         if (!datos.rol.esAdministrador() && datos.areaTrabajo.isNullOrBlank()) {
-            _avisoFormulario.value = "Elige el área que va a encargar."
+            _avisoFormulario.value = Textos.get(R.string.choose_the_area_they_will_manage)
             return
         }
         viewModelScope.launch {
@@ -96,7 +98,7 @@ class PersonalViewModel(
             val resultado = if (existente == null) personalRepository.crear(datos) else personalRepository.actualizar(existente.id, datos)
             when (resultado) {
                 is Resultado.Exito -> {
-                    _mensaje.value = if (existente == null) "Personal agregado: ${datos.nombre.trim()}" else "Cambios guardados"
+                    _mensaje.value = if (existente == null) Textos.get(R.string.staff_added, datos.nombre.trim()) else Textos.get(R.string.changes_saved)
                     _guardadoExitoso.value = true
                     cargarDatos()
                 }
@@ -110,7 +112,7 @@ class PersonalViewModel(
     fun cambiarContrasena(persona: Personal, contrasena: String) {
         _avisoFormulario.value = null
         if (SesionManager.usuarioActual?.rol?.esAdministrador() != true) {
-            _avisoFormulario.value = "Solo los administradores pueden cambiar contraseñas del personal."
+            _avisoFormulario.value = Textos.get(R.string.only_administrators_can_change_staff_p)
             return
         }
         ReglasContrasena.primerError(contrasena)?.let {

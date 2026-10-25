@@ -36,8 +36,17 @@ interface GestionMembresiasRepository {
     /** Solo cambia el plan y el precio (para membresías anteriores a los códigos, cuyas personas no se pueden editar). */
     suspend fun cambiarPlan(membresiaId: String, plan: PlanIndividual?, paqueteId: Int?, precio: Double)
 
-    /** [motivo] es obligatorio al suspender (queda guardado y lo ve el miembro); al reactivar se borra. */
+    /**
+     * [motivo] es obligatorio al suspender (queda guardado y lo ve el miembro); al reactivar se borra y, si la membresía
+     * estaba dada de baja, las cuentas de sus personas vuelven a poder iniciar sesión.
+     */
     suspend fun cambiarEstado(membresiaId: String, estado: EstadoMembresia, motivo: String? = null)
+
+    /**
+     * Baja del miembro: suspende la membresía y desactiva la cuenta de cada persona que cubre. Nadie de esa membresía puede
+     * iniciar sesión y, si alguien tiene la app abierta, la sesión se cierra sola. Se revierte con [cambiarEstado] a ACTIVA.
+     */
+    suspend fun darDeBaja(membresiaId: String, motivo: String)
 
     /** Suma un mes y registra el cobro con su [metodoPago]. */
     suspend fun renovar(membresiaId: String, precio: Double, metodoPago: MetodoPago)

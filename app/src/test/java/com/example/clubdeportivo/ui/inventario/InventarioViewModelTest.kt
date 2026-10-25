@@ -50,6 +50,9 @@ private class InventarioFalso : InventarioRepository {
 }
 
 class InventarioViewModelTest {
+    // Va primero: los demás campos de la clase pueden usar textos al crearse.
+    init { com.example.clubdeportivo.TextosDePrueba.instalar() }
+
 
     // Hace que MutableLiveData.setValue() funcione de forma síncrona fuera del hilo principal,
     // que es lo que se necesita para probar un ViewModel basado en LiveData desde un test JVM.

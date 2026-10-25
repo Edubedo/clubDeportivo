@@ -1,6 +1,8 @@
 package com.example.clubdeportivo.ui.registro
 
 import com.example.clubdeportivo.data.Catalogos
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Un apartado de los términos o del aviso de privacidad: título y uno o más párrafos. */
 data class SeccionLegal(val titulo: String, val parrafos: List<String>)
@@ -15,99 +17,99 @@ data class SeccionLegal(val titulo: String, val parrafos: List<String>)
  */
 object TerminosTexto {
     const val VERSION = "1.0"
-    const val ULTIMA_ACTUALIZACION = "24 de octubre de 2026"
+    val ULTIMA_ACTUALIZACION: String get() = Textos.get(R.string.manual_ultima_actualizacion)
 
     val terminos: List<SeccionLegal> = listOf(
         SeccionLegal(
-            "1. Aceptación de los términos",
+            Textos.get(R.string.n_1_acceptance_of_the_terms),
             listOf(
-                "Al crear una cuenta en la app de Athletic Club (el \"Club\") declaras que leíste y aceptas estos Términos y condiciones y el Aviso de privacidad. Si no estás de acuerdo, no crees la cuenta ni uses la app."
+                Textos.get(R.string.by_creating_an_account_in_the)
             )
         ),
         SeccionLegal(
-            "2. Tu cuenta",
+            Textos.get(R.string.n_2_your_account),
             listOf(
-                "Solo pueden registrarse las personas a las que el Club entregó un código de miembro. El código es personal e intransferible.",
-                "Eres responsable de la veracidad de tus datos, de mantener en secreto tu contraseña y de la actividad que ocurra con tu cuenta. Avisa al Club de inmediato si sospechas un uso no autorizado.",
-                "El Club puede suspender o cancelar una cuenta que incumpla estos términos o el reglamento de las instalaciones."
+                Textos.get(R.string.only_people_to_whom_the_club),
+                Textos.get(R.string.you_are_responsible_for_the_accuracy),
+                Textos.get(R.string.the_club_may_suspend_or_cancel)
             )
         ),
         SeccionLegal(
-            "3. Membresías y pagos",
+            Textos.get(R.string.n_3_memberships_and_payments),
             listOf(
-                "Las membresías individuales y los paquetes familiares se pagan cada mes; la visita se paga una sola vez por día. Los precios vigentes los fija el administrador del Club y se muestran en la sección Membresías.",
-                "Un cambio de precio se aplica a nuevas altas y renovaciones; quien ya tiene membresía conserva el precio que pagó hasta que renueve.",
-                "Si la membresía vence o se suspende (por falta de pago, incumplimiento del reglamento u otro motivo que se te indicará), no podrás reservar hasta regularizarla en recepción."
+                Textos.get(R.string.individual_memberships_and_family_pack_2),
+                Textos.get(R.string.a_price_change_applies_to_new),
+                Textos.get(R.string.if_the_membership_expires_or_is)
             )
         ),
         SeccionLegal(
-            "4. Plan familiar",
+            Textos.get(R.string.n_4_family_plan),
             listOf(
-                "En un paquete familiar, el titular puede dar de alta a las personas de su familia hasta el máximo de integrantes del paquete y compartirles su enlace de acceso. Cada integrante crea su propia cuenta y acepta estos términos por separado.",
-                "El titular es responsable de dar de alta únicamente a familiares que tengan derecho al paquete y de que el pago del paquete se mantenga al corriente; si la membresía se suspende o vence, el acceso de todos sus integrantes se suspende."
+                Textos.get(R.string.in_a_family_package_the_holder),
+                Textos.get(R.string.the_holder_is_responsible_for_adding)
             )
         ),
         SeccionLegal(
-            "5. Reservaciones",
+            Textos.get(R.string.n_5_bookings),
             listOf(
-                "Puedes reservar con hasta ${Catalogos.ANTICIPACION_MAXIMA_DIAS} días de anticipación, un máximo de ${Catalogos.MAX_HORAS_POR_RESERVA} horas por reserva y hasta ${Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO} reservaciones activas. Las áreas abren de ${Catalogos.HORA_APERTURA_AREAS} a ${Catalogos.HORA_CIERRE_AREAS}.",
-                "Las solicitudes de miembros y visitantes quedan en revisión hasta que el encargado del área las apruebe o rechace. Un torneo o el mantenimiento pueden bloquear un área.",
-                "Cancelar con menos de ${Catalogos.CANCELACION_SIN_PENALIZACION_HORAS} horas de anticipación cuenta como cancelación tardía. Si acumulas ${Catalogos.INASISTENCIAS_PARA_BLOQUEO} inasistencias en ${Catalogos.VENTANA_INASISTENCIAS_DIAS} días, no podrás reservar durante ${Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS} días."
+                Textos.get(R.string.you_can_book_up_to_days, Catalogos.ANTICIPACION_MAXIMA_DIAS, Catalogos.MAX_HORAS_POR_RESERVA, Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO, Catalogos.HORA_APERTURA_AREAS, Catalogos.HORA_CIERRE_AREAS),
+                Textos.get(R.string.requests_from_members_and_visitors_rem),
+                Textos.get(R.string.cancelling_less_than_hours_in_advance, Catalogos.CANCELACION_SIN_PENALIZACION_HORAS, Catalogos.INASISTENCIAS_PARA_BLOQUEO, Catalogos.VENTANA_INASISTENCIAS_DIAS, Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS)
             )
         ),
         SeccionLegal(
-            "6. Uso de las instalaciones",
+            Textos.get(R.string.n_6_use_of_the_facilities),
             listOf(
-                "Te comprometes a respetar el reglamento del Club, al personal y a las demás personas, y a cuidar las instalaciones y el material. Los daños causados por mal uso pueden cobrarse a quien los provoque.",
-                "El uso de las instalaciones implica riesgos propios de la actividad deportiva. Declaras estar en condiciones de salud adecuadas para practicarla; el Club no es responsable de lesiones derivadas de tu estado de salud previo o del incumplimiento de las indicaciones del personal."
+                Textos.get(R.string.you_agree_to_respect_the_club),
+                Textos.get(R.string.using_the_facilities_involves_the_risk)
             )
         ),
         SeccionLegal(
-            "7. Uso correcto de la app",
+            Textos.get(R.string.n_7_proper_use_of_the_app),
             listOf(
-                "No debes intentar acceder a cuentas o datos de otras personas, alterar el funcionamiento de la app ni usarla con fines distintos a gestionar tu membresía y tus reservaciones.",
-                "Hacemos lo posible por mantener la app disponible, pero puede haber interrupciones por mantenimiento o por causas ajenas al Club."
+                Textos.get(R.string.you_must_not_attempt_to_access),
+                Textos.get(R.string.we_do_our_best_to_keep)
             )
         ),
         SeccionLegal(
-            "8. Cambios a estos términos",
+            Textos.get(R.string.n_8_changes_to_these_terms),
             listOf(
-                "El Club puede actualizar estos términos. Cuando el cambio sea importante te lo avisaremos en la app y, si es necesario, te pediremos aceptarlos de nuevo. Seguir usando la app después de un cambio implica que lo aceptas."
+                Textos.get(R.string.the_club_may_update_these_terms)
             )
         )
     )
 
     val privacidad: List<SeccionLegal> = listOf(
         SeccionLegal(
-            "Quién es el responsable",
-            listOf("Athletic Club es el responsable del tratamiento de tus datos personales conforme a este Aviso de privacidad.")
+            Textos.get(R.string.who_is_responsible),
+            listOf(Textos.get(R.string.athletic_club_is_responsible_for_the))
         ),
         SeccionLegal(
-            "Qué datos recopilamos",
+            Textos.get(R.string.what_data_we_collect),
             listOf(
-                "Datos de identificación y contacto: nombre, correo electrónico y, si los das, teléfono y foto de perfil.",
-                "Datos de tu membresía y uso del Club: código de miembro, plan, vigencia, pagos, reservaciones, asistencias y torneos en los que participas.",
-                "Datos de tu cuenta: la contraseña se guarda cifrada por el servicio de autenticación; el Club nunca la ve."
+                Textos.get(R.string.identification_and_contact_data_name_e),
+                Textos.get(R.string.data_about_your_membership_and_use),
+                Textos.get(R.string.account_data_the_password_is_stored)
             )
         ),
         SeccionLegal(
-            "Para qué los usamos",
+            Textos.get(R.string.what_we_use_it_for),
             listOf(
-                "Crear y administrar tu cuenta, gestionar tu membresía y tus cobros, procesar tus reservaciones, avisarte de cambios importantes (vencimientos, aprobaciones, torneos) y mantener la seguridad de las instalaciones.",
-                "No vendemos tus datos ni los usamos para publicidad de terceros."
+                Textos.get(R.string.to_create_and_manage_your_account),
+                Textos.get(R.string.we_do_not_sell_your_data)
             )
         ),
         SeccionLegal(
-            "Con quién se comparten",
+            Textos.get(R.string.who_it_is_shared_with),
             listOf(
-                "Solo el personal autorizado del Club ve tus datos, según su función. En un paquete familiar, el titular ve el nombre, parentesco y estado de registro de las personas que dio de alta.",
-                "Usamos servicios de Google Firebase para autenticación y almacenamiento de datos; tratan la información por cuenta del Club."
+                Textos.get(R.string.only_authorized_club_staff_see_your),
+                Textos.get(R.string.we_use_google_firebase_services_for)
             )
         ),
         SeccionLegal(
-            "Tus derechos",
+            Textos.get(R.string.your_rights),
             listOf(
-                "Puedes acceder a tus datos, corregirlos, pedir que se eliminen u oponerte a su uso (derechos ARCO) escribiendo o acudiendo a recepción del Club. Algunos datos se conservan el tiempo que exijan las obligaciones fiscales y contables."
+                Textos.get(R.string.you_can_access_your_data_correct)
             )
         )
     )

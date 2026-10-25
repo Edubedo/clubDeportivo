@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="manual_usuario_hasta">"%1$s · hasta %2$s"</string>
+    <string name="manual_agregar_familiar_lugares">"Agregar familiar (%1$s %2$s)"</string>
+    <string name="manual_en_tu_paquete">"%1$s en tu paquete. "</string>
+    <string name="manual_metodos_pago">"Métodos de pago: %1$s."</string>
+    <string name="manual_paquete_nombre">"Paquete %1$s"</string>
+    <string name="manual_familiar">"familiar"</string>
+    <string name="manual_motivo_punto">"Motivo: %1$s. "</string>
+    <string name="manual_cuenta_actual">"Su cuenta actual (%1$s) dejará de funcionar. "</string>
+    <string name="manual_rechazar_de">"¿Rechazar la reserva de %1$s del "</string>
+    <string name="manual_membresia_suspendida">"Tu membresía está suspendida (%1$s). Habla con recepción."</string>
+    <string name="manual_invitacion_hola">"Hola %1$s, %2$s te dio de alta en su plan familiar del Athletic Club.\n\n"</string>
+    <string name="password_updated_for">"Contraseña actualizada para "</string>
+    <string name="manual_ultima_actualizacion">"24 de octubre de 2026"</string>
+    <string name="parentesco_titular">"Titular"</string>
+    <string name="parentesco_integrante">"Integrante"</string>
+    <string name="turno_matutino">"Matutino"</string>
+    <string name="turno_vespertino">"Vespertino"</string>
+    <string name="tipo_personal_limpieza">"Limpieza"</string>
+    <string name="tipo_personal_ayudante">"Ayudante de área"</string>
+    <string name="tipo_personal_administrador">"Administrador de área"</string>
+    <string name="lbl_cantidad">"CANTIDAD"</string>
+    <string name="lbl_carril">"CARRIL"</string>
+    <string name="lbl_deporte">"DEPORTE"</string>
+    <string name="lbl_disciplina">"DISCIPLINA"</string>
+    <string name="lbl_estado">"ESTADO"</string>
+    <string name="lbl_estatus">"ESTATUS"</string>
+    <string name="lbl_fecha">"FECHA"</string>
+    <string name="lbl_horario">"HORARIO"</string>
+    <string name="lbl_mensaje">"MENSAJE"</string>
+    <string name="lbl_paquete">"PAQUETE"</string>
+    <string name="lbl_parentesco">"PARENTESCO"</string>
+    <string name="lbl_personas">"PERSONAS"</string>
+    <string name="lbl_precio">"PRECIO"</string>
+    <string name="lbl_titular">"TITULAR"</string>
+    <string name="lbl_turno">"TURNO"</string>
+</resources>
