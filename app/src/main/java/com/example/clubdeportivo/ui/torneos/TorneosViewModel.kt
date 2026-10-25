@@ -13,6 +13,8 @@ import com.example.clubdeportivo.data.repository.ReservaRepository
 import com.example.clubdeportivo.data.repository.TorneoRepository
 import com.example.clubdeportivo.util.ReglasReserva
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 class TorneosViewModel(
     private val torneoRepository: TorneoRepository = AppContainer.torneoRepository,
@@ -67,9 +69,9 @@ class TorneosViewModel(
         viewModelScope.launch {
             try {
                 torneoRepository.inscribirse(torneo.id, usuarioId)
-                _mensaje.value = "Te inscribiste a ${torneo.nombre}"
+                _mensaje.value = Textos.get(R.string.you_registered_for, torneo.nombre)
             } catch (e: Exception) {
-                _mensaje.value = e.message ?: "No se pudo completar la inscripción."
+                _mensaje.value = e.message ?: Textos.get(R.string.the_registration_could_not_be_complete)
             }
             cargarTorneos()
         }
@@ -109,7 +111,7 @@ class TorneosViewModel(
             // Se lee todo de nuevo para validar contra la ocupación real, no contra lo que se ve en pantalla.
             val area = areaRepository.obtenerAreaPorId(areaId)
             if (area == null) {
-                _errorFormulario.value = "El área elegida ya no existe."
+                _errorFormulario.value = Textos.get(R.string.the_chosen_area_no_longer_exists)
                 return@launch
             }
             val conflicto = ReglasReserva.validarTorneo(
@@ -130,10 +132,10 @@ class TorneosViewModel(
 
             if (id == null) {
                 torneoRepository.crearTorneo(nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, horaInicio, horaFin)
-                _mensaje.value = "Torneo creado: $nombre"
+                _mensaje.value = Textos.get(R.string.tournament_created, nombre)
             } else {
                 torneoRepository.actualizarTorneo(id, nombre, disciplina, areaId, fechaInicio, fechaFin, cupoMaximo, horaInicio, horaFin)
-                _mensaje.value = "Torneo actualizado: $nombre"
+                _mensaje.value = Textos.get(R.string.tournament_updated, nombre)
             }
             _mostrarModalCrear.value = false
             _torneoEnEdicion.value = null
@@ -145,9 +147,9 @@ class TorneosViewModel(
         viewModelScope.launch {
             try {
                 torneoRepository.eliminarTorneo(torneo.id)
-                _mensaje.value = "Torneo eliminado: ${torneo.nombre}"
+                _mensaje.value = Textos.get(R.string.tournament_deleted, torneo.nombre)
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo eliminar el torneo. Inténtalo de nuevo."
+                _mensaje.value = Textos.get(R.string.the_tournament_could_not_be_deleted)
             }
             cargarTorneos()
         }

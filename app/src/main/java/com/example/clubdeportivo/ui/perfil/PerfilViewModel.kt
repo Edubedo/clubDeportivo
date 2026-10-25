@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.ContentResolver
 import android.net.Uri
+import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Usuario
@@ -13,6 +14,7 @@ import com.example.clubdeportivo.data.repository.FotoPerfilRepository
 import com.example.clubdeportivo.data.repository.UsuarioRepository
 import com.example.clubdeportivo.util.comprimirFotoPerfil
 import com.example.clubdeportivo.util.Resultado
+import com.example.clubdeportivo.util.Textos
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,7 +47,7 @@ class PerfilViewModel(
         val usuarioActual = _usuario.value ?: return
 
         if (nombre.isBlank()) {
-            _mensaje.value = "El nombre no puede estar vacío."
+            _mensaje.value = Textos.get(R.string.perfil_nombre_vacio)
             return
         }
 
@@ -70,8 +72,7 @@ class PerfilViewModel(
                         resultado.datos
                     )
 
-                    _mensaje.value =
-                        "Perfil actualizado correctamente."
+                    _mensaje.value = Textos.get(R.string.perfil_actualizado)
                 }
 
                 is Resultado.Error -> {
@@ -95,7 +96,7 @@ class PerfilViewModel(
 
             val jpeg = withContext(Dispatchers.IO) { comprimirFotoPerfil(resolver, uri) }
             if (jpeg == null) {
-                _mensaje.value = "No se pudo leer la imagen elegida."
+                _mensaje.value = Textos.get(R.string.perfil_imagen_error)
             } else {
                 when (val resultado = fotoPerfilRepository.subir(usuarioActual.id, jpeg)) {
                     is Resultado.Exito -> guardarFotoEnSesion(resultado.datos)

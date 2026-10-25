@@ -8,6 +8,8 @@ import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Reserva
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 class ReservasEncargadoViewModel : ViewModel() {
 
@@ -40,7 +42,7 @@ class ReservasEncargadoViewModel : ViewModel() {
         val deporte = areaTrabajo
 
         if (deporte.isBlank()) {
-            _error.value = "No tienes un área de trabajo asignada."
+            _error.value = Textos.get(R.string.you_don_t_have_a_work)
             return
         }
 
@@ -82,7 +84,7 @@ class ReservasEncargadoViewModel : ViewModel() {
             } catch (e: Exception) {
 
                 _error.value =
-                    "No se pudieron cargar las reservas."
+                    Textos.get(R.string.the_bookings_could_not_be_loaded)
 
                 e.printStackTrace()
             }
@@ -120,7 +122,7 @@ class ReservasEncargadoViewModel : ViewModel() {
             } catch (e: Exception) {
 
                 _error.value =
-                    "No se pudo registrar la asistencia."
+                    Textos.get(R.string.attendance_could_not_be_recorded)
 
                 e.printStackTrace()
             }

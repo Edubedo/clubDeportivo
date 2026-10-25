@@ -1,10 +1,12 @@
 package com.example.clubdeportivo.data.repository
 
+import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.Usuario
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Resultado
+import com.example.clubdeportivo.util.Textos
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.FirebaseTooManyRequestsException
@@ -55,15 +57,18 @@ class FirebaseAuthRepository(
         return try {
             val resultado = auth.signInWithEmailAndPassword(correo, password).await()
             val uid = resultado.user?.uid
-                ?: return Resultado.Error("No se pudo iniciar sesión, intenta de nuevo.")
+                ?: return Resultado.Error(Textos.get(R.string.could_not_sign_in_please_try))
 
             val perfil = usuarios.document(uid).get().await()
             if (perfil.getString("estado") == "INACTIVO") {
                 auth.signOut()
-                return Resultado.Error("Tu cuenta está desactivada. Contacta a un administrador.")
+                return Resultado.Error(Textos.get(R.string.login_cuenta_desactivada))
             }
             val usuario = perfil.toUsuario(uid, correo)
-                ?: return Resultado.Error("Tu cuenta no tiene un perfil guardado. Contacta a un administrador.")
+            if (usuario == null) {
+                auth.signOut()
+                return Resultado.Error(Textos.get(R.string.login_sin_perfil))
+            }
 
             Resultado.Exito(usuario)
         } catch (e: Exception) {
@@ -74,20 +79,20 @@ class FirebaseAuthRepository(
     override suspend fun consultarCodigo(codigo: String): Resultado<EstadoCodigo> {
         val codigoNormalizado = ReglasMembresia.normalizarCodigo(codigo)
         if (!ReglasMembresia.esCodigo(codigoNormalizado)) {
-            return Resultado.Error("El código no tiene el formato correcto. Se ve así: CLB-7K3M9Q.")
+            return Resultado.Error(Textos.get(R.string.the_code_doesn_t_have_the))
         }
         return try {
             val registro = registroCodigos.document(codigoNormalizado).get().await()
             when {
                 !registro.exists() ->
-                    Resultado.Error("No encontramos ese código. Revísalo o pídelo en recepción.")
+                    Resultado.Error(Textos.get(R.string.we_couldn_t_find_that_code))
                 registro.getBoolean("cuentaCreada") == true -> Resultado.Exito(EstadoCodigo.YA_REGISTRADO)
                 else -> Resultado.Exito(EstadoCodigo.DISPONIBLE)
             }
         } catch (e: FirebaseFirestoreException) {
             if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
                 // El código es válido; lo que falla es la consulta, porque las reglas publicadas en Firebase no incluyen registroCodigos.
-                Resultado.Error("No se pudo consultar el código: las reglas de Firebase del club están desactualizadas. Avisa al administrador para que publique firestore.rules.")
+                Resultado.Error(Textos.get(R.string.the_code_could_not_be_checked))
             } else {
                 Resultado.Error(traducirError(e))
             }
@@ -108,15 +113,15 @@ class FirebaseAuthRepository(
      *
      * Si algo falla a medias se deshace lo hecho, así el código sigue disponible para intentarlo otra vez.
      */
-    override suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String): Resultado<Usuario> {
+    override suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String, terminosVersion: String): Resultado<Usuario> {
         val codigoNormalizado = ReglasMembresia.normalizarCodigo(codigo)
         if (!ReglasMembresia.esCodigo(codigoNormalizado)) {
-            return Resultado.Error("El código no tiene el formato correcto. Se ve así: CLB-7K3M9Q.")
+            return Resultado.Error(Textos.get(R.string.the_code_doesn_t_have_the))
         }
 
         val appCodigo = appSecundaria()
-        val authCodigo = FirebaseAuth.getInstance(appCodigo)
-        val dbCodigo = FirebaseFirestore.getInstance(appCodigo)
+        val authCodigo = FirebaseAuth.getInstance(appCodigo).also { EmuladoresFirebase.configurar(it) }
+        val dbCodigo = FirebaseFirestore.getInstance(appCodigo).also { EmuladoresFirebase.configurar(it) }
 
         var cuentaNueva: com.google.firebase.auth.FirebaseUser? = null
         var uidInterno: String? = null
@@ -127,21 +132,22 @@ class FirebaseAuthRepository(
                 authCodigo.signInWithEmailAndPassword(ReglasMembresia.emailDeCodigo(codigoNormalizado), codigoNormalizado)
                     .await().user?.uid
             } catch (e: FirebaseAuthInvalidCredentialsException) {
-                return Resultado.Error("No pudimos validar ese código. Si ya creaste tu cuenta, inicia sesión con tu correo.")
+                return Resultado.Error(Textos.get(R.string.we_couldn_t_validate_that_code))
             } catch (e: FirebaseAuthInvalidUserException) {
-                return Resultado.Error("No pudimos validar ese código. Si ya creaste tu cuenta, inicia sesión con tu correo.")
-            } ?: return Resultado.Error("No se pudo validar el código, intenta de nuevo.")
+                return Resultado.Error(Textos.get(R.string.we_couldn_t_validate_that_code))
+            } ?: return Resultado.Error(Textos.get(R.string.the_code_could_not_be_validated))
 
             val perfilInterno = dbCodigo.collection("usuarios").document(uidInterno).get().await()
             val miembro = dbCodigo.collection("miembros").document(codigoNormalizado).get().await()
-            if (!miembro.exists()) {
-                return Resultado.Error("Este código ya no está activo. Habla con recepción.")
+            // Un miembro dado de baja deja inactiva su cuenta interna: con su código ya no puede crear una cuenta.
+            if (!miembro.exists() || perfilInterno.getString("estado") == "INACTIVO") {
+                return Resultado.Error(Textos.get(R.string.this_code_is_no_longer_active))
             }
             val rol = runCatching { Rol.valueOf(perfilInterno.getString("rol").orEmpty()) }.getOrDefault(Rol.SOCIO)
 
             // 2. Cuenta real.
             cuentaNueva = auth.createUserWithEmailAndPassword(correo.trim(), password).await().user
-            val uidNuevo = cuentaNueva?.uid ?: return Resultado.Error("No se pudo crear la cuenta, intenta de nuevo.")
+            val uidNuevo = cuentaNueva?.uid ?: return Resultado.Error(Textos.get(R.string.the_account_could_not_be_created))
 
             // 3. Reclamo del código (con la sesión del código).
             val lote = dbCodigo.batch()
@@ -170,6 +176,8 @@ class FirebaseAuthRepository(
                     "rol" to rol.name,
                     "estado" to "ACTIVO",
                     "codigoMiembro" to codigoNormalizado,
+                    "terminosVersion" to terminosVersion,
+                    "terminosAceptadosEn" to FieldValue.serverTimestamp(),
                     "fechaRegistro" to Fechas.hoy(),
                     "creadoEn" to FieldValue.serverTimestamp(),
                     "actualizadoEn" to FieldValue.serverTimestamp()
@@ -236,7 +244,7 @@ class FirebaseAuthRepository(
             auth.sendPasswordResetEmail(correo.trim()).await()
             Resultado.Exito(Unit)
         } catch (e: FirebaseAuthInvalidUserException) {
-            Resultado.Error("No existe una cuenta con ese correo.")
+            Resultado.Error(Textos.get(R.string.there_is_no_account_with_that))
         } catch (e: Exception) {
             Resultado.Error(traducirError(e))
         }
@@ -261,22 +269,23 @@ class FirebaseAuthRepository(
         auth.signOut()
     }
 
-    private fun traducirError(e: Exception, alRegistrar: Boolean = false): String = when (e) {
-        is FirebaseAuthUserCollisionException -> "Ya existe una cuenta con ese correo. Inicia sesión o usa otro correo."
-        is FirebaseAuthWeakPasswordException -> "La contraseña es muy débil. Usa 8+ caracteres con mayúscula, número y símbolo."
-        is FirebaseAuthInvalidCredentialsException ->
-            if (alRegistrar) "El correo no es válido. Revísalo e intenta de nuevo." else "Correo o contraseña incorrectos."
-        is FirebaseAuthInvalidUserException -> "No existe una cuenta con ese correo."
-        is FirebaseTooManyRequestsException -> "Demasiados intentos. Espera unos minutos e inténtalo de nuevo."
-        is FirebaseNetworkException -> "Sin conexión. Revisa tu internet e intenta de nuevo."
-        is FirebaseFirestoreException -> when (e.code) {
-            FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                "No tienes permiso para hacer esto. Si crees que es un error, avisa al administrador del club."
-            FirebaseFirestoreException.Code.UNAVAILABLE -> "Sin conexión. Revisa tu internet e intenta de nuevo."
-            else -> "Algo salió mal. Intenta de nuevo en un momento."
+    private fun traducirError(e: Exception, alRegistrar: Boolean = false): String = Textos.get(
+        when (e) {
+            is FirebaseAuthUserCollisionException -> R.string.err_cuenta_existente
+            is FirebaseAuthWeakPasswordException -> R.string.err_password_debil
+            is FirebaseAuthInvalidCredentialsException ->
+                if (alRegistrar) R.string.err_correo_invalido else R.string.err_credenciales
+            is FirebaseAuthInvalidUserException -> R.string.err_sin_cuenta
+            is FirebaseTooManyRequestsException -> R.string.err_demasiados_intentos
+            is FirebaseNetworkException -> R.string.err_sin_conexion
+            is FirebaseFirestoreException -> when (e.code) {
+                FirebaseFirestoreException.Code.PERMISSION_DENIED -> R.string.err_sin_permiso
+                FirebaseFirestoreException.Code.UNAVAILABLE -> R.string.err_sin_conexion
+                else -> R.string.err_generico_corto
+            }
+            else -> R.string.err_generico
         }
-        else -> "Algo salió mal. Revisa tu conexión e intenta de nuevo."
-    }
+    )
 
     private companion object {
         const val NOMBRE_APP_REGISTRO = "registroMiembros"

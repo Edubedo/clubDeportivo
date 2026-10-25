@@ -53,6 +53,8 @@ import com.example.clubdeportivo.ui.theme.PeligroSuave
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Solicitudes de reserva "en revisión": el encargado del área (o un administrador) las aprueba o rechaza. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,7 +84,7 @@ fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
             when {
                 pendientes == null -> FullScreenLoading()
                 pendientes.isEmpty() -> EmptyState(
-                    mensaje = "No hay solicitudes de reserva en revisión.",
+                    mensaje = Textos.get(R.string.there_are_no_booking_requests_under),
                     icono = Icons.Outlined.TaskAlt
                 )
                 else -> LazyColumn(
@@ -105,11 +107,11 @@ fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
 
     aRechazar?.let { reserva ->
         DialogoConfirmacion(
-            titulo = "Rechazar reserva",
-            mensaje = "¿Rechazar la reserva de ${reserva.usuarioNombre.ifBlank { "esta persona" }} del " +
-                "${Fechas.legible(reserva.fecha)} a las ${reserva.horaInicio}? Queda rechazada y el lugar se libera.",
-            textoConfirmar = "Rechazar",
-            textoCancelar = "Volver",
+            titulo = Textos.get(R.string.reject_booking),
+            mensaje = Textos.get(R.string.manual_rechazar_de, reserva.usuarioNombre.ifBlank { Textos.get(R.string.this_person) }) +
+                Textos.get(R.string.at_it_will_be_rejected_and, Fechas.legible(reserva.fecha), reserva.horaInicio),
+            textoConfirmar = Textos.get(R.string.reject),
+            textoCancelar = Textos.get(R.string.back),
             onConfirmar = {
                 viewModel.rechazar(reserva)
                 aRechazar = null
@@ -131,7 +133,7 @@ private fun TarjetaPorAprobar(reserva: Reserva, ocupada: Boolean, onAprobar: () 
                 BurbujaTexto(texto = Deportes.emojiDe(reserva.deporte), tamano = 48.dp, tamanoTexto = 24)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = reserva.usuarioNombre.ifBlank { "Miembro" },
+                        text = reserva.usuarioNombre.ifBlank { Textos.get(R.string.member) },
                         style = MaterialTheme.typography.titleSmall,
                         color = TextoPrincipal,
                         maxLines = 1,
@@ -146,19 +148,19 @@ private fun TarjetaPorAprobar(reserva: Reserva, ocupada: Boolean, onAprobar: () 
                     )
                     Text(
                         text = "${Fechas.legible(reserva.fecha)} · ${reserva.horaInicio}–${reserva.horaFin} · " +
-                            if (reserva.personas == 1) "1 persona" else "${reserva.personas} personas",
+                            if (reserva.personas == 1) Textos.get(R.string.n_1_person) else Textos.get(R.string.people_4, reserva.personas),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario
                     )
                 }
-                Insignia(texto = "En revisión", tipo = TipoInsignia.ALERTA)
+                Insignia(texto = Textos.get(R.string.under_review_2), tipo = TipoInsignia.ALERTA)
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 BotonTonal(
-                    texto = "Aprobar",
+                    texto = Textos.get(R.string.approve),
                     icono = Icons.Filled.Check,
                     fondo = ExitoSuave,
                     color = Exito,
@@ -167,7 +169,7 @@ private fun TarjetaPorAprobar(reserva: Reserva, ocupada: Boolean, onAprobar: () 
                     conReflejo = false
                 )
                 BotonTonal(
-                    texto = "Rechazar",
+                    texto = Textos.get(R.string.reject),
                     icono = Icons.Filled.Close,
                     fondo = PeligroSuave,
                     color = Peligro,

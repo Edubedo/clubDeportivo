@@ -11,6 +11,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 private fun DocumentSnapshot.toReserva(): Reserva? {
     val usuarioId = getString("usuarioId") ?: return null
@@ -143,19 +145,19 @@ class FirebaseReservaRepository(
 
     /** Lee una reserva que espera respuesta y comprueba que quien responde puede hacerlo (el encargado, solo en su área). */
     private suspend fun reservaPorResolver(reservaId: String): Reserva {
-        val reserva = reservas.document(reservaId).get().await().toReserva() ?: error("La reserva ya no existe.")
+        val reserva = reservas.document(reservaId).get().await().toReserva() ?: error(Textos.get(R.string.the_booking_no_longer_exists))
         if (!com.example.clubdeportivo.data.SesionManager.usuarioActual.puedeVerDeporte(reserva.deporte)) {
-            error("Esta reserva es de otra área: solo su encargado puede responderla.")
+            error(Textos.get(R.string.this_booking_belongs_to_another_area))
         }
         if (reserva.estado != EstadoReserva.PENDIENTE_APROBACION) {
-            error("Esta reserva ya no está en revisión (${reserva.estado.name.lowercase().replace('_', ' ')}).")
+            error(Textos.get(R.string.this_booking_is_no_longer_under, reserva.estado.name.lowercase().replace('_', ' ')))
         }
         return reserva
     }
 
     override suspend fun aprobarReserva(reservaId: String) {
         val reserva = reservaPorResolver(reservaId)
-        if (Fechas.horasDesdeAhora(reserva.fecha, reserva.horaFin) <= 0) error("Esta reserva ya terminó: no se puede aprobar.")
+        if (Fechas.horasDesdeAhora(reserva.fecha, reserva.horaFin) <= 0) error(Textos.get(R.string.this_booking_has_already_ended_it))
         reservas.document(reservaId).update(
             mapOf(
                 "estado" to EstadoReserva.CONFIRMADA.name,

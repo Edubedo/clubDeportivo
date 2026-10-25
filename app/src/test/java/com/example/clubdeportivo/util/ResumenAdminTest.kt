@@ -13,6 +13,9 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ResumenAdminTest {
+    // Va primero: los demás campos de la clase pueden usar textos al crearse.
+    init { com.example.clubdeportivo.TextosDePrueba.instalar() }
+
 
     private val hoy = Fechas.hoy()
     private val mesActual = hoy.take(7)

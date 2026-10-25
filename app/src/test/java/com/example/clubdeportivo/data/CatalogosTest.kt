@@ -7,6 +7,9 @@ import org.junit.Test
 
 /** Los precios del club deben seguir teniendo sentido entre sí: un paquete siempre debe convenir más que comprar planes sueltos. */
 class CatalogosTest {
+    // Va primero: los demás campos de la clase pueden usar textos al crearse.
+    init { com.example.clubdeportivo.TextosDePrueba.instalar() }
+
 
     private val nino = Catalogos.precioPlanIndividual(PlanIndividual.NINO)
     private val normal = Catalogos.precioPlanIndividual(PlanIndividual.NORMAL)

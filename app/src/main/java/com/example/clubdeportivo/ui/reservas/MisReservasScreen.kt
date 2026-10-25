@@ -25,6 +25,8 @@ import com.example.clubdeportivo.ui.components.EmptyState
 import com.example.clubdeportivo.ui.components.EncabezadoPantalla
 import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 @Composable
 fun MisReservasScreen(
@@ -52,10 +54,10 @@ fun MisReservasScreen(
                 .padding(innerPadding)
                 .padding(horizontal = MargenPantalla)
         ) {
-            EncabezadoPantalla(titulo = "Mis reservas")
+            EncabezadoPantalla(titulo = Textos.get(R.string.my_bookings))
 
             if (reservas.isEmpty()) {
-                EmptyState(mensaje = "No tienes reservas registradas.", icono = Icons.Outlined.EventBusy)
+                EmptyState(mensaje = Textos.get(R.string.you_have_no_bookings_yet), icono = Icons.Outlined.EventBusy)
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),

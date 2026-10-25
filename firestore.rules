@@ -32,6 +32,31 @@ service cloud.firestore {
     function esDeCliente(rol) {
       return rol in ['SOCIO', 'VISITANTE_EXTERNO'];
     }
+    // Titular de una membresía: la persona cuyo perfil apunta (por su código) a un miembro "Titular" de esa membresía.
+    // Es quien puede dar de alta a su familia en un paquete familiar.
+    function codigoPropio() {
+      return get(rutaPerfil()).data.get('codigoMiembro', '');
+    }
+    function esTitularDe(membresiaId) {
+      return conPerfil() && activo() && codigoPropio() != ''
+          && get(/databases/$(database)/documents/miembros/$(codigoPropio())).data.membresiaId == membresiaId
+          && get(/databases/$(database)/documents/miembros/$(codigoPropio())).data.get('parentesco', '') == 'Titular';
+    }
+    // Máximo de personas de cada paquete familiar (titular incluido). Mantener igual que Catalogos.paquetesFamiliares.
+    function topePaquete(paqueteId) {
+      return paqueteId == 1 ? 5 : (paqueteId == 2 ? 2 : 3);
+    }
+    // El titular agrega UNA persona a su paquete familiar: el miembro nuevo y el contador de la membresía suben juntos
+    // (mismo lote), y el contador nunca pasa del tope del paquete.
+    function altaDeFamiliar(membresiaId) {
+      return esTitularDe(membresiaId)
+          && get(/databases/$(database)/documents/membresias/$(membresiaId)).data.tipo == 'FAMILIAR'
+          && get(/databases/$(database)/documents/membresias/$(membresiaId)).data.estado == 'ACTIVA'
+          && getAfter(/databases/$(database)/documents/membresias/$(membresiaId)).data.get('totalPersonas', 1)
+               == get(/databases/$(database)/documents/membresias/$(membresiaId)).data.get('totalPersonas', 1) + 1
+          && getAfter(/databases/$(database)/documents/membresias/$(membresiaId)).data.get('totalPersonas', 1)
+               <= topePaquete(get(/databases/$(database)/documents/membresias/$(membresiaId)).data.get('paqueteFamiliarId', 1));
+    }
     // Un miembro se registra con su código. El registro es válido si el código ya fue "reclamado" por esta misma
     // cuenta (registroCodigos/{código}.usuarioNuevo) y el rol pedido es el que el personal le dio al dar de alta
     // al miembro (el de su cuenta interna, cuyo uid guarda registroCodigos/{código}.usuarioId).
@@ -54,7 +79,14 @@ service cloud.firestore {
                         && request.resource.data.get('codigoMiembro', '') != ''
                         && reclamoValido(request.resource.data.codigoMiembro, request.resource.data.rol))
                     || esAdmin()
-                    || (esPersonal() && esDeCliente(request.resource.data.rol));
+                    || (esPersonal() && esDeCliente(request.resource.data.rol))
+                    // Perfil de acceso de un familiar que el titular acaba de dar de alta (mismo lote que su miembro).
+                    || (request.resource.data.rol == 'SOCIO'
+                        && request.resource.data.get('estado', 'ACTIVO') == 'ACTIVO'
+                        && request.resource.data.get('codigoMiembro', '') != ''
+                        && existsAfter(/databases/$(database)/documents/miembros/$(request.resource.data.codigoMiembro))
+                        && getAfter(/databases/$(database)/documents/miembros/$(request.resource.data.codigoMiembro)).data.usuarioId == uid
+                        && altaDeFamiliar(getAfter(/databases/$(database)/documents/miembros/$(request.resource.data.codigoMiembro)).data.membresiaId));
 
       // Cada quien edita solo su nombre, teléfono y foto; nunca su rol ni su estado. El personal edita
       // clientes; solo un administrador toca al personal.
@@ -67,8 +99,15 @@ service cloud.firestore {
     }
 
     match /miembros/{codigo} {
-      allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
-      allow create, delete: if esPersonal();
+      // El titular también ve a las personas de su paquete familiar.
+      allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid)
+                  || esTitularDe(resource.data.membresiaId);
+      allow delete: if esPersonal();
+      allow create: if esPersonal()
+                    || (request.resource.data.get('parentesco', '') != 'Titular'
+                        && request.resource.data.get('esTitular', false) == false
+                        && request.resource.data.get('cuentaCreada', false) == false
+                        && altaDeFamiliar(request.resource.data.membresiaId));
       // Al registrarse con su código, la persona (entrando con la cuenta interna del código) apunta el miembro a su
       // cuenta real y lo marca como registrado; no puede tocar nada más.
       allow update: if esPersonal()
@@ -81,7 +120,12 @@ service cloud.firestore {
     // código a la vez (get); no se puede listar. No guarda datos personales: únicamente banderas y uids.
     match /registroCodigos/{codigo} {
       allow get: if true;
-      allow create, delete: if esPersonal();
+      allow delete: if esPersonal();
+      allow create: if esPersonal()
+                    || (existsAfter(/databases/$(database)/documents/miembros/$(codigo))
+                        && getAfter(/databases/$(database)/documents/miembros/$(codigo)).data.usuarioId == request.resource.data.usuarioId
+                        && request.resource.data.get('cuentaCreada', false) == false
+                        && altaDeFamiliar(getAfter(/databases/$(database)/documents/miembros/$(codigo)).data.membresiaId));
       allow update: if esPersonal()
                     || (firmado() && resource.data.usuarioId == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys()
@@ -95,7 +139,13 @@ service cloud.firestore {
                   || (conPerfil() && get(rutaPerfil()).data.get('codigoMiembro', '') != ''
                       && get(/databases/$(database)/documents/miembros/$(get(rutaPerfil()).data.codigoMiembro))
                            .data.membresiaId == id);
-      allow write: if esPersonal();
+      allow create, delete: if esPersonal();
+      // El titular solo puede sumar una persona a su paquete familiar (sube totalPersonas de uno en uno); el cambio
+      // de plan, precio, estado y vigencia es del personal.
+      allow update: if esPersonal()
+                    || (esTitularDe(id)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalPersonas', 'actualizadoEn'])
+                        && request.resource.data.get('totalPersonas', 1) == resource.data.get('totalPersonas', 1) + 1);
     }
 
     match /integrantesFamiliares/{id} {

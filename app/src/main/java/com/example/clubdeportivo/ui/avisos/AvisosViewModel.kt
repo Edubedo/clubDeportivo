@@ -14,6 +14,8 @@ import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.notificaciones.DestinatarioNotificacion
 import com.example.clubdeportivo.data.notificaciones.Notificacion
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /**
  * Avisos del club para todos los roles. Se comparte en toda la app (la campana de la barra superior muestra cuántos
@@ -72,7 +74,7 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             try {
                 todos = repositorio.obtener(esPersonal)
             } catch (e: Exception) {
-                mensaje = "No se pudieron cargar los avisos."
+                mensaje = Textos.get(R.string.the_notices_could_not_be_loaded)
             }
             cargando = false
         }
@@ -124,10 +126,10 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     )
                 )
                 todos = listOf(nuevo) + todos
-                mensaje = "Publicación guardada."
+                mensaje = Textos.get(R.string.post_saved)
                 alTerminar()
             } catch (e: Exception) {
-                mensaje = "No se pudo enviar el aviso. Intenta de nuevo."
+                mensaje = Textos.get(R.string.the_notice_could_not_be_sent)
             }
             enviando = false
         }
@@ -156,10 +158,10 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
                         destinatario = destinatario
                     ) else it
                 }
-                mensaje = "Publicación actualizada."
+                mensaje = Textos.get(R.string.post_updated)
                 alTerminar()
             } catch (e: Exception) {
-                mensaje = "No se pudo guardar el cambio. Intenta de nuevo."
+                mensaje = Textos.get(R.string.the_change_could_not_be_saved)
             }
             enviando = false
         }
@@ -170,9 +172,9 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             try {
                 repositorio.eliminar(id)
                 todos = todos.filterNot { it.id == id }
-                mensaje = "Aviso eliminado."
+                mensaje = Textos.get(R.string.notice_deleted)
             } catch (e: Exception) {
-                mensaje = "No se pudo eliminar el aviso."
+                mensaje = Textos.get(R.string.the_notice_could_not_be_deleted)
             }
         }
     }

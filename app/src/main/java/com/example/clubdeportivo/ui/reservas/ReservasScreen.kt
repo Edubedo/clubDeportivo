@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Area
@@ -67,6 +68,8 @@ import com.example.clubdeportivo.ui.components.EncabezadoPantalla
 import com.example.clubdeportivo.ui.components.FullScreenLoading
 import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.PestanasPildora
+import com.example.clubdeportivo.ui.components.ProcesoEnCurso
+import com.example.clubdeportivo.ui.components.ProtegerSalida
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TituloSeccion
 import com.example.clubdeportivo.ui.components.modifierReflejo
@@ -96,6 +99,7 @@ import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.model.esCliente
+import com.example.clubdeportivo.util.Textos
 
 @Composable
 fun ReservasScreen(initialTab: Int = 0) {
@@ -105,17 +109,17 @@ fun ReservasScreen(initialTab: Int = 0) {
     val puedeAprobar = rol?.esAdministrador() == true || rol?.esEncargado() == true
     var pestana by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, 3)) }
     val opciones = when {
-        esCliente -> listOf("Espacio", "Torneo", "Mis reservas")
-        esAdmin -> listOf("Espacio", "Torneo", "Reservas", "Solicitudes")
-        puedeAprobar -> listOf("Espacio", "Torneo", "Solicitudes")
-        else -> listOf("Espacio", "Torneo")
+        esCliente -> listOf(Textos.get(R.string.space), Textos.get(R.string.tournament_2), Textos.get(R.string.my_bookings))
+        esAdmin -> listOf(Textos.get(R.string.space), Textos.get(R.string.tournament_2), Textos.get(R.string.bookings), Textos.get(R.string.requests))
+        puedeAprobar -> listOf(Textos.get(R.string.space), Textos.get(R.string.tournament_2), Textos.get(R.string.requests))
+        else -> listOf(Textos.get(R.string.space), Textos.get(R.string.tournament_2))
     }
 
     Column(modifier = Modifier.fillMaxSize().background(FondoApp)) {
         PestanasPildora(
             opciones = opciones,
             seleccionada = pestana.coerceAtMost(opciones.lastIndex),
-            onSeleccion = { pestana = it }
+            onSeleccion = { nueva -> if (nueva != pestana) ProcesoEnCurso.intentar { pestana = nueva } }
         )
 
         when (pestana.coerceAtMost(opciones.lastIndex)) {
@@ -141,6 +145,13 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
     val mensaje by viewModel.mensaje.observeAsState()
     val restriccion by viewModel.restriccion.observeAsState()
 
+    // Con horas ya elegidas hay una reserva a medias: salirse pide confirmación y, si se acepta, la descarta.
+    ProtegerSalida(
+        activo = ui.desde != null && !ui.enviando,
+        mensaje = R.string.salir_reserva_mensaje,
+        alAbandonar = { viewModel.reiniciarProceso() }
+    )
+
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(mensaje) {
         mensaje?.let {
@@ -161,7 +172,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
         }
     ) { innerPadding ->
         if (ui.cargando) {
-            FullScreenLoading(modifier = Modifier.padding(innerPadding))
+            FullScreenLoading(modifier = Modifier.padding(innerPadding), conMargen = true)
             return@Scaffold
         }
 
@@ -198,7 +209,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                 .verticalScroll(scroll)
                 .padding(horizontal = MargenPantalla)
         ) {
-            EncabezadoPantalla(titulo = "Reservar un espacio")
+            EncabezadoPantalla(titulo = Textos.get(R.string.book_a_space))
             restriccion?.let { motivo ->
                 TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = AlertaSuave) {
                     Row(
@@ -215,10 +226,10 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             Pasos(pasoActual = paso)
             Spacer(modifier = Modifier.height(20.dp))
 
-            Seccion("SELECCIONA EL DEPORTE")
+            Seccion(Textos.get(R.string.select_the_sport))
             if (deportes.isEmpty()) {
                 Text(
-                    "Todavía no hay áreas registradas.",
+                    Textos.get(R.string.there_are_no_areas_yet),
                     color = TextoSecundario,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -237,7 +248,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                         TarjetaOpcion(
                             emoji = Deportes.emojiDe(deporte, muestra.emoji),
                             titulo = deporte,
-                            detalle = ui.areas.count { it.tipo == deporte }.let { if (it == 1) "1 área" else "$it áreas" },
+                            detalle = ui.areas.count { it.tipo == deporte }.let { if (it == 1) Textos.get(R.string.n_1_area) else Textos.get(R.string.areas_2, it) },
                             seleccionada = deporte == ui.deporte,
                             habilitada = true,
                             onClick = { viewModel.elegirDeporte(deporte) }
@@ -249,7 +260,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             if (ui.deporte != null) {
                 Spacer(modifier = Modifier.height(20.dp))
                 Column(modifier = Modifier.onGloballyPositioned { canchaY = it.positionInParent().y.toInt() }) {
-                    Seccion("SELECCIONA LA CANCHA")
+                    Seccion(Textos.get(R.string.select_the_court))
 
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
@@ -265,9 +276,9 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                                     emoji = Deportes.emojiDe(area.tipo, area.emoji),
                                     titulo = area.nombre,
                                     detalle = when {
-                                        area.disponibilidad == DisponibilidadArea.MANTENIMIENTO -> "En mantenimiento"
-                                        bloqueada -> "No admite externos"
-                                        else -> "Cupo ${area.capacidad}"
+                                        area.disponibilidad == DisponibilidadArea.MANTENIMIENTO -> Textos.get(R.string.under_maintenance)
+                                        bloqueada -> Textos.get(R.string.doesn_t_admit_visitors)
+                                        else -> Textos.get(R.string.capacity, area.capacidad)
                                     },
                                     seleccionada = area.id == ui.area?.id,
                                     habilitada = !bloqueada,
@@ -287,11 +298,11 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-            TituloSeccion("Reservas vigentes")
+            TituloSeccion(Textos.get(R.string.current_bookings))
             Spacer(modifier = Modifier.height(10.dp))
             if (reservas.isEmpty()) {
                 Text(
-                    "No hay reservas próximas.",
+                    Textos.get(R.string.no_upcoming_bookings),
                     color = TextoSecundario,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -323,7 +334,7 @@ private fun Seccion(texto: String) {
 @Composable
 private fun Pasos(pasoActual: Int) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        listOf("Deporte", "Cancha", "Horario").forEachIndexed { indice, nombre ->
+        listOf(Textos.get(R.string.sport), Textos.get(R.string.court), Textos.get(R.string.time)).forEachIndexed { indice, nombre ->
             val numero = indice + 1
             val hecho = numero < pasoActual
             val actual = numero == pasoActual
@@ -418,19 +429,21 @@ private fun etiquetaHora(hora: Int): Pair<String, String> {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: ReservasViewModel) {
-    Seccion("HORARIO")
+    Seccion(Textos.get(R.string.lbl_horario))
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "FECHA",
+                Textos.get(R.string.lbl_fecha),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextoSecundario,
                 letterSpacing = 0.4.sp
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Todas las fechas a la vista (se acomodan en varias filas): en una sola fila con scroll la última quedaba cortada.
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 viewModel.fechas.forEach { (fecha, etiqueta) ->
                     val activa = fecha == ui.fecha
@@ -474,7 +487,7 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     text = if (desde != null && hasta != null) {
                         "%02d:00 → %02d:00 (%dh)".format(desde, hasta + 1, ui.horasElegidas)
                     } else {
-                        "Toca las horas que quieres reservar"
+                        Textos.get(R.string.tap_the_hours_you_want_to)
                     },
                     style = MaterialTheme.typography.titleSmall,
                     color = TextoPrincipal,
@@ -484,15 +497,15 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     TextButton(
                         onClick = { viewModel.limpiarSeleccion() }
                     ) {
-                        Text("Limpiar", color = Marca, fontWeight = FontWeight.SemiBold)
+                        Text(Textos.get(R.string.clear), color = Marca, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
 
             if (ui.horas.isEmpty()) {
                 Text(
-                    if (ui.errorDisponibilidad) "No se pudo consultar la disponibilidad. Elige la fecha otra vez para reintentar."
-                    else "No hay horarios disponibles ese día.",
+                    if (ui.errorDisponibilidad) Textos.get(R.string.the_availability_could_not_be_checked_2)
+                    else Textos.get(R.string.there_are_no_times_available_that),
                     color = Peligro,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
@@ -520,15 +533,15 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 Spacer(modifier = Modifier.height(16.dp))
                 if (area.carriles > 0) {
                     Text(
-                        "CARRIL",
+                        Textos.get(R.string.lbl_carril),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextoSecundario,
                         letterSpacing = 0.4.sp
                     )
                     Text(
-                        if (ui.carrilesDisponibles.isEmpty()) "No hay carriles libres en este horario."
-                        else "Selecciona un carril disponible",
+                        if (ui.carrilesDisponibles.isEmpty()) Textos.get(R.string.there_are_no_free_lanes_at)
+                        else Textos.get(R.string.select_an_available_lane),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
@@ -546,7 +559,7 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                                 modifier = Modifier.heightIn(min = 44.dp)
                             ) {
                                 Text(
-                                    "Carril $carril",
+                                    Textos.get(R.string.lane_2, carril),
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = if (seleccionado) SobreMarca else if (disponible) TextoPrincipal else TextoTenue
@@ -559,14 +572,14 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "PERSONAS",
+                            Textos.get(R.string.lbl_personas),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = TextoSecundario,
                             letterSpacing = 0.4.sp
                         )
                         Text(
-                            "Lugares libres: ${ui.maxPersonas} de ${area.capacidad}",
+                            Textos.get(R.string.free_spots_of, ui.maxPersonas, area.capacidad),
                             style = MaterialTheme.typography.bodySmall,
                             color = TextoSecundario
                         )
@@ -600,17 +613,17 @@ private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel
                 text = if (listo) {
                     "$etiquetaFecha · %02d:00 → %02d:00 (%dh) · %s".format(
                         desde, hasta!! + 1, ui.horasElegidas,
-                        if (ui.personas == 1) "1 persona" else "${ui.personas} personas"
-                    ) + (ui.carril?.let { " · Carril $it" } ?: "")
+                        if (ui.personas == 1) Textos.get(R.string.n_1_person) else Textos.get(R.string.people_5, ui.personas)
+                    ) + (ui.carril?.let { Textos.get(R.string.lane_3, it) } ?: "")
                 } else {
-                    "Elige las horas que quieres reservar"
+                    Textos.get(R.string.choose_the_hours_you_want_to)
                 },
                 style = MaterialTheme.typography.titleSmall,
                 color = if (listo) TextoPrincipal else TextoSecundario,
                 modifier = Modifier.padding(bottom = 10.dp)
             )
             BotonPrimario(
-                texto = "Confirmar reserva",
+                texto = Textos.get(R.string.confirm_booking),
                 enabled = listo,
                 cargando = ui.enviando,
                 onClick = { viewModel.confirmar() }
@@ -673,11 +686,11 @@ private fun Leyenda() {
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         listOf(
-            "Disponible" to AvailabilityContainer,
-            "Pocos lugares" to AlertaSuave,
-            "Ocupado" to UnavailableContainer,
-            "Seleccionado" to Marca,
-            "Ya pasó" to FondoApp
+            Textos.get(R.string.available) to AvailabilityContainer,
+            Textos.get(R.string.few_spots) to AlertaSuave,
+            Textos.get(R.string.occupied_2) to UnavailableContainer,
+            Textos.get(R.string.selected) to Marca,
+            Textos.get(R.string.already_passed) to FondoApp
         ).forEach { (nombre, color) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -703,7 +716,7 @@ private fun ContadorPersonas(valor: Int, puedeBajar: Boolean, puedeSubir: Boolea
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         BotonIcono(
             Icons.Filled.Remove,
-            "Una persona menos",
+            Textos.get(R.string.one_person_less),
             onMenos,
             enabled = puedeBajar,
             conReflejo = false
@@ -718,7 +731,7 @@ private fun ContadorPersonas(valor: Int, puedeBajar: Boolean, puedeSubir: Boolea
         )
         BotonIcono(
             Icons.Filled.Add,
-            "Una persona más",
+            Textos.get(R.string.one_more_person),
             onMas,
             enabled = puedeSubir,
             conReflejo = false

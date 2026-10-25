@@ -106,6 +106,8 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 private val rolesDeAdministracion = setOf(Rol.SUPERADMIN, Rol.ADMIN, Rol.ADMIN_AREA, Rol.AYUDANTE_AREA)
 
@@ -141,7 +143,7 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
         floatingActionButton = {
             if (esAdministrador) {
                 BotonFlotanteAgregar(
-                    texto = "Nuevo torneo",
+                    texto = Textos.get(R.string.new_tournament),
                     visible = listState.botonFlotanteVisible(),
                     onClick = { viewModel.abrirModalCrear() }
                 )
@@ -152,7 +154,7 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
             when {
                 cargando && torneos.isEmpty() -> FullScreenLoading(modifier = Modifier.fillMaxSize())
                 torneos.isEmpty() && !esAdministrador -> EmptyState(
-                    mensaje = "No hay torneos disponibles.",
+                    mensaje = Textos.get(R.string.there_are_no_tournaments_available),
                     icono = Icons.Filled.EmojiEvents
                 )
                 esAdministrador -> TorneosAdminContent(
@@ -173,11 +175,11 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
 
     torneoPorEliminar?.let { torneo ->
         DialogoConfirmacion(
-            titulo = "Eliminar torneo",
-            mensaje = "Se eliminará \"${torneo.nombre}\"" +
-                (if (torneo.inscritos > 0) " y sus ${torneo.inscritos} inscripciones" else "") +
-                ". El área quedará libre para reservas. Esta acción no se puede deshacer.",
-            textoConfirmar = "Eliminar",
+            titulo = Textos.get(R.string.delete_tournament),
+            mensaje = Textos.get(R.string.will_be_deleted, torneo.nombre) +
+                (if (torneo.inscritos > 0) Textos.get(R.string.and_its_registrations, torneo.inscritos) else "") +
+                Textos.get(R.string.the_area_will_be_free_for),
+            textoConfirmar = Textos.get(R.string.delete),
             onConfirmar = {
                 viewModel.eliminarTorneo(torneo)
                 torneoPorEliminar = null
@@ -208,11 +210,11 @@ private fun TorneosAdminContent(
     onEliminar: (Torneo) -> Unit
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        EncabezadoPantalla(titulo = "Torneos", modifier = Modifier.padding(horizontal = MargenPantalla))
+        EncabezadoPantalla(titulo = Textos.get(R.string.tournaments), modifier = Modifier.padding(horizontal = MargenPantalla))
 
         if (torneos.isEmpty()) {
             EmptyState(
-                mensaje = "No hay torneos todavía. Crea el primero con \"Nuevo torneo\".",
+                mensaje = Textos.get(R.string.there_are_no_tournaments_yet_create),
                 icono = Icons.Filled.EmojiEvents
             )
         } else {
@@ -254,7 +256,7 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit, onEliminar: ()
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
-                        contentDescription = "Editar torneo",
+                        contentDescription = Textos.get(R.string.edit_tournament),
                         tint = TextoSecundario,
                         modifier = Modifier.size(20.dp)
                     )
@@ -265,7 +267,7 @@ private fun TorneoCardAdmin(torneo: Torneo, onEditar: () -> Unit, onEliminar: ()
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
-                        contentDescription = "Eliminar torneo",
+                        contentDescription = Textos.get(R.string.delete_tournament),
                         tint = Peligro,
                         modifier = Modifier.size(20.dp)
                     )
@@ -298,7 +300,7 @@ private fun DatosTorneo(torneo: Torneo) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "${torneo.inscritos}/${torneo.cupoMaximo} participantes",
+            text = Textos.get(R.string.participants, torneo.inscritos, torneo.cupoMaximo),
             style = MaterialTheme.typography.labelMedium,
             color = TextoPrincipal,
             modifier = Modifier
@@ -306,7 +308,7 @@ private fun DatosTorneo(torneo: Torneo) {
                 .padding(end = 8.dp)
         )
         Text(
-            text = "$libres libres",
+            text = Textos.get(R.string.free, libres),
             maxLines = 1,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
@@ -381,9 +383,9 @@ private fun TorneoCardSocio(torneo: Torneo, inscrito: Boolean, onInscribirse: ()
             Spacer(modifier = Modifier.height(16.dp))
             BotonPrimario(
                 texto = when {
-                    inscrito -> "Ya estás inscrito"
-                    cupoLleno -> "Cupo lleno"
-                    else -> "Inscribirme"
+                    inscrito -> Textos.get(R.string.you_are_already_registered)
+                    cupoLleno -> Textos.get(R.string.full)
+                    else -> Textos.get(R.string.register_me)
                 },
                 enabled = !cupoLleno && !inscrito,
                 onClick = onInscribirse
@@ -439,7 +441,7 @@ private fun ModalTorneo(
             horaInicio.isNotBlank() && horaFin.isNotBlank() && (cupoMaximo.toIntOrNull() ?: 0) > 0
 
     DialogoFormulario(
-        titulo = if (esEdicion) "Editar torneo" else "Nuevo torneo",
+        titulo = if (esEdicion) Textos.get(R.string.edit_tournament) else Textos.get(R.string.new_tournament),
         onCerrar = onCerrar,
         pie = {
             if (error != null) {
@@ -452,7 +454,7 @@ private fun ModalTorneo(
             }
 
             BotonPrimario(
-                texto = if (esEdicion) "Guardar cambios" else "Crear torneo",
+                texto = if (esEdicion) Textos.get(R.string.save_changes) else Textos.get(R.string.create_tournament),
                 onClick = {
                     val areaSeleccionada = area ?: return@BotonPrimario
                     onGuardar(
@@ -472,17 +474,17 @@ private fun ModalTorneo(
         }
     ) {
         Column {
-            EtiquetaCampo("NOMBRE DEL TORNEO")
+            EtiquetaCampo(Textos.get(R.string.tournament_name))
             CampoTexto(
                 value = nombre,
                 onValueChange = { nombre = it },
-                placeholder = "Ej: Copa Otoño de Fútbol",
+                placeholder = Textos.get(R.string.e_g_fall_soccer_cup),
                 capitalizacion = KeyboardCapitalization.Sentences
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            EtiquetaCampo("DISCIPLINA")
+            EtiquetaCampo(Textos.get(R.string.lbl_disciplina))
             DropdownSeleccionable(
                 textoMostrado = disciplina,
                 expandido = mostrarDropdownDisciplina,
@@ -506,9 +508,9 @@ private fun ModalTorneo(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            EtiquetaCampo("ÁREA")
+            EtiquetaCampo(Textos.get(R.string.area))
             DropdownSeleccionable(
-                textoMostrado = area?.nombre ?: "Sin áreas de este deporte",
+                textoMostrado = area?.nombre ?: Textos.get(R.string.no_areas_for_this_sport),
                 expandido = mostrarDropdownArea,
                 onExpandirCambiado = { mostrarDropdownArea = it }
             ) {
@@ -528,11 +530,11 @@ private fun ModalTorneo(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
-                    EtiquetaCampo("FECHA INICIO")
+                    EtiquetaCampo(Textos.get(R.string.start_date))
                     CampoFecha(fecha = fechaInicio, onFechaSeleccionada = { fechaInicio = it })
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    EtiquetaCampo("FECHA FIN")
+                    EtiquetaCampo(Textos.get(R.string.end_date))
                     CampoFecha(fecha = fechaFin, onFechaSeleccionada = { fechaFin = it })
                 }
             }
@@ -541,18 +543,18 @@ private fun ModalTorneo(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
-                    EtiquetaCampo("HORA INICIO")
+                    EtiquetaCampo(Textos.get(R.string.start_time))
                     CampoHora(hora = horaInicio, onHoraSeleccionada = { horaInicio = it })
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    EtiquetaCampo("HORA FIN")
+                    EtiquetaCampo(Textos.get(R.string.end_time))
                     CampoHora(hora = horaFin, onHoraSeleccionada = { horaFin = it })
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            EtiquetaCampo("CUPO MÁXIMO")
+            EtiquetaCampo(Textos.get(R.string.max_capacity))
             CampoTexto(
                 value = cupoMaximo,
                 onValueChange = { cupoMaximo = it.filter { c -> c.isDigit() }.take(4) },
@@ -573,9 +575,9 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
             value = fecha,
             onValueChange = {},
             readOnly = true,
-            placeholder = "Elegir",
+            placeholder = Textos.get(R.string.choose),
             trailingIcon = {
-                Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = "Elegir fecha", tint = TextoSecundario)
+                Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = Textos.get(R.string.choose_date), tint = TextoSecundario)
             }
         )
 
@@ -602,7 +604,7 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
                     estadoFecha.selectedDateMillis?.let { onFechaSeleccionada(millisAFecha(it)) }
                     mostrarCalendario = false
                 }, modifier = modifierReflejo(Modifier, enabled = true)) {
-                    Text("Aceptar", color = Marca, fontWeight = FontWeight.SemiBold)
+                    Text(Textos.get(R.string.ok), color = Marca, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -610,7 +612,7 @@ private fun CampoFecha(fecha: String, onFechaSeleccionada: (String) -> Unit) {
                     onClick = { mostrarCalendario = false },
                     modifier = modifierReflejo(Modifier, enabled = true)
                 ) {
-                    Text("Cancelar", color = TextoSecundario)
+                    Text(Textos.get(R.string.cancel), color = TextoSecundario)
                 }
             }
         ) {
@@ -632,9 +634,9 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
             value = hora,
             onValueChange = {},
             readOnly = true,
-            placeholder = "Elegir",
+            placeholder = Textos.get(R.string.choose),
             trailingIcon = {
-                Icon(imageVector = Icons.Filled.Schedule, contentDescription = "Elegir hora", tint = TextoSecundario)
+                Icon(imageVector = Icons.Filled.Schedule, contentDescription = Textos.get(R.string.choose_time), tint = TextoSecundario)
             }
         )
 
@@ -660,9 +662,9 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
                         .width(240.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Elegir hora", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextoPrincipal)
+                    Text(Textos.get(R.string.choose_time), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextoPrincipal)
                     Text(
-                        text = "Horario del club: 5:00 a. m. – 10:00 p. m.",
+                        text = Textos.get(R.string.club_hours_5_00_a_m),
                         fontSize = 12.sp,
                         color = TextoSecundario,
                         modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
@@ -703,13 +705,13 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
                             onClick = { mostrarSelector = false },
                             modifier = modifierReflejo(Modifier, enabled = true)
                         ) {
-                            Text("Cancelar", color = TextoSecundario)
+                            Text(Textos.get(R.string.cancel), color = TextoSecundario)
                         }
                         TextButton(onClick = {
                             onHoraSeleccionada(partesAHora(horaElegida, minutoElegido))
                             mostrarSelector = false
                         }, modifier = modifierReflejo(Modifier, enabled = true)) {
-                            Text("Aceptar", color = Marca, fontWeight = FontWeight.SemiBold)
+                            Text(Textos.get(R.string.ok), color = Marca, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

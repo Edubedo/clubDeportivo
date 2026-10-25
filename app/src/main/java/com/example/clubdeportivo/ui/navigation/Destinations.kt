@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CardMembership
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.outlined.ListAlt
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esCliente
@@ -39,36 +41,37 @@ object Destinations {
     const val PERFIL = "perfil"
 }
 
+/** [label] es el id del texto traducido de la pestaña (se resuelve con `stringResource` al dibujarla). */
 data class BottomNavItem(
     val route: String,
-    val label: String,
+    @StringRes val label: Int,
     val iconSelected: ImageVector,
     val iconUnselected: ImageVector
 )
 
 /** Pestañas del menú inferior para Administradores. */
 val bottomNavItems = listOf(
-    BottomNavItem(Destinations.HOME, "Dashboard", Icons.Filled.Home, Icons.Outlined.Home),
-    BottomNavItem(Destinations.PERSONAL, "Personal", Icons.Filled.Person, Icons.Outlined.Person),
-    BottomNavItem(Destinations.AREAS, "Áreas", Icons.Filled.Place, Icons.Outlined.Place),
-    BottomNavItem(Destinations.RESERVAS, "Reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.MEMBRESIA, "Membres.", Icons.Filled.CardMembership, Icons.Outlined.CardMembership)
+    BottomNavItem(Destinations.HOME, R.string.nav_dashboard, Icons.Filled.Home, Icons.Outlined.Home),
+    BottomNavItem(Destinations.PERSONAL, R.string.nav_personal, Icons.Filled.Person, Icons.Outlined.Person),
+    BottomNavItem(Destinations.AREAS, R.string.nav_areas, Icons.Filled.Place, Icons.Outlined.Place),
+    BottomNavItem(Destinations.RESERVAS, R.string.nav_reservas, Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
+    BottomNavItem(Destinations.MEMBRESIA, R.string.nav_membres_corto, Icons.Filled.CardMembership, Icons.Outlined.CardMembership)
 )
 
 /** Menú para encargados de área: las reservas, el área y el inventario de su deporte, y su perfil. */
 val bottomNavItemsEncargado = listOf(
-    BottomNavItem(Destinations.HOME, "Inicio", Icons.Filled.Home, Icons.Outlined.Home),
-    BottomNavItem(Destinations.RESERVAS, "Reservar", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.AREAS, "Mi área", Icons.Filled.Place, Icons.Outlined.Place),
-    BottomNavItem(Destinations.PERFIL, "Perfil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
+    BottomNavItem(Destinations.HOME, R.string.nav_home, Icons.Filled.Home, Icons.Outlined.Home),
+    BottomNavItem(Destinations.RESERVAS, R.string.nav_reservar, Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
+    BottomNavItem(Destinations.AREAS, R.string.nav_mi_area, Icons.Filled.Place, Icons.Outlined.Place),
+    BottomNavItem(Destinations.PERFIL, R.string.nav_perfil, Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
 )
 
 /** Menú de socios y visitantes: incluye Inicio, Reservar, Membresía y Perfil. */
 val bottomNavItemsCliente = listOf(
-    BottomNavItem(Destinations.HOME, "Inicio", Icons.Filled.Home, Icons.Outlined.Home),
-    BottomNavItem(Destinations.RESERVAS, "Reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.MEMBRESIA, "Membresía", Icons.Filled.CardMembership, Icons.Outlined.CardMembership),
-    BottomNavItem(Destinations.PERFIL, "Perfil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
+    BottomNavItem(Destinations.HOME, R.string.nav_home, Icons.Filled.Home, Icons.Outlined.Home),
+    BottomNavItem(Destinations.RESERVAS, R.string.nav_reservas, Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
+    BottomNavItem(Destinations.MEMBRESIA, R.string.nav_membresia, Icons.Filled.CardMembership, Icons.Outlined.CardMembership),
+    BottomNavItem(Destinations.PERFIL, R.string.nav_perfil, Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
 )
 
 /** Menú inferior según el rol: administradores, encargados de área o clientes. */
@@ -88,14 +91,15 @@ fun rutaPermitida(rol: Rol?, ruta: String): Boolean =
         (rol?.let { it.esEncargado() && ruta == Destinations.INVENTARIO } == true) ||
         menuPara(rol).any { it.route == ruta }
 
-fun tituloPantalla(route: String?): String = when {
-    route == Destinations.HOME -> "Inicio"
-    route == Destinations.PERSONAL -> "Personal"
-    route == Destinations.AREAS -> "Áreas"
-    route == Destinations.INVENTARIO -> "Inventario"
-    route == Destinations.RESERVAS -> "Reservas"
-    route == Destinations.MIS_RESERVAS -> "Mis reservas" // 🚀 Título de la nueva pantalla
-    route == Destinations.MEMBRESIA -> "Membresías"
-    route == Destinations.PERFIL -> "Mi perfil"
-    else -> "Athletic Club"
+@StringRes
+fun tituloPantalla(route: String?): Int = when {
+    route == Destinations.HOME -> R.string.nav_home
+    route == Destinations.PERSONAL -> R.string.nav_personal
+    route == Destinations.AREAS -> R.string.nav_areas
+    route == Destinations.INVENTARIO -> R.string.titulo_inventario
+    route == Destinations.RESERVAS -> R.string.nav_reservas
+    route == Destinations.MIS_RESERVAS -> R.string.reservas_title
+    route == Destinations.MEMBRESIA -> R.string.titulo_membresias
+    route == Destinations.PERFIL -> R.string.perfil_title
+    else -> R.string.app_name
 }

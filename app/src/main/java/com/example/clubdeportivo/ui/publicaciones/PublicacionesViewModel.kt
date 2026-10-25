@@ -15,6 +15,8 @@ import com.example.clubdeportivo.data.publicaciones.Publicacion
 import com.example.clubdeportivo.util.Fechas
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 class PublicacionesViewModel : ViewModel() {
     private val repository = AppContainer.publicacionesRepository
@@ -57,15 +59,15 @@ class PublicacionesViewModel : ViewModel() {
             try {
                 publicaciones = repository.obtener(audiencias)
             } catch (e: FirebaseFirestoreException) {
-                Log.e(TAG, "Error al cargar publicaciones desde Firestore.", e)
+                Log.e(TAG, Textos.get(R.string.error_loading_posts_from_firestore), e)
                 error = if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                    "Firebase rechazó el acceso. Publica las reglas actualizadas de firestore.rules y verifica que tu cuenta tenga perfil activo de administrador."
+                    Textos.get(R.string.firebase_rejected_access_publish_the_u)
                 } else {
-                    "No se pudieron cargar las publicaciones. Revisa tu conexión e inténtalo de nuevo."
+                    Textos.get(R.string.the_posts_could_not_be_loaded)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error inesperado al cargar publicaciones.", e)
-                error = "No se pudieron cargar las publicaciones. Revisa tu conexión e inténtalo de nuevo."
+                Log.e(TAG, Textos.get(R.string.unexpected_error_loading_posts), e)
+                error = Textos.get(R.string.the_posts_could_not_be_loaded)
             } finally {
                 cargando = false
             }
@@ -83,7 +85,7 @@ class PublicacionesViewModel : ViewModel() {
     ) {
         val usuario = SesionManager.usuarioActual ?: return
         if (vigencia.isNotBlank() && vigencia < Fechas.hoy()) {
-            error = "La vigencia debe ser hoy o una fecha futura."
+            error = Textos.get(R.string.the_end_date_must_be_today)
             return
         }
         if (enviando || titulo.isBlank() || descripcion.isBlank() || imagenUrl.isBlank()) return
@@ -110,7 +112,7 @@ class PublicacionesViewModel : ViewModel() {
                 }
                 alTerminar()
             } catch (e: Exception) {
-                error = "No se pudo guardar la publicación."
+                error = Textos.get(R.string.the_post_could_not_be_saved)
             } finally {
                 enviando = false
             }
@@ -125,7 +127,7 @@ class PublicacionesViewModel : ViewModel() {
                 publicaciones = publicaciones.filterNot { it.id == publicacion.id }
                 alTerminar()
             } catch (e: Exception) {
-                error = "No se pudo borrar la publicación."
+                error = Textos.get(R.string.the_post_could_not_be_deleted)
             }
         }
     }

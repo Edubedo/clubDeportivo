@@ -15,6 +15,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReglasMembresiaTest {
+    // Va primero: los demás campos de la clase pueden usar textos al crearse.
+    init { com.example.clubdeportivo.TextosDePrueba.instalar() }
+
 
     private fun membresia(
         estado: EstadoMembresia = EstadoMembresia.ACTIVA,
@@ -129,11 +132,47 @@ class ReglasMembresiaTest {
     }
 
     @Test
-    fun `un paquete familiar necesita al menos dos personas y respeta su maximo`() {
-        assertNotNull(ReglasMembresia.validarPersonas(TipoMembresia.FAMILIAR, 2, listOf(persona())))
+    fun `un paquete familiar puede registrarse solo con el titular y respeta su maximo`() {
+        // El titular da de alta a su familia después, desde la app.
+        assertNull(ReglasMembresia.validarPersonas(TipoMembresia.FAMILIAR, 2, listOf(persona())))
         assertNull(ReglasMembresia.validarPersonas(TipoMembresia.FAMILIAR, 2, listOf(persona(), persona("Luis Pérez", parentesco = "Cónyuge"))))
         val tres = listOf(persona(), persona("Luis Pérez"), persona("Eva Ruiz"))
         assertNotNull(ReglasMembresia.validarPersonas(TipoMembresia.FAMILIAR, 2, tres))
+    }
+
+    @Test
+    fun `el titular solo agrega familiares a un paquete familiar con lugar`() {
+        val hijo = persona("Luis Pérez", parentesco = "Hijo")
+        assertNull(ReglasMembresia.validarFamiliar(hijo, 1, TipoMembresia.FAMILIAR, 1))
+        // Pareja: 2 personas, ya está llena con titular + cónyuge.
+        assertNotNull(ReglasMembresia.validarFamiliar(hijo, 2, TipoMembresia.FAMILIAR, 2))
+        assertNotNull(ReglasMembresia.validarFamiliar(hijo, 1, TipoMembresia.INDIVIDUAL, null))
+        assertNotNull(ReglasMembresia.validarFamiliar(persona("Luis Pérez", parentesco = ""), 1, TipoMembresia.FAMILIAR, 1))
+        assertNotNull(ReglasMembresia.validarFamiliar(persona("L", parentesco = "Hijo"), 1, TipoMembresia.FAMILIAR, 1))
+    }
+
+    @Test
+    fun `el enlace de acceso lleva el codigo y se lee de vuelta`() {
+        val enlace = ReglasMembresia.enlaceDeAcceso("clb-7k3m9q")
+        assertEquals("clubdeportivo://registro?codigo=CLB-7K3M9Q", enlace)
+        assertEquals("CLB-7K3M9Q", ReglasMembresia.codigoDeEnlace(enlace))
+        assertEquals("CLB-7K3M9Q", ReglasMembresia.codigoDeEnlace("clubdeportivo://registro?codigo=clb-7k3m9q&x=1"))
+    }
+
+    @Test
+    fun `enlaces ajenos o con codigos invalidos no se aceptan`() {
+        assertNull(ReglasMembresia.codigoDeEnlace(null))
+        assertNull(ReglasMembresia.codigoDeEnlace("https://ejemplo.com/registro?codigo=CLB-7K3M9Q"))
+        assertNull(ReglasMembresia.codigoDeEnlace("clubdeportivo://registro?codigo=CLB-00000I"))
+        assertNull(ReglasMembresia.codigoDeEnlace("clubdeportivo://registro"))
+    }
+
+    @Test
+    fun `el mensaje de invitacion trae el enlace y el codigo`() {
+        val mensaje = ReglasMembresia.mensajeDeInvitacion("Luis Pérez", "Ana Ruiz", "CLB-7K3M9Q")
+        assertTrue(mensaje.contains("clubdeportivo://registro?codigo=CLB-7K3M9Q"))
+        assertTrue(mensaje.contains("Hola Luis"))
+        assertTrue(mensaje.contains("Ana Ruiz"))
     }
 
     @Test

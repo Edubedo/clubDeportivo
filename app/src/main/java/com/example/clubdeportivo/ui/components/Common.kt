@@ -66,6 +66,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -95,6 +97,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.ui.theme.Alerta
 import com.example.clubdeportivo.ui.theme.AlertaSuave
@@ -141,6 +144,7 @@ import com.example.clubdeportivo.ui.theme.PeligroSuave
 import com.example.clubdeportivo.ui.theme.PrimaryNavy
 import com.example.clubdeportivo.ui.theme.SoftBlueSelection
 import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.LocalModoOscuro
 import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.UnavailableBorder
 import com.example.clubdeportivo.ui.theme.UnavailableContainer
@@ -323,7 +327,7 @@ fun CampoBusqueda(
                         shape = RoundedCornerShape(10.dp)
                     )
                 ) {
-                    Icon(Icons.Filled.Close, contentDescription = "Borrar búsqueda")
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.borrar_busqueda))
                 }
             }
         } else null
@@ -408,14 +412,16 @@ fun modifierReflejo(
         ),
         label = "buttonMirrorProgress"
     )
+    // En oscuro el relleno es azul claro con texto oscuro: el brillo blanco lavaría el texto, así que se atenúa.
+    val intensidad = if (LocalModoOscuro.current) 0.3f else 1f
     return modifier.clip(shape).drawWithContent {
         drawContent()
         if (enabled) {
             drawRect(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0f to SoftBlueSelection.copy(alpha = 0.28f),
-                        0.5f to Color.White.copy(alpha = 0.08f),
+                        0f to SoftBlueSelection.copy(alpha = 0.28f * intensidad),
+                        0.5f to Color.White.copy(alpha = 0.08f * intensidad),
                         1f to Color.Transparent
                     )
                 )
@@ -426,9 +432,9 @@ fun modifierReflejo(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        SoftBlueSelection.copy(alpha = if (pressed || hovered) 0.52f else 0.36f),
-                        Color.White.copy(alpha = if (pressed || hovered) 0.62f else 0.44f),
-                        SoftBlueSelection.copy(alpha = if (pressed || hovered) 0.48f else 0.32f),
+                        SoftBlueSelection.copy(alpha = (if (pressed || hovered) 0.52f else 0.36f) * intensidad),
+                        Color.White.copy(alpha = (if (pressed || hovered) 0.62f else 0.44f) * intensidad),
+                        SoftBlueSelection.copy(alpha = (if (pressed || hovered) 0.48f else 0.32f) * intensidad),
                         Color.Transparent
                     ),
                     start = Offset(startX, size.height),
@@ -436,7 +442,7 @@ fun modifierReflejo(
                 )
             )
             drawLine(
-                color = SoftBlueSelection.copy(alpha = 0.58f),
+                color = SoftBlueSelection.copy(alpha = 0.58f * intensidad),
                 start = Offset(0f, 0.5f),
                 end = Offset(size.width, 0.5f),
                 strokeWidth = 1.dp.toPx()
@@ -510,11 +516,13 @@ fun ShimmerCTAButton(
         interactionSource = interactionSource
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val degradadoArriba = PrimaryNavy
+            val degradadoAbajo = if (LocalModoOscuro.current) Color(0xFF6C9AE6) else ActionBlue
             Canvas(modifier = Modifier.fillMaxSize().clip(shape)) {
                 if (buttonEnabled || cargando) {
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(PrimaryNavy, ActionBlue)
+                            colors = listOf(degradadoArriba, degradadoAbajo)
                         )
                     )
                     drawRect(
@@ -672,35 +680,39 @@ fun TarjetaClub(
 
 /** Tipos de insignia. El color solo comunica el estado, nunca decora. */
 enum class TipoInsignia(
-    val fondo: Color,
-    val texto: Color,
-    val borde: Color = Color.Transparent
+    private val colorFondo: @Composable () -> Color,
+    private val colorTexto: @Composable () -> Color,
+    private val colorBorde: @Composable () -> Color = { Color.Transparent }
 ) {
-    EXITO(ExitoSuave, AvailabilityForeground, AvailabilityBorder),
-    ALERTA(AlertaSuave, StatusAmberForeground, StatusAmberBorder),
-    PELIGRO(PeligroSuave, StatusRedForeground, StatusRedBorder),
-    MARCA(MarcaSuave, Marca),
-    NEUTRO(FondoApp, TextoSecundario),
-    CLASES(ActivityClassesContainer, ActivityClassesForeground),
-    TORNEO(AmberContainer, AmberForeground),
-    MANTENIMIENTO(MaintenanceContainer, MaintenanceForeground, MaintenanceBorder),
-    DISPONIBLE(AvailabilityContainer, AvailabilityForeground, AvailabilityBorder),
-    NO_DISPONIBLE(UnavailableContainer, UnavailableForeground, UnavailableBorder),
-    SUSPENDIDA(AmberContainer, StatusAmberForeground, StatusAmberBorder),
-    METRICA_ACTIVAS(MetricBlueContainer, MetricBlueForeground),
-    METRICA_ALTAS(MetricGreenContainer, MetricGreenForeground),
-    METRICA_VENCIMIENTOS(MetricAmberContainer, MetricAmberForeground),
-    METRICA_VENCIDAS(MetricRedContainer, MetricRedForeground),
-    METRICA_SUSPENDIDAS(MetricPurpleContainer, MetricPurpleForeground),
-    METRICA_RESERVAS(MetricBlueContainer, MetricBlueForeground),
-    METRICA_APROBAR(MetricAmberContainer, MetricOrangeForeground),
-    METRICA_MANTENIMIENTO(MetricOrangeContainer, MetricOrangeForeground),
-    METRICA_STOCK(MetricRedContainer, MetricRedForeground),
-    METRICA_PERSONAL(MetricPurpleContainer, MetricVioletForeground),
-    METRICA_TORNEOS(MetricGoldContainer, MetricGoldForeground),
-    ROL_ADMIN(RoleAdminContainer, RoleAdminForeground, RoleAdminBorder),
-    ROL_ENCARGADO(RoleManagerContainer, RoleManagerForeground, RoleManagerBorder),
-    ROL_SOCIO(RoleMemberContainer, RoleMemberForeground, RoleMemberBorder)
+    EXITO({ ExitoSuave }, { AvailabilityForeground }, { AvailabilityBorder }),
+    ALERTA({ AlertaSuave }, { StatusAmberForeground }, { StatusAmberBorder }),
+    PELIGRO({ PeligroSuave }, { StatusRedForeground }, { StatusRedBorder }),
+    MARCA({ MarcaSuave }, { Marca }),
+    NEUTRO({ FondoApp }, { TextoSecundario }),
+    CLASES({ ActivityClassesContainer }, { ActivityClassesForeground }),
+    TORNEO({ AmberContainer }, { AmberForeground }),
+    MANTENIMIENTO({ MaintenanceContainer }, { MaintenanceForeground }, { MaintenanceBorder }),
+    DISPONIBLE({ AvailabilityContainer }, { AvailabilityForeground }, { AvailabilityBorder }),
+    NO_DISPONIBLE({ UnavailableContainer }, { UnavailableForeground }, { UnavailableBorder }),
+    SUSPENDIDA({ AmberContainer }, { StatusAmberForeground }, { StatusAmberBorder }),
+    METRICA_ACTIVAS({ MetricBlueContainer }, { MetricBlueForeground }),
+    METRICA_ALTAS({ MetricGreenContainer }, { MetricGreenForeground }),
+    METRICA_VENCIMIENTOS({ MetricAmberContainer }, { MetricAmberForeground }),
+    METRICA_VENCIDAS({ MetricRedContainer }, { MetricRedForeground }),
+    METRICA_SUSPENDIDAS({ MetricPurpleContainer }, { MetricPurpleForeground }),
+    METRICA_RESERVAS({ MetricBlueContainer }, { MetricBlueForeground }),
+    METRICA_APROBAR({ MetricAmberContainer }, { MetricOrangeForeground }),
+    METRICA_MANTENIMIENTO({ MetricOrangeContainer }, { MetricOrangeForeground }),
+    METRICA_STOCK({ MetricRedContainer }, { MetricRedForeground }),
+    METRICA_PERSONAL({ MetricPurpleContainer }, { MetricVioletForeground }),
+    METRICA_TORNEOS({ MetricGoldContainer }, { MetricGoldForeground }),
+    ROL_ADMIN({ RoleAdminContainer }, { RoleAdminForeground }, { RoleAdminBorder }),
+    ROL_ENCARGADO({ RoleManagerContainer }, { RoleManagerForeground }, { RoleManagerBorder }),
+    ROL_SOCIO({ RoleMemberContainer }, { RoleMemberForeground }, { RoleMemberBorder });
+
+    val fondo: Color @Composable get() = colorFondo()
+    val texto: Color @Composable get() = colorTexto()
+    val borde: Color @Composable get() = colorBorde()
 }
 
 fun tipoInsigniaRol(rol: Rol): TipoInsignia = when (rol) {
@@ -817,17 +829,44 @@ fun BotonIcono(
     }
 }
 
-/** Diálogo de formulario estándar. */
+/**
+ * Diálogo de formulario estándar. Cerrarlo con la X o el botón atrás pregunta primero "¿seguro que quieres salir?"
+ * (lo escrito se perdería); [confirmarSalida] = false lo desactiva para diálogos que solo muestran información.
+ */
 @Composable
 fun DialogoFormulario(
     titulo: String,
     onCerrar: () -> Unit,
     /** Zona fija bajo el formulario (botón de guardar y mensajes de error): siempre visible, sin tener que bajar. */
     pie: (@Composable ColumnScope.() -> Unit)? = null,
+    confirmarSalida: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    var confirmandoSalida by remember { mutableStateOf(false) }
+    val intentarCerrar: () -> Unit = {
+        if (confirmarSalida) {
+            confirmandoSalida = true
+        } else {
+            onCerrar()
+        }
+    }
+
+    if (confirmandoSalida) {
+        DialogoConfirmacion(
+            titulo = stringResource(R.string.salir_formulario_titulo),
+            mensaje = stringResource(R.string.salir_formulario_mensaje),
+            textoConfirmar = stringResource(R.string.salir_si),
+            textoCancelar = stringResource(R.string.seguir_editando),
+            onConfirmar = {
+                confirmandoSalida = false
+                onCerrar()
+            },
+            onCancelar = { confirmandoSalida = false }
+        )
+    }
+
     Dialog(
-        onDismissRequest = onCerrar,
+        onDismissRequest = intentarCerrar,
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)
     ) {
         Surface(
@@ -854,11 +893,11 @@ fun DialogoFormulario(
                             .padding(end = 8.dp)
                     )
                     IconButton(
-                        onClick = onCerrar
+                        onClick = intentarCerrar
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "Cerrar",
+                            contentDescription = stringResource(R.string.cerrar),
                             tint = TextoSecundario
                         )
                     }
@@ -891,7 +930,7 @@ fun DialogoConfirmacion(
     textoConfirmar: String,
     onConfirmar: () -> Unit,
     onCancelar: () -> Unit,
-    textoCancelar: String = "Volver",
+    textoCancelar: String = stringResource(R.string.volver),
     conReflejo: Boolean = true
 ) {
     AlertDialog(
@@ -933,12 +972,10 @@ fun EspacioCampos() {
     Spacer(modifier = Modifier.height(20.dp))
 }
 
-/** Indicador de carga centrado. */
+/** Pantalla de carga estándar (esqueleto de lista con el logo animado); ver [PantallaCarga]. */
 @Composable
-fun FullScreenLoading(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = Marca)
-    }
+fun FullScreenLoading(modifier: Modifier = Modifier, conMargen: Boolean = false) {
+    PantallaCarga(modifier = modifier, conMargen = conMargen)
 }
 
 /** Mensaje centrado para listas vacías, con un icono para que no se vea como una pantalla rota. */

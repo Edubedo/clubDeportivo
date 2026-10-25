@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.membresia
 
+import com.example.clubdeportivo.data.model.etiquetaParentesco
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DropdownMenu
@@ -45,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -54,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.ClavesPrecio
 import com.example.clubdeportivo.data.model.EstadoMembresia
@@ -92,12 +96,13 @@ import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
+import com.example.clubdeportivo.util.Textos
 
 private val filtros = listOf<Pair<String, EstadoMembresia?>>(
-    "Todas" to null,
-    "Activas" to EstadoMembresia.ACTIVA,
-    "Vencidas" to EstadoMembresia.VENCIDA,
-    "Suspendidas" to EstadoMembresia.SUSPENDIDA
+    Textos.get(R.string.all) to null,
+    Textos.get(R.string.active_3) to EstadoMembresia.ACTIVA,
+    Textos.get(R.string.expired_2) to EstadoMembresia.VENCIDA,
+    Textos.get(R.string.suspended_2) to EstadoMembresia.SUSPENDIDA
 )
 
 /** Miembros del club: buscar, registrar (con código único y cobro), editar, renovar y suspender con motivo. */
@@ -122,6 +127,7 @@ internal fun MiembrosTab(
     var suspendiendo by remember { mutableStateOf<MembresiaDetalle?>(null) }
     var renovando by remember { mutableStateOf<MembresiaDetalle?>(null) }
     var restableciendo by remember { mutableStateOf<MiembroClub?>(null) }
+    var dandoDeBaja by remember { mutableStateOf<MembresiaDetalle?>(null) }
     val listState = rememberLazyListState()
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -164,7 +170,7 @@ internal fun MiembrosTab(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             BotonFlotanteAgregar(
-                texto = "Registrar miembro",
+                texto = Textos.get(R.string.register_member),
                 visible = listState.botonFlotanteVisible(),
                 onClick = {
                     enEdicion = null
@@ -176,14 +182,14 @@ internal fun MiembrosTab(
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             EncabezadoPantalla(
-                titulo = "Miembros del club",
+                titulo = Textos.get(R.string.club_members),
                 modifier = Modifier.padding(horizontal = MargenPantalla)
             )
             Column(modifier = Modifier.padding(horizontal = MargenPantalla)) {
                 CampoBusqueda(
                     value = busqueda,
                     onValueChange = { busqueda = it },
-                    placeholder = "Buscar por nombre o código"
+                    placeholder = Textos.get(R.string.search_by_name_or_code)
                 )
             }
             PestanasPildora(
@@ -195,8 +201,8 @@ internal fun MiembrosTab(
             when {
                 cargando && membresias.isEmpty() -> FullScreenLoading()
                 visibles.isEmpty() -> EmptyState(
-                    if (membresias.isEmpty()) "Todavía no hay miembros registrados. Agrega el primero con \"Registrar miembro\"."
-                    else "Ningún miembro coincide con la búsqueda."
+                    if (membresias.isEmpty()) Textos.get(R.string.there_are_no_registered_members_yet)
+                    else Textos.get(R.string.no_member_matches_the_search)
                 )
                 else -> LazyColumn(
                     state = listState,
@@ -215,7 +221,8 @@ internal fun MiembrosTab(
                             },
                             onRenovar = { renovando = detalle },
                             onSuspender = { suspendiendo = detalle },
-                            onReactivar = { viewModel.cambiarEstado(detalle, EstadoMembresia.ACTIVA) }
+                            onReactivar = { viewModel.cambiarEstado(detalle, EstadoMembresia.ACTIVA) },
+                            onBaja = { dandoDeBaja = detalle }
                         )
                     }
                 }
@@ -244,7 +251,7 @@ internal fun MiembrosTab(
 
     suspendiendo?.let { detalle ->
         DialogoSuspension(
-            nombre = detalle.titular?.nombre ?: "este miembro",
+            nombre = detalle.titular?.nombre ?: Textos.get(R.string.this_member),
             onConfirmar = { motivo ->
                 viewModel.cambiarEstado(detalle, EstadoMembresia.SUSPENDIDA, motivo)
                 suspendiendo = null
@@ -257,7 +264,7 @@ internal fun MiembrosTab(
         val membresia = detalle.membresia
         val precio = ClavesPrecio.deMembresia(membresia.tipo, membresia.plan, membresia.paqueteFamiliarId, precios)
         DialogoRenovar(
-            nombre = detalle.titular?.nombre ?: "Miembro",
+            nombre = detalle.titular?.nombre ?: Textos.get(R.string.member),
             plan = ReglasMembresia.etiquetaPlan(membresia),
             precio = precio,
             vigenteHasta = Fechas.legible(ReglasMembresia.fechasDeRenovacion(membresia, hoy).second),
@@ -271,17 +278,32 @@ internal fun MiembrosTab(
 
     restableciendo?.let { persona ->
         DialogoConfirmacion(
-            titulo = "Restablecer acceso",
-            mensaje = "${persona.nombre} podrá registrarse de nuevo con su código ${persona.codigo}. " +
-                "Su cuenta actual (${persona.correo.ifBlank { "la que creó" }}) dejará de funcionar. " +
-                "Úsalo solo si se equivocó de correo o perdió el acceso.",
-            textoConfirmar = "Restablecer",
-            textoCancelar = "Cancelar",
+            titulo = Textos.get(R.string.reset_access),
+            mensaje = Textos.get(R.string.will_be_able_to_sign_up, persona.nombre, persona.codigo) +
+                Textos.get(R.string.manual_cuenta_actual, persona.correo.ifBlank { Textos.get(R.string.the_one_they_created) }) +
+                Textos.get(R.string.use_it_only_if_they_typed),
+            textoConfirmar = Textos.get(R.string.reset),
+            textoCancelar = Textos.get(R.string.cancel),
             onConfirmar = {
                 viewModel.restablecerAcceso(persona.codigo)
                 restableciendo = null
             },
             onCancelar = { restableciendo = null }
+        )
+    }
+
+    dandoDeBaja?.let { detalle ->
+        val nombres = detalle.personas.joinToString { it.nombre }
+        DialogoConfirmacion(
+            titulo = stringResource(R.string.miembro_baja_titulo),
+            mensaje = stringResource(R.string.miembro_baja_mensaje, nombres),
+            textoConfirmar = stringResource(R.string.miembro_dar_baja),
+            textoCancelar = stringResource(R.string.cancelar),
+            onConfirmar = {
+                viewModel.darDeBaja(detalle)
+                dandoDeBaja = null
+            },
+            onCancelar = { dandoDeBaja = null }
         )
     }
 
@@ -295,7 +317,8 @@ private fun TarjetaMiembro(
     onEditar: () -> Unit,
     onRenovar: () -> Unit,
     onSuspender: () -> Unit,
-    onReactivar: () -> Unit
+    onReactivar: () -> Unit,
+    onBaja: () -> Unit
 ) {
     val membresia = detalle.membresia
     val titular = detalle.titular
@@ -312,14 +335,14 @@ private fun TarjetaMiembro(
         Row(modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp), verticalAlignment = Alignment.Top) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    titular?.nombre ?: "Sin nombre",
+                    titular?.nombre ?: Textos.get(R.string.no_name),
                     style = MaterialTheme.typography.titleMedium,
                     color = TextoPrincipal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = titular?.codigo?.takeIf { it.isNotBlank() } ?: "Sin código (registro anterior)",
+                    text = titular?.codigo?.takeIf { it.isNotBlank() } ?: Textos.get(R.string.no_code_earlier_registration),
                     style = MaterialTheme.typography.titleSmall,
                     letterSpacing = 0.5.sp,
                     color = if (titular?.codigo.isNullOrBlank()) TextoSecundario else Marca,
@@ -327,7 +350,7 @@ private fun TarjetaMiembro(
                 )
                 Text(
                     "${ReglasMembresia.etiquetaPlan(membresia)} · ${dinero(membresia.precio)}" +
-                        if (detalle.personas.size > 1) " · ${detalle.personas.size} personas" else "",
+                        if (detalle.personas.size > 1) Textos.get(R.string.people_2, detalle.personas.size) else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoSecundario,
                     modifier = Modifier.padding(top = 4.dp)
@@ -335,14 +358,14 @@ private fun TarjetaMiembro(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                     Insignia(
                         texto = when (estado) {
-                            EstadoMembresia.ACTIVA -> "Activa"
-                            EstadoMembresia.VENCIDA -> "Vencida"
-                            EstadoMembresia.SUSPENDIDA -> "Suspendida"
+                            EstadoMembresia.ACTIVA -> Textos.get(R.string.active_2)
+                            EstadoMembresia.VENCIDA -> Textos.get(R.string.expired)
+                            EstadoMembresia.SUSPENDIDA -> Textos.get(R.string.suspended)
                         },
                         tipo = tipoInsignia
                     )
                     Text(
-                        text = if (membresia.tipo == TipoMembresia.VISITA) "Válida ${Fechas.legible(membresia.fechaVencimiento)}" else "Vence ${Fechas.legible(membresia.fechaVencimiento)}",
+                        text = if (membresia.tipo == TipoMembresia.VISITA) Textos.get(R.string.valid, Fechas.legible(membresia.fechaVencimiento)) else Textos.get(R.string.expires, Fechas.legible(membresia.fechaVencimiento)),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.padding(start = 8.dp)
@@ -356,7 +379,7 @@ private fun TarjetaMiembro(
                     ) {
                         Icon(Icons.Default.Warning, contentDescription = null, tint = Alerta, modifier = Modifier.padding(top = 2.dp).height(16.dp))
                         Text(
-                            text = "Motivo: ${membresia.motivoSuspension}",
+                            text = Textos.get(R.string.reason, membresia.motivoSuspension),
                             style = MaterialTheme.typography.bodySmall,
                             color = Alerta
                         )
@@ -365,10 +388,10 @@ private fun TarjetaMiembro(
                 if (conCodigo.isNotEmpty()) {
                     Text(
                         text = when {
-                            registrados == conCodigo.size && conCodigo.size == 1 -> "Ya creó su cuenta en la app"
-                            registrados == conCodigo.size -> "Todos crearon su cuenta en la app"
-                            registrados == 0 && conCodigo.size == 1 -> "Aún no crea su cuenta en la app"
-                            else -> "$registrados de ${conCodigo.size} crearon su cuenta en la app"
+                            registrados == conCodigo.size && conCodigo.size == 1 -> Textos.get(R.string.already_created_their_account_in_the)
+                            registrados == conCodigo.size -> Textos.get(R.string.everyone_created_their_account_in_the)
+                            registrados == 0 && conCodigo.size == 1 -> Textos.get(R.string.hasn_t_created_their_account_in)
+                            else -> Textos.get(R.string.of_created_their_account_in_the, registrados, conCodigo.size)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
@@ -380,34 +403,39 @@ private fun TarjetaMiembro(
                 IconButton(
                     onClick = { menuAbierto = true }
                 ) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = TextoSecundario)
+                    Icon(Icons.Default.MoreVert, contentDescription = Textos.get(R.string.more_options), tint = TextoSecundario)
                 }
                 DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
                     DropdownMenuItem(
-                        text = { Text("Editar") },
+                        text = { Text(Textos.get(R.string.edit)) },
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                         onClick = { menuAbierto = false; onEditar() }
                     )
                     if (membresia.tipo != TipoMembresia.VISITA) {
                         DropdownMenuItem(
-                            text = { Text("Renovar un mes") },
+                            text = { Text(Textos.get(R.string.renew_for_one_month)) },
                             leadingIcon = { Icon(Icons.Default.Autorenew, contentDescription = null) },
                             onClick = { menuAbierto = false; onRenovar() }
                         )
                     }
                     when (estado) {
                         EstadoMembresia.ACTIVA -> DropdownMenuItem(
-                            text = { Text("Suspender") },
+                            text = { Text(Textos.get(R.string.suspend)) },
                             leadingIcon = { Icon(Icons.Default.Pause, contentDescription = null) },
                             onClick = { menuAbierto = false; onSuspender() }
                         )
                         EstadoMembresia.SUSPENDIDA -> DropdownMenuItem(
-                            text = { Text("Reactivar") },
+                            text = { Text(Textos.get(R.string.reactivate)) },
                             leadingIcon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
                             onClick = { menuAbierto = false; onReactivar() }
                         )
                         EstadoMembresia.VENCIDA -> Unit
                     }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.miembro_dar_baja), color = Peligro) },
+                        leadingIcon = { Icon(Icons.Default.PersonOff, contentDescription = null, tint = Peligro) },
+                        onClick = { menuAbierto = false; onBaja() }
+                    )
                 }
             }
         }
@@ -460,7 +488,7 @@ private fun MembresiaFormDialog(
     val suspendiendoAhora = esEdicion && estado == EstadoMembresia.SUSPENDIDA && membresia?.estado != EstadoMembresia.SUSPENDIDA
 
     DialogoFormulario(
-        titulo = if (esEdicion) "Editar membresía" else "Registrar miembro",
+        titulo = if (esEdicion) Textos.get(R.string.edit_membership) else Textos.get(R.string.register_member),
         onCerrar = onCerrar,
         pie = {
             if (error != null) {
@@ -473,7 +501,7 @@ private fun MembresiaFormDialog(
             }
 
             BotonPrimario(
-                texto = if (esEdicion) "Guardar cambios" else "Cobrar ${dinero(precioVigente)} y registrar",
+                texto = if (esEdicion) Textos.get(R.string.save_changes) else Textos.get(R.string.charge_and_register, dinero(precioVigente)),
                 cargando = guardando,
                 enabled = !suspendiendoAhora || motivoCompleto(motivo, detalleMotivo),
                 onClick = {
@@ -491,9 +519,9 @@ private fun MembresiaFormDialog(
         }
     ) {
         if (!esEdicion) {
-            EtiquetaCampo("TIPO DE MEMBRESÍA")
+            EtiquetaCampo(Textos.get(R.string.membership_type))
             PestanasPildora(
-                opciones = listOf("Individual", "Familiar", "Visita"),
+                opciones = listOf(Textos.get(R.string.individual), Textos.get(R.string.family), Textos.get(R.string.visit)),
                 seleccionada = tipo.ordinal,
                 onSeleccion = {
                     tipo = TipoMembresia.entries[it]
@@ -509,7 +537,7 @@ private fun MembresiaFormDialog(
             TipoMembresia.INDIVIDUAL -> {
                 EtiquetaCampo("PLAN")
                 PestanasPildora(
-                    opciones = listOf("Niños", "Normal", "Deluxe"),
+                    opciones = listOf(Textos.get(R.string.kids), Textos.get(R.string.standard), Textos.get(R.string.deluxe)),
                     seleccionada = plan.ordinal,
                     onSeleccion = { plan = PlanIndividual.entries[it] },
                     margenHorizontal = 0.dp
@@ -517,7 +545,7 @@ private fun MembresiaFormDialog(
                 EspacioCampos()
             }
             TipoMembresia.FAMILIAR -> {
-                EtiquetaCampo("PAQUETE")
+                EtiquetaCampo(Textos.get(R.string.lbl_paquete))
                 PestanasPildora(
                     opciones = Catalogos.paquetesFamiliares.map { it.nombre },
                     seleccionada = Catalogos.paquetesFamiliares.indexOfFirst { it.id == paqueteId }.coerceAtLeast(0),
@@ -532,16 +560,16 @@ private fun MembresiaFormDialog(
             TipoMembresia.VISITA -> Unit
         }
 
-        EtiquetaCampo("PRECIO")
+        EtiquetaCampo(Textos.get(R.string.lbl_precio))
         Text(
-            text = "${dinero(precioVigente)} ${if (tipo == TipoMembresia.VISITA) "por visita" else "al mes"}",
+            text = "${dinero(precioVigente)} ${if (tipo == TipoMembresia.VISITA) Textos.get(R.string.per_visit) else Textos.get(R.string.per_month)}",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Marca
         )
         if (esEdicion && membresia != null && membresia.precio != precioVigente) {
             Text(
-                "Esta membresía se registró a ${dinero(membresia.precio)}; pasa al precio vigente al renovarla o cambiar de plan.",
+                Textos.get(R.string.this_membership_was_registered_at_it, dinero(membresia.precio)),
                 style = MaterialTheme.typography.bodySmall,
                 color = TextoSecundario,
                 modifier = Modifier.padding(top = 2.dp)
@@ -550,7 +578,7 @@ private fun MembresiaFormDialog(
 
         if (!esEdicion) {
             EspacioCampos()
-            EtiquetaCampo("MÉTODO DE PAGO")
+            EtiquetaCampo(Textos.get(R.string.payment_method))
             PestanasPildora(
                 opciones = MetodoPago.entries.map { it.etiqueta },
                 seleccionada = metodoPago.ordinal,
@@ -558,7 +586,7 @@ private fun MembresiaFormDialog(
                 margenHorizontal = 0.dp
             )
             Text(
-                text = "Al registrar se anota el cobro de ${dinero(precioVigente)}.",
+                text = Textos.get(R.string.when_registering_a_payment_of_is, dinero(precioVigente)),
                 style = MaterialTheme.typography.bodySmall,
                 color = TextoSecundario
             )
@@ -567,18 +595,18 @@ private fun MembresiaFormDialog(
         EspacioCampos()
 
         if (anteriorALosCodigos) {
-            EtiquetaCampo("PERSONAS")
+            EtiquetaCampo(Textos.get(R.string.lbl_personas))
             Text(
-                "Esta membresía se registró antes de los códigos de acceso, por eso sus personas no se pueden editar aquí. Puedes cambiar su plan, renovarla o suspenderla.",
+                Textos.get(R.string.this_membership_was_registered_before),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextoSecundario
             )
-            existente?.personas?.forEach { Text("• ${it.nombre} (${it.parentesco})", style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal, modifier = Modifier.padding(top = 4.dp)) }
+            existente?.personas?.forEach { Text("• ${it.nombre} (${etiquetaParentesco(it.parentesco)})", style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal, modifier = Modifier.padding(top = 4.dp)) }
         } else {
             personas.forEachIndexed { indice, persona ->
                 val registrada = existente?.personas?.firstOrNull { it.codigo == persona.codigo && persona.codigo != null }
                 CamposPersona(
-                    titulo = if (indice == 0) "TITULAR" else "INTEGRANTE $indice",
+                    titulo = if (indice == 0) Textos.get(R.string.lbl_titular) else Textos.get(R.string.member_2, indice),
                     persona = persona,
                     conParentesco = indice > 0,
                     cuentaCreada = registrada?.cuentaCreada,
@@ -589,6 +617,14 @@ private fun MembresiaFormDialog(
                 EspacioCampos()
             }
 
+            if (tipo == TipoMembresia.FAMILIAR && !esEdicion) {
+                Text(
+                    Textos.get(R.string.it_s_enough_to_register_the, maxPersonas),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             if (tipo == TipoMembresia.FAMILIAR && personas.size < maxPersonas) {
                 TextButton(
                     onClick = { personas.add(PersonaForm(null, "", "", "", parentescoPorDefecto)) },
@@ -596,7 +632,7 @@ private fun MembresiaFormDialog(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = Marca)
                     Text(
-                        "  Agregar integrante (${personas.size} de $maxPersonas)",
+                        Textos.get(R.string.add_member_of, personas.size, maxPersonas),
                         color = Marca,
                         fontWeight = FontWeight.Bold
                     )
@@ -606,16 +642,16 @@ private fun MembresiaFormDialog(
         }
 
         if (esEdicion && membresia != null && ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy()) != EstadoMembresia.VENCIDA) {
-            EtiquetaCampo("ESTADO")
+            EtiquetaCampo(Textos.get(R.string.lbl_estado))
             PestanasPildora(
-                opciones = listOf("Activa", "Suspendida"),
+                opciones = listOf(Textos.get(R.string.active_2), Textos.get(R.string.suspended)),
                 seleccionada = if (estado == EstadoMembresia.SUSPENDIDA) 1 else 0,
                 onSeleccion = { estado = if (it == 1) EstadoMembresia.SUSPENDIDA else EstadoMembresia.ACTIVA },
                 margenHorizontal = 0.dp
             )
             if (suspendiendoAhora) {
                 Spacer(modifier = Modifier.height(4.dp))
-                EtiquetaCampo("MOTIVO DE LA SUSPENSIÓN")
+                EtiquetaCampo(Textos.get(R.string.reason_for_suspension))
                 SelectorMotivoSuspension(
                     seleccion = motivo,
                     onSeleccion = { motivo = it },
@@ -624,7 +660,7 @@ private fun MembresiaFormDialog(
                 )
             } else if (estado == EstadoMembresia.SUSPENDIDA && !membresia.motivoSuspension.isBlank()) {
                 Text(
-                    text = "Motivo: ${membresia.motivoSuspension}",
+                    text = Textos.get(R.string.reason, membresia.motivoSuspension),
                     style = MaterialTheme.typography.bodySmall,
                     color = Alerta
                 )
@@ -648,10 +684,10 @@ private fun CamposPersona(
         Column(modifier = Modifier.weight(1f)) {
             EtiquetaCampo(titulo)
             persona.codigo?.let {
-                Text("Código: $it", style = MaterialTheme.typography.titleSmall, letterSpacing = 0.5.sp, color = Marca)
+                Text(Textos.get(R.string.code_2, it), style = MaterialTheme.typography.titleSmall, letterSpacing = 0.5.sp, color = Marca)
                 if (cuentaCreada != null) {
                     Text(
-                        text = if (cuentaCreada) "Ya creó su cuenta en la app" else "Aún no crea su cuenta en la app",
+                        text = if (cuentaCreada) Textos.get(R.string.already_created_their_account_in_the) else Textos.get(R.string.hasn_t_created_their_account_in),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario
                     )
@@ -660,7 +696,7 @@ private fun CamposPersona(
         }
         if (onQuitar != null) {
             IconButton(onClick = onQuitar, modifier = modifierReflejo(Modifier, enabled = true)) {
-                Icon(Icons.Default.Close, contentDescription = "Quitar integrante", tint = TextoSecundario)
+                Icon(Icons.Default.Close, contentDescription = Textos.get(R.string.remove_member), tint = TextoSecundario)
             }
         }
     }
@@ -669,28 +705,28 @@ private fun CamposPersona(
             onClick = onRestablecerAcceso,
             modifier = modifierReflejo(Modifier, enabled = true)
         ) {
-            Text("Restablecer acceso", color = Marca, fontWeight = FontWeight.SemiBold)
+            Text(Textos.get(R.string.reset_access), color = Marca, fontWeight = FontWeight.SemiBold)
         }
     }
     Spacer(modifier = Modifier.height(4.dp))
     CampoTexto(
         value = persona.nombre,
         onValueChange = { onCambio(persona.copy(nombre = it)) },
-        placeholder = "Nombre completo",
+        placeholder = Textos.get(R.string.full_name_2),
         capitalizacion = KeyboardCapitalization.Words
     )
     Spacer(modifier = Modifier.height(12.dp))
     CampoTexto(
         value = persona.telefono,
         onValueChange = { onCambio(persona.copy(telefono = it.filter { c -> c.isDigit() || c == ' ' }.take(15))) },
-        placeholder = "Teléfono (opcional)",
+        placeholder = Textos.get(R.string.phone_optional_2),
         tipoTeclado = KeyboardType.Phone
     )
     Spacer(modifier = Modifier.height(12.dp))
     CampoTexto(
         value = persona.correo,
         onValueChange = { onCambio(persona.copy(correo = it)) },
-        placeholder = "Correo (opcional)",
+        placeholder = Textos.get(R.string.email_optional_2),
         tipoTeclado = KeyboardType.Email,
         imeAction = if (conParentesco) ImeAction.Next else ImeAction.Done
     )
@@ -699,7 +735,7 @@ private fun CamposPersona(
         CampoTexto(
             value = persona.parentesco,
             onValueChange = { onCambio(persona.copy(parentesco = it)) },
-            placeholder = "Parentesco (Cónyuge, Hijo...)",
+            placeholder = Textos.get(R.string.relationship_spouse_son),
             capitalizacion = KeyboardCapitalization.Sentences,
             imeAction = ImeAction.Done
         )
@@ -713,13 +749,14 @@ private fun CodigosDialog(detalle: MembresiaDetalle, onCerrar: () -> Unit) {
     val contexto = LocalContext.current
 
     DialogoFormulario(
-        titulo = "Miembro registrado",
+        titulo = stringResource(R.string.miembro_registrado),
         onCerrar = onCerrar,
-        pie = { BotonPrimario(texto = "Listo", onClick = onCerrar) }
+        pie = { BotonPrimario(texto = stringResource(R.string.listo), onClick = onCerrar) },
+        confirmarSalida = false
     ) {
         Text(
-            "Entrega a cada persona su código. Con él se registra en la app: Regístrate → escribe el código → crea su correo y contraseña. " +
-                "Anótalo ahora o consúltalo después en la lista de miembros.",
+            Textos.get(R.string.give_each_person_their_code_with) +
+                Textos.get(R.string.write_it_down_now_or_look),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoSecundario
         )
@@ -731,14 +768,14 @@ private fun CodigosDialog(detalle: MembresiaDetalle, onCerrar: () -> Unit) {
             ) {
                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("${persona.nombre} · ${persona.parentesco}", style = MaterialTheme.typography.bodyMedium, color = TextoSecundario, maxLines = 2)
+                        Text("${persona.nombre} · ${etiquetaParentesco(persona.parentesco)}", style = MaterialTheme.typography.bodyMedium, color = TextoSecundario, maxLines = 2)
                         Text(persona.codigo, fontSize = 24.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold, color = TextoPrincipal)
                     }
                     TextButton(onClick = {
                         portapapeles.setText(AnnotatedString(persona.codigo))
-                        Toast.makeText(contexto, "Código copiado", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(contexto, Textos.get(R.string.code_copied), Toast.LENGTH_SHORT).show()
                     }, modifier = modifierReflejo(Modifier, enabled = true)) {
-                        Text("Copiar", color = Marca, fontWeight = FontWeight.Bold)
+                        Text(Textos.get(R.string.copy), color = Marca, fontWeight = FontWeight.Bold)
                     }
                 }
             }

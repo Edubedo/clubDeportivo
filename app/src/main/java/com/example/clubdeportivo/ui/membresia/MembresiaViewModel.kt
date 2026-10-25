@@ -15,6 +15,8 @@ import com.example.clubdeportivo.data.repository.MembresiaRepository
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 class MembresiaViewModel(
     private val membresiaRepository: MembresiaRepository = AppContainer.membresiaRepository
@@ -48,16 +50,16 @@ class MembresiaViewModel(
         // El personal del club (todos los roles salvo socio y visitante) no
         // tiene membresía: trabaja ahí, no es cliente.
         if (usuario.rol != Rol.SOCIO && usuario.rol != Rol.VISITANTE_EXTERNO) {
-            _titulo.value = "No aplica"
-            _mensaje.value = "Este rol es personal del club y no tiene membresía de socio."
+            _titulo.value = Textos.get(R.string.not_applicable)
+            _mensaje.value = Textos.get(R.string.this_role_is_club_staff_and)
             return
         }
 
         if (usuario.rol == Rol.VISITANTE_EXTERNO) {
-            _titulo.value = "Acceso de visita"
-            _mensaje.value = "$%.0f por visita.".format(Catalogos.PRECIO_VISITA)
-            _detalle.value = "Pago único, válido para un solo día. No incluye reservaciones " +
-                "recurrentes: cada visita se aprueba por separado."
+            _titulo.value = Textos.get(R.string.visit_access)
+            _mensaje.value = Textos.get(R.string.n_0f_per_visit).format(Catalogos.PRECIO_VISITA)
+            _detalle.value = Textos.get(R.string.one_time_payment_valid_for_a) +
+                Textos.get(R.string.recurring_bookings_each_visit_is_appro)
             return
         }
 
@@ -65,8 +67,8 @@ class MembresiaViewModel(
             _cargando.value = true
             val membresia = membresiaRepository.obtenerMembresia(usuario.id)
             if (membresia == null) {
-                _titulo.value = "Sin membresía activa"
-                _mensaje.value = "Todavía no tienes un paquete contratado."
+                _titulo.value = Textos.get(R.string.no_active_membership)
+                _mensaje.value = Textos.get(R.string.you_don_t_have_a_package)
                 _cargando.value = false
                 return@launch
             }
@@ -74,34 +76,34 @@ class MembresiaViewModel(
             when (membresia.tipo) {
                 TipoMembresia.FAMILIAR -> {
                     val paquete = membresia.paqueteFamiliarId?.let { Catalogos.paqueteFamiliarPorId(it) }
-                    _titulo.value = "Paquete ${paquete?.nombre ?: "familiar"}"
+                    _titulo.value = Textos.get(R.string.manual_paquete_nombre, paquete?.nombre ?: Textos.get(R.string.manual_familiar))
                     _beneficios.value = listOfNotNull(paquete?.descripcion)
                     _integrantes.value = membresiaRepository.obtenerIntegrantes(membresia.id)
                 }
                 TipoMembresia.INDIVIDUAL -> {
-                    _titulo.value = membresia.plan?.let { Catalogos.nombrePlanIndividual(it) } ?: "Individual"
+                    _titulo.value = membresia.plan?.let { Catalogos.nombrePlanIndividual(it) } ?: Textos.get(R.string.individual)
                     _beneficios.value = membresia.plan?.let { Catalogos.beneficiosPlanIndividual(it) } ?: emptyList()
                 }
                 TipoMembresia.VISITA -> {
-                    _titulo.value = "Acceso de visita"
+                    _titulo.value = Textos.get(R.string.visit_access)
                 }
             }
 
             val estadoActual = ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy())
             val estadoTexto = when (estadoActual) {
-                EstadoMembresia.ACTIVA -> "Activa"
-                EstadoMembresia.VENCIDA -> "Vencida"
-                EstadoMembresia.SUSPENDIDA -> "Suspendida"
+                EstadoMembresia.ACTIVA -> Textos.get(R.string.active_2)
+                EstadoMembresia.VENCIDA -> Textos.get(R.string.expired)
+                EstadoMembresia.SUSPENDIDA -> Textos.get(R.string.suspended)
             }
-            _mensaje.value = "$estadoTexto · ${dinero(membresia.precio)} al mes"
+            _mensaje.value = Textos.get(R.string.per_month_2, estadoTexto, dinero(membresia.precio))
             _detalle.value = when (estadoActual) {
                 EstadoMembresia.ACTIVA ->
-                    "Vigente del ${Fechas.legible(membresia.fechaInicio)} al ${Fechas.legible(membresia.fechaVencimiento)}"
+                    Textos.get(R.string.valid_from_to, Fechas.legible(membresia.fechaInicio), Fechas.legible(membresia.fechaVencimiento))
                 EstadoMembresia.VENCIDA ->
-                    "Venció el ${Fechas.legible(membresia.fechaVencimiento)}. Renuévala en recepción para volver a reservar."
+                    Textos.get(R.string.expired_on_renew_it_at_the, Fechas.legible(membresia.fechaVencimiento))
                 EstadoMembresia.SUSPENDIDA ->
-                    "Motivo: ${membresia.motivoSuspension.ifBlank { "sin especificar" }}. " +
-                        "Habla con recepción para reactivarla."
+                    Textos.get(R.string.manual_motivo_punto, membresia.motivoSuspension.ifBlank { Textos.get(R.string.not_specified) }) +
+                        Textos.get(R.string.talk_to_the_front_desk_to)
             }
             _cargando.value = false
         }

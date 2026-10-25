@@ -9,6 +9,7 @@ import com.example.clubdeportivo.data.model.TipoMembresia
 import java.security.SecureRandom
 import kotlin.random.Random
 import kotlin.random.asKotlinRandom
+import com.example.clubdeportivo.R
 
 /**
  * Reglas de membresías y códigos de acceso, sin Firebase ni Android para poder probarlas.
@@ -72,26 +73,56 @@ object ReglasMembresia {
         if (tipo == TipoMembresia.VISITA) Rol.VISITANTE_EXTERNO else Rol.SOCIO
 
     fun etiquetaPlan(membresia: Membresia): String = when (membresia.tipo) {
-        TipoMembresia.INDIVIDUAL -> membresia.plan?.let { Catalogos.nombrePlanIndividual(it) } ?: "Individual"
+        TipoMembresia.INDIVIDUAL -> membresia.plan?.let { Catalogos.nombrePlanIndividual(it) } ?: Textos.get(R.string.individual)
         TipoMembresia.FAMILIAR ->
-            "Paquete ${membresia.paqueteFamiliarId?.let { Catalogos.paqueteFamiliarPorId(it)?.nombre } ?: "familiar"}"
-        TipoMembresia.VISITA -> "Visita"
+            Textos.get(R.string.manual_paquete_nombre, membresia.paqueteFamiliarId?.let { Catalogos.paqueteFamiliarPorId(it)?.nombre } ?: Textos.get(R.string.manual_familiar))
+        TipoMembresia.VISITA -> Textos.get(R.string.visit)
+    }
+
+    const val ESQUEMA_ENLACE = "clubdeportivo"
+    private const val DESTINO_ENLACE = "registro"
+
+    /** Enlace de acceso que el titular comparte con su familiar: al abrirlo la app abre el registro con el código ya escrito. */
+    fun enlaceDeAcceso(codigo: String) = "$ESQUEMA_ENLACE://$DESTINO_ENLACE?codigo=${normalizarCodigo(codigo)}"
+
+    /** El código que trae un enlace de acceso, o null si el texto no es uno de nuestros enlaces o el código no es válido. */
+    fun codigoDeEnlace(enlace: String?): String? {
+        val texto = enlace?.trim().orEmpty()
+        val prefijo = "$ESQUEMA_ENLACE://$DESTINO_ENLACE"
+        if (!texto.startsWith(prefijo, ignoreCase = true)) return null
+        val codigo = texto.substringAfter("codigo=", "").substringBefore("&")
+        return normalizarCodigo(codigo).takeIf { esCodigo(it) }
+    }
+
+    /** Mensaje listo para mandar por WhatsApp, correo o SMS con el enlace de acceso y, por si el enlace no abre, el código. */
+    fun mensajeDeInvitacion(nombreFamiliar: String, nombreTitular: String, codigo: String): String =
+        Textos.get(R.string.manual_invitacion_hola, nombreFamiliar.trim().substringBefore(" "), nombreTitular.trim()) +
+            Textos.get(R.string.create_your_account_with_this_link, enlaceDeAcceso(codigo)) +
+            Textos.get(R.string.if_the_link_doesn_t_open_2, normalizarCodigo(codigo))
+
+    /** @return el motivo por el que los datos del familiar que agrega el titular no son válidos, o null. */
+    fun validarFamiliar(persona: PersonaForm, personasActuales: Int, tipo: TipoMembresia, paqueteId: Int?): String? {
+        if (tipo != TipoMembresia.FAMILIAR) return Textos.get(R.string.only_family_packages_admit_more_people)
+        if (personasActuales >= maxPersonas(tipo, paqueteId)) {
+            return Textos.get(R.string.your_package_already_has_all_its_2, maxPersonas(tipo, paqueteId))
+        }
+        if (persona.parentesco.trim().length < 3) return Textos.get(R.string.enter_the_relationship_spouse_son_daug)
+        return validarPersonas(tipo, paqueteId, listOf(persona))
     }
 
     /** @return el motivo por el que los datos no son válidos, o null. */
     fun validarPersonas(tipo: TipoMembresia, paqueteId: Int?, personas: List<PersonaForm>): String? {
-        if (personas.isEmpty()) return "Agrega al titular."
+        if (personas.isEmpty()) return Textos.get(R.string.add_the_holder)
         val max = maxPersonas(tipo, paqueteId)
-        if (personas.size > max) return "Este paquete admite máximo $max personas (titular incluido)."
-        if (tipo == TipoMembresia.FAMILIAR && personas.size < 2) return "Un paquete familiar necesita al menos 2 personas."
+        if (personas.size > max) return Textos.get(R.string.this_package_admits_a_maximum_of, max)
         personas.forEach { persona ->
-            if (persona.nombre.trim().length < 3) return "Escribe el nombre completo de cada persona."
+            if (persona.nombre.trim().length < 3) return Textos.get(R.string.enter_the_full_name_of_each)
             if (persona.correo.isNotBlank() && !Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$").matches(persona.correo.trim())) {
-                return "El correo de ${persona.nombre.trim()} no es válido."
+                return Textos.get(R.string.s_email_is_not_valid, persona.nombre.trim())
             }
             val digitos = persona.telefono.count { it.isDigit() }
             if (persona.telefono.isNotBlank() && digitos < 10) {
-                return "El teléfono de ${persona.nombre.trim()} debe tener 10 dígitos."
+                return Textos.get(R.string.s_phone_must_have_10_digits, persona.nombre.trim())
             }
         }
         return null

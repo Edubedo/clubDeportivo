@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Balón del club para la pantalla de arranque (blanco sobre el azul del club). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="240dp"
+    android:viewportWidth="240"
+    android:viewportHeight="240">
+    <!-- Contorno -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M120,66 a54,54 0 1,0 0.01,0 z"
+        android:strokeWidth="5"
+        android:strokeColor="#FFFFFFFF" />
+    <!-- Pentágono central -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M120.0,99.0 L140.0,113.5 L132.3,137.0 L107.7,137.0 L100.0,113.5 z" />
+    <!-- Costuras -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M120.0,99.0 L120.0,84.0 M140.0,113.5 L154.2,108.9 M132.3,137.0 L141.2,149.1 M107.7,137.0 L98.8,149.1 M100.0,113.5 L85.8,108.9"
+        android:strokeWidth="4"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+    <!-- Parches del borde -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M138.8,94.1 L134.1,79.6 L146.5,70.6 L158.8,79.6 L154.1,94.1 z M150.4,129.9 L162.8,120.9 L175.2,129.9 L170.4,144.4 L155.2,144.4 z M120.0,152.0 L132.4,161.0 L127.6,175.5 L112.4,175.5 L107.6,161.0 z M89.6,129.9 L84.8,144.4 L69.6,144.4 L64.8,129.9 L77.2,120.9 z M101.2,94.1 L85.9,94.1 L81.2,79.6 L93.5,70.6 L105.9,79.6 z" />
+</vector>

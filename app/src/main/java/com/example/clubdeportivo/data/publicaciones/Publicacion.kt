@@ -1,9 +1,11 @@
 package com.example.clubdeportivo.data.publicaciones
 
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 enum class AudienciaPublicacion(val etiqueta: String) {
-    TODOS("Todos"),
-    PERSONAL("Personal"),
-    SOCIOS("Socio")
+    TODOS(Textos.get(R.string.all_2)),
+    PERSONAL(Textos.get(R.string.staff)),
+    SOCIOS(Textos.get(R.string.members_2))
 }
 
 data class Publicacion(

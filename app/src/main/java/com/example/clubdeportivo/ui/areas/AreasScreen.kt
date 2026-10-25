@@ -95,6 +95,8 @@ import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.SobreMarca
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,7 +134,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
         floatingActionButton = {
             if (!esEncargado) {
                 BotonFlotanteAgregar(
-                    texto = "Agregar área",
+                    texto = Textos.get(R.string.add_area),
                     visible = listState.botonFlotanteVisible(),
                     onClick = {
                         areaEnEdicion = null
@@ -144,10 +146,10 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             if (deportes.size > 1) {
-                val opciones = listOf("Todos") + deportes
+                val opciones = listOf(Textos.get(R.string.all_2)) + deportes
                 PestanasPildora(
                     opciones = opciones,
-                    seleccionada = opciones.indexOf(filtroDeporte ?: "Todos").coerceAtLeast(0),
+                    seleccionada = opciones.indexOf(filtroDeporte ?: Textos.get(R.string.all_2)).coerceAtLeast(0),
                     onSeleccion = { filtroDeporte = if (it == 0) null else opciones[it] }
                 )
             }
@@ -159,8 +161,8 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                 when {
                     cargando && areas.isEmpty() -> FullScreenLoading()
                     areas.isEmpty() -> EmptyState(
-                        mensaje = if (esEncargado) "No hay áreas de tu deporte registradas, o todavía no tienes un área asignada."
-                        else "No hay áreas registradas. Agrega la primera con \"Agregar área\".",
+                        mensaje = if (esEncargado) Textos.get(R.string.there_are_no_areas_for_your)
+                        else Textos.get(R.string.there_are_no_areas_yet_add),
                         icono = Icons.Default.Place
                     )
                     else -> LazyColumn(
@@ -204,10 +206,10 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
 
     areaAEliminar?.let { area ->
         DialogoConfirmacion(
-            titulo = "Eliminar área",
-            mensaje = "¿Seguro que quieres eliminar \"${Deportes.titulo(area.tipo, area.nombre)}\"? Esta acción no se puede deshacer.",
-            textoConfirmar = "Eliminar",
-            textoCancelar = "Cancelar",
+            titulo = Textos.get(R.string.delete_area),
+            mensaje = Textos.get(R.string.are_you_sure_you_want_to, Deportes.titulo(area.tipo, area.nombre)),
+            textoConfirmar = Textos.get(R.string.delete),
+            textoCancelar = Textos.get(R.string.cancel),
             onConfirmar = {
                 viewModel.eliminarArea(area)
                 areaAEliminar = null
@@ -250,25 +252,25 @@ private fun AreaCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "$reservasHoy reservas hoy · cupo ${area.capacidad}",
+                    text = Textos.get(R.string.bookings_today_capacity, reservasHoy, area.capacidad),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario,
                     modifier = Modifier.padding(top = 2.dp)
                 )
                 when (area.disponibilidad) {
                     DisponibilidadArea.MANTENIMIENTO -> Insignia(
-                        texto = "En mantenimiento",
+                        texto = Textos.get(R.string.under_maintenance),
                         tipo = TipoInsignia.MANTENIMIENTO,
                         icono = Icons.Default.Warning,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                     DisponibilidadArea.OCUPADA -> Insignia(
-                        texto = "Ocupada",
+                        texto = Textos.get(R.string.occupied),
                         tipo = TipoInsignia.NO_DISPONIBLE,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                     DisponibilidadArea.DISPONIBLE -> Insignia(
-                        texto = "Disponible",
+                        texto = Textos.get(R.string.available),
                         tipo = TipoInsignia.DISPONIBLE,
                         modifier = Modifier.padding(top = 6.dp)
                     )
@@ -278,16 +280,16 @@ private fun AreaCard(
                 IconButton(
                     onClick = { menuAbierto = true }
                 ) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = TextoSecundario)
+                    Icon(Icons.Default.MoreVert, contentDescription = Textos.get(R.string.more_options), tint = TextoSecundario)
                 }
                 DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
                     if (!soloEstatus) DropdownMenuItem(
-                        text = { Text("Editar") },
+                        text = { Text(Textos.get(R.string.edit)) },
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                         onClick = { menuAbierto = false; onEditar() }
                     )
                     DropdownMenuItem(
-                        text = { Text(if (enMantenimiento) "Marcar disponible" else "Poner en mantenimiento") },
+                        text = { Text(if (enMantenimiento) Textos.get(R.string.mark_as_available) else Textos.get(R.string.put_under_maintenance)) },
                         leadingIcon = {
                             Icon(
                                 if (enMantenimiento) Icons.Default.CheckCircle else Icons.Default.Build,
@@ -300,7 +302,7 @@ private fun AreaCard(
                         }
                     )
                     if (!soloEstatus) DropdownMenuItem(
-                        text = { Text("Eliminar", color = Peligro) },
+                        text = { Text(Textos.get(R.string.delete), color = Peligro) },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Peligro) },
                         onClick = { menuAbierto = false; onEliminar() }
                     )
@@ -339,11 +341,11 @@ private fun AreaFormDialog(
             && (!requiereCarriles || (carriles.toIntOrNull() ?: 0) > 0)
 
     DialogoFormulario(
-        titulo = if (esEdicion) "Editar área" else "Agregar área",
+        titulo = if (esEdicion) Textos.get(R.string.edit_area) else Textos.get(R.string.add_area),
         onCerrar = onCerrar,
         pie = {
             BotonPrimario(
-                texto = if (esEdicion) "Guardar cambios" else "Agregar área",
+                texto = if (esEdicion) Textos.get(R.string.save_changes) else Textos.get(R.string.add_area),
                 enabled = puedeGuardar,
                 onClick = {
                     val emoji = if (modoNuevo) emojiNuevo.trim() else areaExistente?.emoji.orEmpty()
@@ -360,7 +362,7 @@ private fun AreaFormDialog(
         }
     ) {
         PestanasPildora(
-            opciones = listOf("Deporte existente", "Nuevo deporte"),
+            opciones = listOf(Textos.get(R.string.existing_sport), Textos.get(R.string.new_sport)),
             seleccionada = if (modoNuevo) 1 else 0,
             onSeleccion = { modoNuevo = it == 1 },
             margenHorizontal = 0.dp
@@ -369,14 +371,14 @@ private fun AreaFormDialog(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (!modoNuevo) {
-            EtiquetaCampo("DEPORTE")
+            EtiquetaCampo(Textos.get(R.string.lbl_deporte))
             ExposedDropdownMenuBox(expanded = dropdownAbierto, onExpandedChange = { dropdownAbierto = it }) {
                 CampoTexto(
                     value = deportesExistentes.firstOrNull { it.first == deporteElegido }
                         ?.let { "${it.second} ${it.first}" } ?: "",
                     onValueChange = {},
                     readOnly = true,
-                    placeholder = "Elige un deporte",
+                    placeholder = Textos.get(R.string.choose_a_sport),
                     modifier = Modifier.menuAnchor(),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownAbierto) }
                 )
@@ -393,8 +395,8 @@ private fun AreaFormDialog(
                 }
             }
         } else {
-            EtiquetaCampo("NOMBRE DEL DEPORTE")
-            CampoTexto(value = deporteNuevo, onValueChange = { deporteNuevo = it }, placeholder = "Ej: Pádel")
+            EtiquetaCampo(Textos.get(R.string.sport_name))
+            CampoTexto(value = deporteNuevo, onValueChange = { deporteNuevo = it }, placeholder = Textos.get(R.string.e_g_padel))
 
             EspacioCampos()
 
@@ -404,19 +406,19 @@ private fun AreaFormDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo("NOMBRE DE LA CANCHA")
+        EtiquetaCampo(Textos.get(R.string.court_name))
         CampoTexto(
             value = nombre,
             onValueChange = { nombre = it },
-            placeholder = "Ej: Cancha C",
+            placeholder = Textos.get(R.string.e_g_court_c),
             capitalizacion = KeyboardCapitalization.Sentences,
             isError = repetido,
-            mensajeError = if (repetido) "Ya existe un área con ese nombre en este deporte" else null
+            mensajeError = if (repetido) Textos.get(R.string.an_area_with_that_name_already) else null
         )
 
         EspacioCampos()
 
-        EtiquetaCampo("CUPO MÁXIMO (PERSONAS)")
+        EtiquetaCampo(Textos.get(R.string.max_capacity_people))
         CampoTexto(
             value = capacidad,
             onValueChange = { capacidad = it.filter(Char::isDigit).take(4) },
@@ -426,31 +428,31 @@ private fun AreaFormDialog(
 
         if (requiereCarriles) {
             EspacioCampos()
-            EtiquetaCampo("CARRILES DE LA ALBERCA")
+            EtiquetaCampo(Textos.get(R.string.pool_lanes))
             CampoTexto(
                 value = carriles,
                 onValueChange = { carriles = it.filter(Char::isDigit).take(2) },
-                placeholder = "Ej: 6",
+                placeholder = Textos.get(R.string.e_g_6),
                 tipoTeclado = KeyboardType.Number,
                 imeAction = ImeAction.Done,
                 isError = carriles.isBlank() || (carriles.toIntOrNull() ?: 0) < 1,
-                mensajeError = if (carriles.isBlank()) "Indica cuántos carriles tiene esta alberca." else null
+                mensajeError = if (carriles.isBlank()) Textos.get(R.string.say_how_many_lanes_this_pool) else null
             )
-            Text("Los socios elegirán un carril libre al reservar.", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+            Text(Textos.get(R.string.members_will_choose_a_free_lane), style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
         }
 
         EspacioCampos()
 
-        EtiquetaCampo("ESTATUS")
+        EtiquetaCampo(Textos.get(R.string.lbl_estatus))
         PestanasPildora(
-            opciones = listOf("Disponible", "En mantenimiento"),
+            opciones = listOf(Textos.get(R.string.available), Textos.get(R.string.under_maintenance)),
             seleccionada = if (enMantenimiento) 1 else 0,
             onSeleccion = { enMantenimiento = it == 1 },
             margenHorizontal = 0.dp
         )
         Text(
-            text = if (enMantenimiento) "No se aceptan reservas nuevas en esta área. Las que ya existen se conservan."
-            else "El área acepta reservas con normalidad.",
+            text = if (enMantenimiento) Textos.get(R.string.no_new_bookings_are_accepted_in)
+            else Textos.get(R.string.the_area_accepts_bookings_as_usual),
             style = MaterialTheme.typography.bodySmall,
             color = TextoSecundario
         )

@@ -20,6 +20,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Roles que cuentan como personal. Incluye los heredados (SUPERADMIN, ADMIN_AREA) para no perder a nadie ya registrado. */
 private val ROLES_QUE_SON_PERSONAL = (ROLES_DE_PERSONAL + listOf(Rol.SUPERADMIN, Rol.ADMIN_AREA)).map { it.name }
@@ -73,7 +75,7 @@ class FirebasePersonalRepository(
         val auth = authDeAltas()
         return try {
             val uid = auth.createUserWithEmailAndPassword(datos.email.trim(), datos.contrasena).await().user?.uid
-                ?: return Resultado.Error("No se pudo crear la cuenta, intenta de nuevo.")
+                ?: return Resultado.Error(Textos.get(R.string.the_account_could_not_be_created))
             val ahora = FieldValue.serverTimestamp()
             usuarios.document(uid).set(
                 camposDe(datos) + mapOf(
@@ -110,7 +112,7 @@ class FirebasePersonalRepository(
             authPrincipal.currentUser?.getIdToken(false)?.await()?.token
         } catch (e: Exception) {
             null
-        } ?: return Resultado.Error("Tu sesión expiró. Cierra sesión y vuelve a entrar.")
+        } ?: return Resultado.Error(Textos.get(R.string.your_session_expired_sign_out_and))
 
         val url = "https://us-central1-${FirebaseApp.getInstance().options.projectId}.cloudfunctions.net/$FUNCION_CAMBIAR_CONTRASENA"
         return withContext(Dispatchers.IO) {
@@ -135,12 +137,12 @@ class FirebasePersonalRepository(
                     // Los mensajes de la función ya vienen en español y listos para mostrar; si no hay, se explica lo general.
                     Resultado.Error(
                         json?.optJSONObject("error")?.optString("message")?.takeIf { it.isNotBlank() }
-                            ?: if (codigo == 404) "La función para cambiar contraseñas todavía no está publicada en Firebase."
-                            else "No se pudo cambiar la contraseña. Intenta de nuevo."
+                            ?: if (codigo == 404) Textos.get(R.string.the_password_change_function_is_not)
+                            else Textos.get(R.string.the_password_could_not_be_changed)
                     )
                 }
             } catch (e: Exception) {
-                Resultado.Error("No se pudo conectar. Revisa tu internet e intenta de nuevo.")
+                Resultado.Error(Textos.get(R.string.could_not_connect_check_your_internet))
             } finally {
                 conexion.disconnect()
             }
@@ -161,9 +163,9 @@ class FirebasePersonalRepository(
     )
 
     private fun traducirError(e: Exception): String = when (e) {
-        is FirebaseAuthUserCollisionException -> "Ya existe una cuenta con ese correo."
-        is FirebaseAuthWeakPasswordException -> "La contraseña es muy débil."
-        else -> e.message ?: "Ocurrió un error de conexión. Revisa tu internet e intenta de nuevo."
+        is FirebaseAuthUserCollisionException -> Textos.get(R.string.an_account_with_that_email_already)
+        is FirebaseAuthWeakPasswordException -> Textos.get(R.string.the_password_is_too_weak)
+        else -> e.message ?: Textos.get(R.string.a_connection_error_occurred_check_your)
     }
 
     private companion object {

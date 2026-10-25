@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.avisos
 
+import com.example.clubdeportivo.ui.components.EsqueletoLista
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -53,7 +54,11 @@ import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import java.text.SimpleDateFormat
 import java.util.Date
+import com.example.clubdeportivo.util.Idioma
+import com.example.clubdeportivo.util.PreferenciaIdioma
 import java.util.Locale
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 private const val MAX_TITULO = 60
 private const val MAX_MENSAJE = 300
@@ -86,16 +91,16 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
 
     DialogoFormulario(
         titulo = when (modo) {
-            is ModoAvisos.Lista -> "Avisos del club"
-            is ModoAvisos.Redactar -> "Nuevo aviso"
-            is ModoAvisos.Editar -> "Modificar aviso"
+            is ModoAvisos.Lista -> Textos.get(R.string.club_notices)
+            is ModoAvisos.Redactar -> Textos.get(R.string.new_notice)
+            is ModoAvisos.Editar -> Textos.get(R.string.edit_notice)
         },
         onCerrar = { if (enLista) onCerrar() else modo = ModoAvisos.Lista },
         pie = when {
             enLista && esPersonal -> {
                 {
                     BotonPrimario(
-                        texto = "Redactar nuevo aviso",
+                        texto = Textos.get(R.string.write_a_new_notice),
                         onClick = {
                             titulo = ""
                             texto = ""
@@ -108,7 +113,7 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
             modo is ModoAvisos.Redactar -> {
                 {
                     BotonPrimario(
-                        texto = "Enviar aviso",
+                        texto = Textos.get(R.string.send_notice),
                         enabled = titulo.isNotBlank() && texto.isNotBlank(),
                         cargando = viewModel.enviando,
                         onClick = {
@@ -124,7 +129,7 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
                 {
                     val editando = (modo as ModoAvisos.Editar).aviso
                     BotonPrimario(
-                        texto = "Guardar cambios",
+                        texto = Textos.get(R.string.save_changes),
                         enabled = titulo.isNotBlank() && texto.isNotBlank(),
                         cargando = viewModel.enviando,
                         onClick = {
@@ -158,7 +163,7 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
             )
             is ModoAvisos.Redactar -> {
                 if (permitidos.size > 1) {
-                    EtiquetaCampo("ENVIAR A")
+                    EtiquetaCampo(Textos.get(R.string.send_to))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         permitidos.forEach { opcion ->
                             FilterChip(
@@ -175,7 +180,7 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
                     }
                 } else {
                     Text(
-                        text = "Este aviso lo recibirán los miembros del club.",
+                        text = Textos.get(R.string.club_members_will_receive_this_notice),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoSecundario
                     )
@@ -185,7 +190,7 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
             }
             is ModoAvisos.Editar -> {
                 Text(
-                    text = "Para: ${actual.aviso.destinatario.etiqueta}",
+                    text = Textos.get(R.string.k_for, actual.aviso.destinatario.etiqueta),
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoSecundario
                 )
@@ -197,10 +202,10 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
 
     aEliminar?.let { aviso ->
         DialogoConfirmacion(
-            titulo = "Eliminar aviso",
-            mensaje = "¿Eliminar \"${aviso.titulo}\"? Dejará de verse para todos y no se puede deshacer.",
-            textoConfirmar = "Eliminar",
-            textoCancelar = "Cancelar",
+            titulo = Textos.get(R.string.delete_notice),
+            mensaje = Textos.get(R.string.delete_it_will_no_longer_be, aviso.titulo),
+            textoConfirmar = Textos.get(R.string.delete),
+            textoCancelar = Textos.get(R.string.cancel),
             onConfirmar = {
                 viewModel.eliminar(aviso.id)
                 aEliminar = null
@@ -217,22 +222,22 @@ private fun CamposAviso(
     texto: String,
     onTexto: (String) -> Unit
 ) {
-    EtiquetaCampo("TÍTULO")
+    EtiquetaCampo(Textos.get(R.string.title))
     CampoTexto(
         value = titulo,
         onValueChange = onTitulo,
-        placeholder = "Ej: Mantenimiento programado",
+        placeholder = Textos.get(R.string.e_g_scheduled_maintenance),
         capitalizacion = KeyboardCapitalization.Sentences,
         mensajeError = "${titulo.length}/$MAX_TITULO"
     )
 
     EspacioCampos()
 
-    EtiquetaCampo("MENSAJE")
+    EtiquetaCampo(Textos.get(R.string.lbl_mensaje))
     CampoTexto(
         value = texto,
         onValueChange = onTexto,
-        placeholder = "Escribe los detalles del aviso...",
+        placeholder = Textos.get(R.string.write_the_notice_details),
         singleLine = false,
         minLines = 4,
         capitalizacion = KeyboardCapitalization.Sentences,
@@ -252,8 +257,8 @@ private fun ListaAvisos(
     if (esPersonal) {
         PestanasPildora(
             opciones = listOf(
-                if (viewModel.sinLeer > 0) "Recibidos (${viewModel.sinLeer})" else "Recibidos",
-                "Enviados"
+                if (viewModel.sinLeer > 0) Textos.get(R.string.received, viewModel.sinLeer) else Textos.get(R.string.received_2),
+                Textos.get(R.string.sent)
             ),
             seleccionada = pestana,
             onSeleccion = onPestana,
@@ -267,12 +272,10 @@ private fun ListaAvisos(
 
     when {
         viewModel.cargando && lista.isEmpty() -> {
-            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-            }
+            EsqueletoLista(modifier = Modifier.padding(vertical = 8.dp), cantidad = 3)
         }
         lista.isEmpty() -> Text(
-            text = if (verEnviados) "Todavía no has enviado ningún aviso." else "No hay avisos por ahora.",
+            text = if (verEnviados) Textos.get(R.string.you_haven_t_sent_any_notices) else Textos.get(R.string.there_are_no_notices_for_now),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoSecundario,
             textAlign = TextAlign.Center,
@@ -284,7 +287,7 @@ private fun ListaAvisos(
                     TextButton(
                         onClick = { viewModel.marcarTodosLeidos() }
                     ) {
-                        Text("Marcar todos como leídos", color = Marca, fontWeight = FontWeight.SemiBold)
+                        Text(Textos.get(R.string.mark_all_as_read), color = Marca, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -314,7 +317,7 @@ private fun TarjetaAviso(
     onEliminar: () -> Unit
 ) {
     val fecha = remember(aviso.fechaMillis) {
-        SimpleDateFormat("d MMM, h:mm a", Locale("es", "MX")).format(Date(aviso.fechaMillis))
+        SimpleDateFormat("d MMM, h:mm a", if (PreferenciaIdioma.actual == Idioma.EN) Locale.US else Locale("es", "MX")).format(Date(aviso.fechaMillis))
     }
     var expandido by remember { mutableStateOf(false) }
 
@@ -366,9 +369,9 @@ private fun TarjetaAviso(
             Spacer(modifier = Modifier.height(8.dp))
 
             if (esEnviado) {
-                Insignia(texto = "Para: ${aviso.destinatario.etiqueta}", tipo = TipoInsignia.NEUTRO)
+                Insignia(texto = Textos.get(R.string.for_2, aviso.destinatario.etiqueta), tipo = TipoInsignia.NEUTRO)
             } else if (aviso.autorNombre.isNotBlank()) {
-                Text(text = "De: ${aviso.autorNombre}", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+                Text(text = Textos.get(R.string.from, aviso.autorNombre), style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
             }
 
             if (esEnviado && expandido) {
@@ -376,12 +379,12 @@ private fun TarjetaAviso(
                     TextButton(
                         onClick = onModificar
                     ) {
-                        Text("Modificar", color = Marca, fontWeight = FontWeight.Bold)
+                        Text(Textos.get(R.string.edit_2), color = Marca, fontWeight = FontWeight.Bold)
                     }
                     TextButton(
                         onClick = onEliminar
                     ) {
-                        Text("Eliminar", color = Peligro, fontWeight = FontWeight.Bold)
+                        Text(Textos.get(R.string.delete), color = Peligro, fontWeight = FontWeight.Bold)
                     }
                 }
             }

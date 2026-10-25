@@ -1,19 +1,19 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- La app tiene una sola apariencia (clara), también cuando el teléfono está en modo oscuro. -->
-    <style name="Base.Theme.ClubDeportivo" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/primary_navy</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorPrimaryContainer">@color/soft_blue_selection</item>
-        <item name="colorOnPrimaryContainer">@color/deep_navy</item>
-        <item name="colorSecondary">@color/slate_accent</item>
-        <item name="colorOnSecondary">@color/deep_navy</item>
-        <item name="colorTertiary">@color/court_green</item>
-        <item name="colorOnTertiary">@color/deep_navy</item>
-        <item name="colorError">@color/alert_red</item>
-        <item name="colorOnError">@color/white</item>
-        <item name="android:colorBackground">@color/fondo_app</item>
-        <item name="colorOnBackground">@color/texto_principal</item>
-        <item name="colorSurface">@color/white</item>
-        <item name="colorOnSurface">@color/texto_principal</item>
+    <!-- Tema de la ventana con el teléfono en modo oscuro (lo que se ve antes de que Compose pinte). -->
+    <style name="Base.Theme.ClubDeportivo" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#FF8DB6F5</item>
+        <item name="colorOnPrimary">#FF06142B</item>
+        <item name="colorPrimaryContainer">#FF1B3358</item>
+        <item name="colorOnPrimaryContainer">#FFDCE8FA</item>
+        <item name="colorSecondary">#FF9DB9DC</item>
+        <item name="colorOnSecondary">#FF06142B</item>
+        <item name="colorTertiary">#FF6EE7A0</item>
+        <item name="colorOnTertiary">#FF06231A</item>
+        <item name="colorError">#FFF87171</item>
+        <item name="colorOnError">#FF3A0A0A</item>
+        <item name="android:colorBackground">#FF0B1220</item>
+        <item name="colorOnBackground">#FFE8EEF7</item>
+        <item name="colorSurface">#FF121C2E</item>
+        <item name="colorOnSurface">#FFE8EEF7</item>
     </style>
 </resources>

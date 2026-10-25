@@ -251,3 +251,57 @@ al login). Desde "login" también se puede ir a `"registro"` (crear cuenta) y vo
 navega a "Reservar" (pasando `areaId` y `areaNombre` como parte de la ruta), y desde "Perfil" se
 puede ir a "Mi membresía" o cerrar sesión (lo que vacía toda la pila de navegación y vuelve al
 login).
+
+## Plan familiar: el titular da de alta a su familia
+
+El personal solo necesita registrar al **titular** de un paquete familiar. Cuando el titular entra a la app, en
+**Membresía → Tu familia** da de alta a sus familiares (hasta el máximo del paquete: Familiar 5, Pareja 2, Niños 3).
+Cada familiar recibe un código y un **enlace de acceso** (`clubdeportivo://registro?codigo=CLB-XXXXXX`) que el titular
+comparte por WhatsApp, correo o SMS; al abrirlo, la app abre el registro con el código ya verificado.
+
+- Código: `ui/membresia/FamiliaViewModel`, `data/repository/FirebaseFamiliaRepository`, `util/ReglasMembresia` (enlace y validaciones).
+- Seguridad: las reglas de `firestore.rules` (`esTitularDe`, `altaDeFamiliar`) solo dejan al titular crear miembros de su
+  propia membresía familiar activa, de uno en uno y sin pasar del tope. **Hay que publicar `firestore.rules` en la consola de
+  Firebase** para que esto funcione en producción; pruébalas antes con `tools/pruebas-reglas` (`npm test`).
+- Precios: solo un administrador los cambia (`PreciosViewModel.puedeEditar`, regla de `precios` en Firestore).
+
+## Términos y condiciones
+
+Crear una cuenta (registro con código) exige marcar la casilla de aceptación; los textos viven en
+`ui/registro/TerminosTexto.kt` (hay que subir `VERSION` cuando cambien y conviene que los revise quien asesore legalmente
+al club). La versión aceptada y la fecha se guardan en `usuarios/{uid}` (`terminosVersion`, `terminosAceptadosEn`).
+
+## Modo claro y oscuro
+
+`ui/theme/Color.kt` define cada color con versión clara y oscura (se leen dentro de funciones @Composable);
+`ClubDeportivoTheme` sigue al teléfono salvo que la persona elija otra cosa en **Perfil → Apariencia**
+(`ui/theme/ModoTema.kt`, guardado en SharedPreferences).
+
+## Idioma (español / inglés)
+
+Se elige en **Perfil → Idioma** (o con las banderas del login) y se guarda en SharedPreferences (`util/Idioma.kt`).
+Al cambiarlo la app se **reinicia sola** (la sesión se conserva, Firebase la recuerda) para que catálogos y etiquetas
+armados una vez por proceso salgan en el idioma nuevo. Sin elección previa usa inglés si el teléfono está en inglés y
+español en cualquier otro caso.
+
+- Los textos viven en `res/values/` (español, por defecto) y `res/values-en/` (inglés): `strings.xml` (base),
+  `strings_app.xml` (textos de las pantallas) y `strings_manual.xml` (los que llevan condicionales o etiquetas sueltas).
+  **Cada texto nuevo va en los dos idiomas.**
+- En una pantalla de Compose: `stringResource(R.string.x)`. En ViewModels, repositorios y modelos (no tienen Context):
+  `Textos.get(R.string.x, args)`. Los argumentos usan `%1$s`, `%2$s`...
+- Hay datos que Firestore guarda con su texto en español y así se comparan ("Titular", "Matutino", tipo de personal);
+  no se traducen al guardarlos, solo al mostrarlos (`data/model/EtiquetasDatos.kt`).
+- Las pruebas unitarias leen los textos reales en español (`TextosDePrueba`); `Fechas` no usa recursos para poder
+  probarse en la JVM.
+- Los Términos y condiciones y el Aviso de privacidad en inglés son una traducción literal: conviene que los revise
+  quien asesore legalmente al club, igual que el texto en español.
+
+## Probar contra los emuladores de Firebase (sin tocar la base real)
+
+1. `cd tools/pruebas-reglas && npx firebase emulators:start --only auth,firestore --project <id-del-proyecto>`
+   (con un `firebase.json` que apunte a `../../firestore.rules`).
+2. Compilar con `./gradlew installDebug -PfirebaseEmulador=10.0.2.2`. El build debug declara `ACCESS_LOCAL_NETWORK`
+   (Android 17 lo exige para hablar con `10.0.2.2`; hay que concederlo con
+   `adb shell pm grant com.example.clubdeportivo android.permission.ACCESS_LOCAL_NETWORK`).
+3. Si la app ya había iniciado sesión contra la base real, limpia sus datos (`adb shell pm clear ...`): la caché local de
+   Firestore no distingue el emulador de producción.

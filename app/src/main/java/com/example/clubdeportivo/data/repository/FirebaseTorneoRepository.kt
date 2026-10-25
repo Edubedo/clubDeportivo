@@ -10,6 +10,8 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 class FirebaseTorneoRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -65,12 +67,12 @@ class FirebaseTorneoRepository(
 
         db.runTransaction { transaccion ->
             val torneo = transaccion.get(torneoRef)
-            if (!torneo.exists()) throw IllegalStateException("El torneo ya no existe.")
-            if (transaccion.get(inscripcionRef).exists()) throw IllegalStateException("Ya estás inscrito en este torneo.")
+            if (!torneo.exists()) throw IllegalStateException(Textos.get(R.string.the_tournament_no_longer_exists))
+            if (transaccion.get(inscripcionRef).exists()) throw IllegalStateException(Textos.get(R.string.you_are_already_registered_for_this))
 
             val cupo = torneo.getLong("cupoMaximo") ?: 0L
             val actuales = torneo.getLong("inscritos") ?: 0L
-            if (actuales >= cupo) throw IllegalStateException("El torneo ya no tiene cupo.")
+            if (actuales >= cupo) throw IllegalStateException(Textos.get(R.string.the_tournament_is_full))
 
             transaccion.set(
                 inscripcionRef,

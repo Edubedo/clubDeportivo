@@ -13,6 +13,8 @@ import com.example.clubdeportivo.util.ReglasContrasena
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Resultado
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Los dos pasos del registro: primero el código del miembro, después sus datos. */
 enum class PasoRegistro { CODIGO, DATOS }
@@ -50,6 +52,9 @@ class RegistroViewModel(
     private val _confirmarError = MutableLiveData<String?>()
     val confirmarError: LiveData<String?> = _confirmarError
 
+    private val _terminosError = MutableLiveData<String?>()
+    val terminosError: LiveData<String?> = _terminosError
+
     private val _cargando = MutableLiveData(false)
     val cargando: LiveData<Boolean> = _cargando
 
@@ -64,11 +69,11 @@ class RegistroViewModel(
         _yaRegistrado.value = false
         val limpio = ReglasMembresia.normalizarCodigo(texto)
         if (texto.isBlank()) {
-            _codigoError.value = "Escribe tu código de miembro"
+            _codigoError.value = Textos.get(R.string.enter_your_member_code)
             return
         }
         if (!ReglasMembresia.esCodigo(limpio)) {
-            _codigoError.value = "El código se ve así: CLB-7K3M9Q"
+            _codigoError.value = Textos.get(R.string.the_code_looks_like_this_clb)
             return
         }
         _codigoError.value = null
@@ -99,19 +104,19 @@ class RegistroViewModel(
         _codigoError.value = null
     }
 
-    fun registrar(nombre: String, email: String, password: String, confirmar: String) {
+    fun registrar(nombre: String, email: String, password: String, confirmar: String, aceptoTerminos: Boolean) {
         if (_cargando.value == true) return
         var esValido = true
 
         if (nombre.trim().length < 3) {
-            _nombreError.value = "Escribe tu nombre completo"
+            _nombreError.value = Textos.get(R.string.enter_your_full_name)
             esValido = false
         } else {
             _nombreError.value = null
         }
 
         if (!Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) {
-            _emailError.value = "Escribe un correo electrónico válido"
+            _emailError.value = Textos.get(R.string.enter_a_valid_email_address)
             esValido = false
         } else {
             _emailError.value = null
@@ -126,10 +131,18 @@ class RegistroViewModel(
         }
 
         if (confirmar != password) {
-            _confirmarError.value = "Las contraseñas no coinciden"
+            _confirmarError.value = Textos.get(R.string.the_passwords_don_t_match_2)
             esValido = false
         } else {
             _confirmarError.value = null
+        }
+
+        // Sin aceptar los términos y condiciones no se crea la cuenta.
+        if (!aceptoTerminos) {
+            _terminosError.value = Textos.get(R.string.you_must_accept_the_terms_and)
+            esValido = false
+        } else {
+            _terminosError.value = null
         }
 
         if (!esValido) return
@@ -137,7 +150,7 @@ class RegistroViewModel(
         val codigoVerificado = _codigo.value.orEmpty()
         viewModelScope.launch {
             _cargando.value = true
-            when (val resultado = authRepository.registrarMiembro(codigoVerificado, nombre, email, password)) {
+            when (val resultado = authRepository.registrarMiembro(codigoVerificado, nombre, email, password, TerminosTexto.VERSION)) {
                 is Resultado.Exito -> {
                     SesionManager.iniciarSesion(resultado.datos)
                     _errorGeneral.value = null
@@ -147,6 +160,10 @@ class RegistroViewModel(
             }
             _cargando.value = false
         }
+    }
+
+    fun limpiarErrorTerminos() {
+        _terminosError.value = null
     }
 
     fun onErrorMostrado() {

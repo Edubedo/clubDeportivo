@@ -1,16 +1,27 @@
 package com.example.clubdeportivo.data
 
+import com.example.clubdeportivo.TextosDePrueba
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.Usuario
+import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.data.model.puedeVerDeporte
+import com.example.clubdeportivo.util.Textos
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RolesTest {
+
+    init { TextosDePrueba.instalar() }
+
+    @After
+    fun limpiarTextos() {
+        Textos.resolutorDePrueba = null
+    }
 
     private fun usuario(rol: Rol, area: String? = null) = Usuario("u", "Nombre", "a@b.c", rol, areaTrabajo = area)
 
@@ -44,5 +55,16 @@ class RolesTest {
         assertTrue(usuario(Rol.ADMIN).puedeVerDeporte("Fútbol"))
         assertTrue(usuario(Rol.SOCIO).puedeVerDeporte("Fútbol"))
         assertTrue((null as Usuario?).puedeVerDeporte("Fútbol"))
+    }
+
+    @Test
+    fun `solo los administradores pueden cambiar los precios de los planes`() {
+        // Misma regla que usa PreciosViewModel y que firestore.rules aplica a la colección "precios".
+        assertTrue(Rol.ADMIN.esAdministrador())
+        assertTrue(Rol.SUPERADMIN.esAdministrador())
+        assertFalse(Rol.AYUDANTE_AREA.esAdministrador())
+        assertFalse(Rol.ADMIN_AREA.esAdministrador())
+        assertFalse(Rol.SOCIO.esAdministrador())
+        assertFalse(Rol.VISITANTE_EXTERNO.esAdministrador())
     }
 }

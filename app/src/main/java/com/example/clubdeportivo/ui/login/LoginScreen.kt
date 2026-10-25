@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.login
 
+import com.example.clubdeportivo.ui.components.CargandoMarca
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -50,12 +51,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.ui.components.BanderasIdioma
 import com.example.clubdeportivo.ui.components.CampoTexto
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.modifierReflejo
@@ -133,6 +137,7 @@ fun LoginScreen(
                     .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -156,17 +161,19 @@ fun LoginScreen(
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
+                    Spacer(modifier = Modifier.weight(1f))
+                    BanderasIdioma()
                 }
 
                 Spacer(modifier = Modifier.height(44.dp))
                 Text(
-                    text = "ÁREA PRIVADA",
+                    text = stringResource(R.string.login_area_privada),
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.4.sp),
                     color = SoftBlueSelection,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Tu club,\nmás cerca.",
+                    text = stringResource(R.string.login_slogan),
                     style = MaterialTheme.typography.displaySmall.copy(
                         fontSize = 32.sp,
                         lineHeight = 34.sp,
@@ -176,7 +183,7 @@ fun LoginScreen(
                     modifier = Modifier.padding(top = 10.dp)
                 )
                 Text(
-                    text = "Gestiona tus actividades, pagos y reservas.",
+                    text = stringResource(R.string.login_subtitulo),
                     color = LoginMutedText,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 10.dp)
@@ -187,15 +194,15 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth().height(260.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = SoftBlueSelection)
+                        CargandoMarca(tamano = 72.dp, sobreOscuro = true)
                     }
                 } else {
                     Column(modifier = Modifier.padding(top = 28.dp)) {
-                        EtiquetaCampo("CORREO", color = SoftBlueSelection)
+                        EtiquetaCampo(stringResource(R.string.login_correo_etiqueta), color = SoftBlueSelection)
                         CampoTexto(
                             value = email,
                             onValueChange = { email = it },
-                            placeholder = "nombre@correo.com",
+                            placeholder = stringResource(R.string.login_correo_placeholder),
                             tipoTeclado = KeyboardType.Email,
                             leadingIcon = {
                                 Icon(imageVector = Icons.Outlined.Email, contentDescription = null)
@@ -206,11 +213,11 @@ fun LoginScreen(
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
-                        EtiquetaCampo("CONTRASEÑA", color = SoftBlueSelection)
+                        EtiquetaCampo(stringResource(R.string.login_password_etiqueta), color = SoftBlueSelection)
                         CampoTexto(
                             value = password,
                             onValueChange = { password = it },
-                            placeholder = "Tu contraseña",
+                            placeholder = stringResource(R.string.login_password_placeholder),
                             esContrasena = !passwordVisible,
                             leadingIcon = {
                                 Icon(imageVector = Icons.Outlined.Lock, contentDescription = null)
@@ -220,8 +227,8 @@ fun LoginScreen(
                                     Icon(
                                         imageVector = if (passwordVisible) Icons.Outlined.Visibility
                                         else Icons.Outlined.VisibilityOff,
-                                        contentDescription = if (passwordVisible) "Ocultar contraseña"
-                                        else "Mostrar contraseña"
+                                        contentDescription = if (passwordVisible) stringResource(R.string.ocultar_contrasena)
+                                        else stringResource(R.string.mostrar_contrasena)
                                     )
                                 }
                             },
@@ -238,7 +245,7 @@ fun LoginScreen(
                         ) {
                             TextButton(onClick = { viewModel.olvideContrasena(email) }) {
                                 Text(
-                                    text = "¿Olvidaste tu contraseña?",
+                                    text = stringResource(R.string.login_olvide_contrasena),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = LoginMutedText,
                                     fontWeight = FontWeight.Medium
@@ -272,7 +279,7 @@ fun LoginScreen(
                                     )
                                 } else {
                                     Text(
-                                        text = "Iniciar sesión",
+                                        text = stringResource(R.string.login_title),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.align(Alignment.Center)
@@ -287,7 +294,7 @@ fun LoginScreen(
                         }
 
                         Text(
-                            text = "¿Eres miembro y aún no tienes cuenta?",
+                            text = stringResource(R.string.login_sin_cuenta),
                             style = MaterialTheme.typography.bodySmall,
                             color = LoginMutedText,
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -298,7 +305,7 @@ fun LoginScreen(
                             modifier = Modifier.align(Alignment.CenterHorizontally)
                         ) {
                             Text(
-                                text = "Regístrate con tu código",
+                                text = stringResource(R.string.login_registrate_codigo),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold

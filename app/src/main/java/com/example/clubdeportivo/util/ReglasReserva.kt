@@ -7,6 +7,7 @@ import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.Torneo
 import java.util.Date
+import com.example.clubdeportivo.R
 
 /**
  * Todas las reglas de ocupación de un área en un solo lugar (sin Firebase ni Android, para poder
@@ -106,23 +107,23 @@ object ReglasReserva {
         horaFin: String,
         personas: Int
     ): String? {
-        val inicio = aMinutos(horaInicio) ?: return "Elige un horario."
-        val fin = aMinutos(horaFin) ?: return "Elige un horario."
+        val inicio = aMinutos(horaInicio) ?: return Textos.get(R.string.choose_a_time)
+        val fin = aMinutos(horaFin) ?: return Textos.get(R.string.choose_a_time)
         val horas = (inicio / 60) until (fin / 60)
-        if (horas.isEmpty()) return "Elige un horario."
+        if (horas.isEmpty()) return Textos.get(R.string.choose_a_time)
         if (horas.count() > Catalogos.MAX_HORAS_POR_RESERVA) {
-            return "Máximo ${Catalogos.MAX_HORAS_POR_RESERVA} horas por reserva."
+            return Textos.get(R.string.maximum_hours_per_booking, Catalogos.MAX_HORAS_POR_RESERVA)
         }
-        if (personas < 1) return "Indica al menos 1 persona."
-        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return "${area.nombre} está en mantenimiento."
-        if (personas > area.capacidad) return "${area.nombre} tiene capacidad para ${area.capacidad} personas."
+        if (personas < 1) return Textos.get(R.string.enter_at_least_1_person)
+        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get(R.string.is_under_maintenance, area.nombre)
+        if (personas > area.capacidad) return Textos.get(R.string.has_capacity_for_people, area.nombre, area.capacidad)
 
         for (hora in horas) {
             val estado = estadoDeHora(area, reservas, torneos, fecha, hora)
-            estado.torneo?.let { return "A las ${texto(hora)} el área está reservada para el torneo \"${it.nombre}\"." }
-            if (estado.lleno) return "A las ${texto(hora)} el área ya alcanzó su cupo límite (${area.capacidad})."
+            estado.torneo?.let { return Textos.get(R.string.at_the_area_is_reserved_for, texto(hora), it.nombre) }
+            if (estado.lleno) return Textos.get(R.string.at_the_area_has_already_reached, texto(hora), area.capacidad)
             if (estado.libres < personas) {
-                return "A las ${texto(hora)} solo quedan ${estado.libres} lugares disponibles."
+                return Textos.get(R.string.at_only_spots_are_left, texto(hora), estado.libres)
             }
         }
         return null
@@ -142,21 +143,21 @@ object ReglasReserva {
         horaInicio: String,
         horaFin: String
     ): String? {
-        val inicio = aMinutos(horaInicio) ?: return "Indica la hora de inicio."
-        val fin = aMinutos(horaFin) ?: return "Indica la hora de fin."
-        if (fin <= inicio) return "La hora de fin debe ser posterior a la de inicio."
-        if (fechaFin < fechaInicio) return "La fecha de fin no puede ser anterior a la de inicio."
-        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return "${area.nombre} está en mantenimiento."
+        val inicio = aMinutos(horaInicio) ?: return Textos.get(R.string.enter_the_start_time)
+        val fin = aMinutos(horaFin) ?: return Textos.get(R.string.enter_the_end_time)
+        if (fin <= inicio) return Textos.get(R.string.the_end_time_must_be_after)
+        if (fechaFin < fechaInicio) return Textos.get(R.string.the_end_date_can_t_be)
+        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get(R.string.is_under_maintenance, area.nombre)
 
         val otrosTorneos = torneos.filter { it.id != torneoIdExcluido }
         for (dia in Fechas.diasEntre(fechaInicio, fechaFin)) {
             otrosTorneos.firstOrNull { torneoOcupa(it, area.id, dia, inicio, fin) }?.let {
-                return "${area.nombre} ya tiene el torneo \"${it.nombre}\" el $dia en ese horario."
+                return Textos.get(R.string.already_has_the_tournament_on_at, area.nombre, it.nombre, dia)
             }
             reservas.firstOrNull {
                 it.areaId == area.id && it.fecha == dia && esVigente(it) && reservaSolapa(it, inicio, fin)
             }?.let {
-                return "${area.nombre} tiene una reserva el $dia de ${it.horaInicio} a ${it.horaFin}: cancélala o elige otro horario."
+                return Textos.get(R.string.has_a_booking_on_from_to, area.nombre, dia, it.horaInicio, it.horaFin)
             }
         }
         return null

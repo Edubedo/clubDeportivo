@@ -46,6 +46,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.tono
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -82,14 +85,18 @@ import com.example.clubdeportivo.data.publicaciones.Publicacion
 import com.example.clubdeportivo.ui.publicaciones.PublicacionesViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
+import com.example.clubdeportivo.util.Idioma
+import com.example.clubdeportivo.util.PreferenciaIdioma
 import java.util.Locale
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
-private val Tinta = Color(0xFF10233F)
-private val AzulClaro = Color(0xFFE8F2FF)
-private val Verde = Color(0xFF13835D)
-private val FondoVerde = Color(0xFFE7F6EF)
-private val Amarillo = Color(0xFF9A6500)
-private val FondoAmarillo = Color(0xFFFFF4D8)
+private val Tinta: Color @Composable @ReadOnlyComposable get() = tono(0xFF10233F, 0xFFE8EEF7)
+private val AzulClaro: Color @Composable @ReadOnlyComposable get() = tono(0xFFE8F2FF, 0xFF1B3358)
+private val Verde: Color @Composable @ReadOnlyComposable get() = tono(0xFF13835D, 0xFF6EE7A0)
+private val FondoVerde: Color @Composable @ReadOnlyComposable get() = tono(0xFFE7F6EF, 0xFF0F2E1E)
+private val Amarillo: Color @Composable @ReadOnlyComposable get() = tono(0xFF9A6500, 0xFFFBBF24)
+private val FondoAmarillo: Color @Composable @ReadOnlyComposable get() = tono(0xFFFFF4D8, 0xFF33260A)
 
 private data class Novedad(
     val categoria: String,
@@ -117,8 +124,12 @@ fun MiembroHomeScreen(
         .filter { it.imagenUrl.isNotBlank() }
         .map { it.aNovedad() }
     val fechaHoy = remember {
-        SimpleDateFormat("EEEE, d 'de' MMMM", Locale.forLanguageTag("es-MX")).format(Date())
-            .replaceFirstChar { it.uppercase() }
+        val formato = if (PreferenciaIdioma.actual == Idioma.EN) {
+            SimpleDateFormat("EEEE, MMMM d", Locale.US)
+        } else {
+            SimpleDateFormat("EEEE, d 'de' MMMM", Locale.forLanguageTag("es-MX"))
+        }
+        formato.format(Date()).replaceFirstChar { it.uppercase() }
     }
 
     Column(
@@ -134,7 +145,7 @@ fun MiembroHomeScreen(
             Column(modifier = Modifier.weight(1f)) {
                 Text(fechaHoy, style = MaterialTheme.typography.labelLarge, color = TextoSecundario)
                 Spacer(Modifier.height(4.dp))
-                Text("Hola, $nombre", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Tinta)
+                Text(Textos.get(R.string.hello, nombre), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Tinta)
             }
             Surface(shape = RoundedCornerShape(16.dp), color = AzulClaro) {
                 Row(
@@ -143,18 +154,18 @@ fun MiembroHomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(Icons.Filled.WbSunny, contentDescription = null, tint = Color(0xFFD38B13), modifier = Modifier.size(18.dp))
-                    Text("24° · Soleado", style = MaterialTheme.typography.labelMedium, color = Tinta)
+                    Text(Textos.get(R.string.n_24_sunny), style = MaterialTheme.typography.labelMedium, color = Tinta)
                 }
             }
         }
 
         Spacer(Modifier.height(24.dp))
-        TituloSeccion("Lo que pasa en el club")
+        TituloSeccion(Textos.get(R.string.what_s_happening_at_the_club))
         Spacer(Modifier.height(12.dp))
         if (novedades.isEmpty()) {
             Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Superficie)) {
                 Text(
-                    "Cuando el club publique una novedad para miembros, aparecerá aquí.",
+                    Textos.get(R.string.when_the_club_publishes_news_for),
                     modifier = Modifier.fillMaxWidth().padding(18.dp),
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoSecundario
@@ -215,8 +226,8 @@ fun MiembroHomeScreen(
                         )
                     }
                     TextButton(onClick = { indiceNovedad = (indiceNovedad + 1) % novedades.size }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                        Text("Siguiente", color = Marca)
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Siguiente novedad", tint = Marca, modifier = Modifier.size(16.dp))
+                        Text(Textos.get(R.string.next), color = Marca)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = Textos.get(R.string.next_news_item), tint = Marca, modifier = Modifier.size(16.dp))
                     }
                 }
                 FilledTonalButton(
@@ -234,13 +245,13 @@ fun MiembroHomeScreen(
 
         Spacer(Modifier.height(22.dp))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TituloSeccion("Tus próximas reservas", modifier = Modifier.weight(1f))
-            TextButton(onClick = onReservar) { Text("Ver todas", color = Marca) }
+            TituloSeccion(Textos.get(R.string.your_upcoming_bookings), modifier = Modifier.weight(1f))
+            TextButton(onClick = onReservar) { Text(Textos.get(R.string.see_all), color = Marca) }
         }
         MemberBookingCard(reserva = reservasActivas.firstOrNull(), onClick = onReservar)
         Spacer(Modifier.height(14.dp))
         OutlinedButton(onClick = onMembresia, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-            Text("Consultar mi membresía")
+            Text(Textos.get(R.string.view_my_membership))
         }
     }
 
@@ -253,11 +264,11 @@ fun MiembroHomeScreen(
 }
 
 private fun Publicacion.aNovedad() = Novedad(
-    categoria = "Novedad del club",
+    categoria = Textos.get(R.string.club_news),
     titulo = titulo,
-    descripcion = descripcion + vigencia.takeIf { it.isNotBlank() }?.let { "\n\nVigente hasta: ${Fechas.legible(it)}" }.orEmpty(),
+    descripcion = descripcion + vigencia.takeIf { it.isNotBlank() }?.let { Textos.get(R.string.n_nvalid_until, Fechas.legible(it)) }.orEmpty(),
     imagen = imagenUrl,
-    accion = "Ver detalles"
+    accion = Textos.get(R.string.view_details)
 )
 
 @Composable
@@ -271,8 +282,8 @@ private fun MemberBookingCard(reserva: ReservaListada?, onClick: () -> Unit) {
     ) {
         if (reserva == null) {
             Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
-                Text("Aún no tienes reservas próximas.", style = MaterialTheme.typography.titleMedium, color = Tinta, fontWeight = FontWeight.SemiBold)
-                Text("Explora los espacios disponibles para agendar una visita.", style = MaterialTheme.typography.bodyMedium, color = TextoSecundario, modifier = Modifier.padding(top = 5.dp))
+                Text(Textos.get(R.string.you_don_t_have_any_upcoming), style = MaterialTheme.typography.titleMedium, color = Tinta, fontWeight = FontWeight.SemiBold)
+                Text(Textos.get(R.string.explore_the_available_spaces_to_schedu), style = MaterialTheme.typography.bodyMedium, color = TextoSecundario, modifier = Modifier.padding(top = 5.dp))
             }
         } else {
             Row(
@@ -282,7 +293,7 @@ private fun MemberBookingCard(reserva: ReservaListada?, onClick: () -> Unit) {
             ) {
                 Surface(color = AzulClaro, shape = RoundedCornerShape(14.dp)) {
                     Column(modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("FECHA", style = MaterialTheme.typography.labelSmall, color = Marca, fontWeight = FontWeight.Bold)
+                        Text(Textos.get(R.string.lbl_fecha), style = MaterialTheme.typography.labelSmall, color = Marca, fontWeight = FontWeight.Bold)
                         Text(reserva.fecha.substringAfterLast("-"), style = MaterialTheme.typography.titleLarge, color = Tinta, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -290,18 +301,18 @@ private fun MemberBookingCard(reserva: ReservaListada?, onClick: () -> Unit) {
                     Text(reserva.titulo, style = MaterialTheme.typography.titleMedium, color = Tinta, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text("${Fechas.legible(reserva.fecha)} · ${reserva.horaInicio}–${reserva.horaFin}", style = MaterialTheme.typography.bodyMedium, color = TextoSecundario)
-                    reserva.carril?.let { Text("Carril $it", style = MaterialTheme.typography.bodySmall, color = TextoSecundario) }
+                    reserva.carril?.let { Text(Textos.get(R.string.lane, it), style = MaterialTheme.typography.bodySmall, color = TextoSecundario) }
                     val (estadoColor, estadoFondo) = if (reserva.estado == EstadoReserva.CONFIRMADA) Verde to FondoVerde else Amarillo to FondoAmarillo
                     Surface(color = estadoFondo, shape = RoundedCornerShape(50), modifier = Modifier.padding(top = 8.dp)) {
                         Text(
-                            if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) "Solicitud en revisión" else reserva.estado.name.lowercase().replaceFirstChar { it.uppercase() },
+                            if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) Textos.get(R.string.request_under_review) else reserva.estado.name.lowercase().replaceFirstChar { it.uppercase() },
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = estadoColor
                         )
                     }
                 }
-                Icon(Icons.Filled.ChevronRight, contentDescription = "Ver mis reservas", tint = TextoSecundario)
+                Icon(Icons.Filled.ChevronRight, contentDescription = Textos.get(R.string.view_my_bookings), tint = TextoSecundario)
             }
         }
     }
@@ -336,9 +347,9 @@ private fun NovedadDetalle(novedad: Novedad, onCerrar: () -> Unit) {
                 onClick = onCerrar,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB3261E))
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
             ) {
-                Text("Cerrar")
+                Text(Textos.get(R.string.close))
             }
         }
         }
@@ -374,9 +385,9 @@ fun EncargadoHomeScreen(
             .padding(bottom = 24.dp)
     ) {
         Spacer(Modifier.height(18.dp))
-        Text("MI ÁREA · ${area.uppercase()}", style = MaterialTheme.typography.labelMedium, color = Marca, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(Textos.get(R.string.my_area, area.uppercase()), style = MaterialTheme.typography.labelMedium, color = Marca, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(Modifier.height(5.dp))
-        Text("Buen día, $nombre", style = MaterialTheme.typography.headlineSmall, color = Tinta, fontWeight = FontWeight.Bold)
+        Text(Textos.get(R.string.good_morning, nombre), style = MaterialTheme.typography.headlineSmall, color = Tinta, fontWeight = FontWeight.Bold)
 
         Spacer(Modifier.height(16.dp))
         Card(
@@ -389,13 +400,13 @@ fun EncargadoHomeScreen(
                 Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = if (pendientes > 0) Amarillo else Verde, modifier = Modifier.size(28.dp))
                 Column {
                     Text(
-                        if (pendientes > 0) "$pendientes solicitudes pendientes" else "Todo en orden",
+                        if (pendientes > 0) Textos.get(R.string.pending_requests, pendientes) else Textos.get(R.string.all_clear),
                         style = MaterialTheme.typography.titleMedium,
                         color = if (pendientes > 0) Amarillo else Verde,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        if (pendientes > 0) "Revisa las solicitudes de tu área" else "No tienes solicitudes pendientes",
+                        if (pendientes > 0) Textos.get(R.string.review_your_area_s_requests) else Textos.get(R.string.you_have_no_pending_requests),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Tinta
                     )
@@ -404,17 +415,17 @@ fun EncargadoHomeScreen(
         }
 
         Spacer(Modifier.height(22.dp))
-        TituloSeccion("Hoy en tu área")
+        TituloSeccion(Textos.get(R.string.today_in_your_area))
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            EncargadoMetric(reservasHoy.size.toString(), "Reservas hoy", "$confirmadasHoy confirmadas", Icons.Filled.CalendarMonth, Modifier.weight(1f))
-            EncargadoMetric(pendientes.toString(), "Solicitudes", "Pendientes de revisar", Icons.Filled.Schedule, Modifier.weight(1f))
+            EncargadoMetric(reservasHoy.size.toString(), Textos.get(R.string.bookings_today), Textos.get(R.string.confirmed, confirmadasHoy), Icons.Filled.CalendarMonth, Modifier.weight(1f))
+            EncargadoMetric(pendientes.toString(), Textos.get(R.string.requests), Textos.get(R.string.pending_review), Icons.Filled.Schedule, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(22.dp))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TituloSeccion("Próxima reserva", modifier = Modifier.weight(1f))
-            TextButton(onClick = onReservas) { Text("Agenda", color = Marca) }
+            TituloSeccion(Textos.get(R.string.next_booking), modifier = Modifier.weight(1f))
+            TextButton(onClick = onReservas) { Text(Textos.get(R.string.schedule), color = Marca) }
         }
         val proximaReserva = reservasArea.firstOrNull()
         if (proximaReserva == null) {
@@ -423,7 +434,7 @@ fun EncargadoHomeScreen(
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = Superficie)
             ) {
-                Text("No hay reservas próximas en tu área.", modifier = Modifier.padding(18.dp), color = TextoSecundario)
+                Text(Textos.get(R.string.there_are_no_upcoming_bookings_in), modifier = Modifier.padding(18.dp), color = TextoSecundario)
             }
         } else {
             Card(
@@ -438,21 +449,26 @@ fun EncargadoHomeScreen(
                         Text("${Fechas.legible(proximaReserva.fecha)} · ${proximaReserva.horaInicio}", style = MaterialTheme.typography.titleLarge, color = Tinta, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         val confirmada = proximaReserva.estado == EstadoReserva.CONFIRMADA
                         StatePill(
-                            if (confirmada) "Confirmada" else "Solicitud",
+                            if (confirmada) Textos.get(R.string.confirmed_2) else Textos.get(R.string.request),
                             if (confirmada) FondoVerde else FondoAmarillo,
                             if (confirmada) Verde else Amarillo
                         )
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        listOfNotNull(proximaReserva.carril?.let { "Carril $it" }, proximaReserva.titulo).joinToString(" · "),
+                        listOfNotNull(proximaReserva.carril?.let { Textos.get(R.string.lane, it) }, proximaReserva.titulo).joinToString(" · "),
                         style = MaterialTheme.typography.titleMedium,
                         color = Tinta,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(5.dp))
                     Text(
-                        "${proximaReserva.usuarioNombre.ifBlank { "Usuario" }}${if (proximaReserva.personas > 1) " + ${proximaReserva.personas - 1} personas" else ""} · hasta ${proximaReserva.horaFin}",
+                        Textos.get(
+                            R.string.manual_usuario_hasta,
+                            proximaReserva.usuarioNombre.ifBlank { Textos.get(R.string.user) } +
+                                (if (proximaReserva.personas > 1) Textos.get(R.string.people, proximaReserva.personas - 1) else ""),
+                            proximaReserva.horaFin
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoSecundario
                     )
@@ -461,11 +477,11 @@ fun EncargadoHomeScreen(
         }
 
         Spacer(Modifier.height(22.dp))
-        TituloSeccion("Novedades del club")
+        TituloSeccion(Textos.get(R.string.club_news_2))
         Spacer(Modifier.height(12.dp))
         if (novedades.isEmpty()) {
             Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Superficie)) {
-                Text("Cuando se publique una novedad para el personal, aparecerá aquí.", modifier = Modifier.padding(18.dp), color = TextoSecundario)
+                Text(Textos.get(R.string.when_news_for_staff_is_published), modifier = Modifier.padding(18.dp), color = TextoSecundario)
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -500,7 +516,7 @@ fun EncargadoHomeScreen(
                                     ),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
-                                    Text("Ver detalles")
+                                    Text(Textos.get(R.string.view_details))
                                     Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Marca, modifier = Modifier.size(18.dp))
                                 }
                             }

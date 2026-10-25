@@ -12,13 +12,14 @@ import com.example.clubdeportivo.data.model.PlanIndividual
 import com.example.clubdeportivo.data.model.TipoMembresia
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
-import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 private fun DocumentSnapshot.toMiembro(): MiembroClub = MiembroClub(
     codigo = id,
@@ -49,32 +50,9 @@ class FirebaseGestionMembresiasRepository(
     private val registroCodigos = db.collection("registroCodigos")
     private val pagos = db.collection("pagos")
 
-    private data class Cuenta(val codigo: String, val uid: String)
+    private suspend fun crearCuenta(): CuentaDeAcceso = CuentasDeAcceso.crear(miembros)
 
-    private fun authSecundaria(): FirebaseAuth {
-        val principal = FirebaseApp.getInstance()
-        val app = runCatching { FirebaseApp.getInstance(NOMBRE_APP_ALTAS) }
-            .getOrElse { FirebaseApp.initializeApp(principal.applicationContext, principal.options, NOMBRE_APP_ALTAS) }
-        return FirebaseAuth.getInstance(app)
-    }
-
-    /** Genera un código que no exista y crea su cuenta de acceso. */
-    private suspend fun crearCuenta(): Cuenta {
-        val auth = authSecundaria()
-        repeat(MAX_INTENTOS_CODIGO) {
-            val codigo = ReglasMembresia.generarCodigo()
-            if (miembros.document(codigo).get().await().exists()) return@repeat
-            try {
-                val uid = auth.createUserWithEmailAndPassword(ReglasMembresia.emailDeCodigo(codigo), codigo).await()
-                    .user?.uid ?: error("No se pudo crear la cuenta de acceso.")
-                auth.signOut()
-                return Cuenta(codigo, uid)
-            } catch (e: FirebaseAuthUserCollisionException) {
-                // Ya existía una cuenta con ese código: se genera otro.
-            }
-        }
-        error("No se pudo generar un código único, inténtalo de nuevo.")
-    }
+    private fun authSecundaria(): FirebaseAuth = CuentasDeAcceso.auth()
 
     override suspend fun obtenerTodas(): List<MembresiaDetalle> {
         val todas = membresias.get().await().documents.mapNotNull { it.toMembresia() }
@@ -93,7 +71,7 @@ class FirebaseGestionMembresiasRepository(
         val lista = mutableListOf(
             MiembroClub(
                 codigo = "",
-                nombre = titular.getString("nombre") ?: "Sin nombre",
+                nombre = titular.getString("nombre") ?: Textos.get(R.string.no_name),
                 telefono = titular.getString("telefono") ?: "",
                 correo = titular.getString("email") ?: "",
                 membresiaId = membresia.id,
@@ -166,16 +144,11 @@ class FirebaseGestionMembresiasRepository(
         )
         batch.commit().await()
 
-        val membresia = membresias.document(membresiaId).get().await().toMembresia() ?: error("No se pudo leer la membresía creada.")
+        val membresia = membresias.document(membresiaId).get().await().toMembresia() ?: error(Textos.get(R.string.the_created_membership_could_not_be))
         return MembresiaDetalle(membresia, registradas)
     }
 
-    /** Documento público mínimo que permite saber si un código existe y si ya tiene cuenta, sin exponer datos personales. */
-    private fun datosRegistro(uidInterno: String) = mapOf(
-        "usuarioId" to uidInterno,
-        "cuentaCreada" to false,
-        "creadoEn" to FieldValue.serverTimestamp()
-    )
+    private fun datosRegistro(uidInterno: String) = datosDeRegistroCodigo(uidInterno)
 
     private fun datosPago(
         membresiaId: String,
@@ -199,30 +172,11 @@ class FirebaseGestionMembresiasRepository(
         "creadoEn" to FieldValue.serverTimestamp()
     )
 
-    private fun datosPersona(persona: PersonaForm, membresiaId: String, parentesco: String, uid: String, hoy: String) = mapOf(
-        "nombre" to persona.nombre.trim(),
-        "telefono" to persona.telefono.trim(),
-        "correo" to persona.correo.trim(),
-        "membresiaId" to membresiaId,
-        "parentesco" to parentesco,
-        "esTitular" to (parentesco == MiembroClub.PARENTESCO_TITULAR),
-        "usuarioId" to uid,
-        "fechaRegistro" to hoy,
-        "creadoEn" to FieldValue.serverTimestamp()
-    )
+    private fun datosPersona(persona: PersonaForm, membresiaId: String, parentesco: String, uid: String, hoy: String) =
+        datosDeMiembro(persona, membresiaId, parentesco, uid, hoy, esTitular = parentesco == MiembroClub.PARENTESCO_TITULAR)
 
-    /** Perfil de acceso de una persona con código. `email` es el correo interno de la cuenta, no el de contacto (ese vive en `miembros`). */
-    private fun datosUsuarioDeMiembro(persona: PersonaForm, codigo: String, rol: String, hoy: String) = mapOf(
-        "nombre" to persona.nombre.trim(),
-        "email" to ReglasMembresia.emailDeCodigo(codigo),
-        "telefono" to persona.telefono.trim(),
-        "rol" to rol,
-        "estado" to "ACTIVO",
-        "codigoMiembro" to codigo,
-        "fechaRegistro" to hoy,
-        "creadoEn" to FieldValue.serverTimestamp(),
-        "actualizadoEn" to FieldValue.serverTimestamp()
-    )
+    private fun datosUsuarioDeMiembro(persona: PersonaForm, codigo: String, rol: String, hoy: String) =
+        datosDeUsuarioMiembro(persona, codigo, rol, hoy)
 
     override suspend fun actualizar(
         membresiaId: String,
@@ -304,7 +258,7 @@ class FirebaseGestionMembresiasRepository(
     override suspend fun cambiarEstado(membresiaId: String, estado: EstadoMembresia, motivo: String?) {
         val cambios = mutableMapOf<String, Any>("estado" to estado.name, "actualizadoEn" to FieldValue.serverTimestamp())
         if (estado == EstadoMembresia.SUSPENDIDA) {
-            require(!motivo.isNullOrBlank()) { "Indica por qué se suspende la membresía." }
+            require(!motivo.isNullOrBlank()) { Textos.get(R.string.say_why_the_membership_is_being) }
             cambios["motivoSuspension"] = motivo
             cambios["suspendidaEn"] = Fechas.hoy()
             cambios["suspendidaPor"] = SesionManager.usuarioActual?.id ?: ""
@@ -313,12 +267,43 @@ class FirebaseGestionMembresiasRepository(
             cambios["suspendidaEn"] = FieldValue.delete()
             cambios["suspendidaPor"] = FieldValue.delete()
         }
-        membresias.document(membresiaId).update(cambios).await()
+        val batch = db.batch()
+        batch.update(membresias.document(membresiaId), cambios)
+        // Al reactivar, quien había quedado fuera por una baja recupera su acceso.
+        if (estado == EstadoMembresia.ACTIVA) cuentasDeLaMembresia(membresiaId).forEach { uid -> batch.update(usuarios.document(uid), cambiosDeAcceso("ACTIVO")) }
+        batch.commit().await()
+    }
+
+    override suspend fun darDeBaja(membresiaId: String, motivo: String) {
+        require(motivo.isNotBlank()) { Textos.get(R.string.say_why_the_member_is_being) }
+        val batch = db.batch()
+        batch.update(
+            membresias.document(membresiaId),
+            mapOf(
+                "estado" to EstadoMembresia.SUSPENDIDA.name,
+                "motivoSuspension" to motivo,
+                "suspendidaEn" to Fechas.hoy(),
+                "suspendidaPor" to (SesionManager.usuarioActual?.id ?: ""),
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        )
+        cuentasDeLaMembresia(membresiaId).forEach { uid -> batch.update(usuarios.document(uid), cambiosDeAcceso("INACTIVO")) }
+        batch.commit().await()
+    }
+
+    private fun cambiosDeAcceso(estado: String) = mapOf("estado" to estado, "actualizadoEn" to FieldValue.serverTimestamp())
+
+    /** Ids de las cuentas (`usuarios/{uid}`) de todas las personas de la membresía, incluida la del titular de un registro anterior a los códigos. */
+    private suspend fun cuentasDeLaMembresia(membresiaId: String): Set<String> {
+        val deMiembros = miembros.whereEqualTo("membresiaId", membresiaId).get().await().documents
+            .mapNotNull { it.getString("usuarioId")?.takeIf { uid -> uid.isNotBlank() } }
+        val titular = membresias.document(membresiaId).get().await().getString("usuarioId")?.takeIf { it.isNotBlank() }
+        return (deMiembros + listOfNotNull(titular)).toSet()
     }
 
     override suspend fun renovar(membresiaId: String, precio: Double, metodoPago: MetodoPago) {
         val documento = membresias.document(membresiaId).get().await()
-        val membresia = documento.toMembresia() ?: error("La membresía ya no existe.")
+        val membresia = documento.toMembresia() ?: error(Textos.get(R.string.the_membership_no_longer_exists))
         val hoy = Fechas.hoy()
         val (inicio, vence) = ReglasMembresia.fechasDeRenovacion(membresia, hoy)
         val batch = db.batch()
@@ -335,6 +320,8 @@ class FirebaseGestionMembresiasRepository(
                 "actualizadoEn" to FieldValue.serverTimestamp()
             )
         )
+        // Renovar una membresía dada de baja también le devuelve el acceso a sus personas.
+        cuentasDeLaMembresia(membresiaId).forEach { uid -> batch.update(usuarios.document(uid), cambiosDeAcceso("ACTIVO")) }
         batch.set(
             pagos.document(),
             datosPago(
@@ -352,8 +339,8 @@ class FirebaseGestionMembresiasRepository(
 
     override suspend fun restablecerAcceso(codigo: String) {
         val miembro = miembros.document(codigo).get().await()
-        if (!miembro.exists()) error("Ese miembro ya no existe.")
-        if (miembro.getBoolean("cuentaCreada") != true) error("Este miembro todavía no se registra: no hay nada que restablecer.")
+        if (!miembro.exists()) error(Textos.get(R.string.that_member_no_longer_exists))
+        if (miembro.getBoolean("cuentaCreada") != true) error(Textos.get(R.string.this_member_hasn_t_signed_up))
 
         val membresiaId = miembro.getString("membresiaId").orEmpty()
         val tipo = membresias.document(membresiaId).get().await().toMembresia()?.tipo ?: TipoMembresia.INDIVIDUAL
@@ -370,9 +357,9 @@ class FirebaseGestionMembresiasRepository(
         val auth = authSecundaria()
         val uidNuevo = try {
             auth.createUserWithEmailAndPassword(ReglasMembresia.emailDeCodigo(codigo), codigo).await().user?.uid
-                ?: error("No se pudo preparar el código, inténtalo de nuevo.")
+                ?: error(Textos.get(R.string.the_code_could_not_be_prepared))
         } catch (e: FirebaseAuthUserCollisionException) {
-            error("Este código todavía conserva su acceso original; no hace falta restablecerlo.")
+            error(Textos.get(R.string.this_code_still_has_its_original))
         }
         auth.signOut()
 
@@ -400,8 +387,4 @@ class FirebaseGestionMembresiasRepository(
         batch.commit().await()
     }
 
-    private companion object {
-        const val NOMBRE_APP_ALTAS = "altaMiembros"
-        const val MAX_INTENTOS_CODIGO = 10
-    }
 }

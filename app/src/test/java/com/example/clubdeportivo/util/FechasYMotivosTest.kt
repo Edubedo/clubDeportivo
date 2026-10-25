@@ -9,6 +9,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FechasYMotivosTest {
+    // Va primero: los demás campos de la clase pueden usar textos al crearse.
+    init { com.example.clubdeportivo.TextosDePrueba.instalar() }
+
 
     @Test
     fun `hoy y manana se muestran con palabras`() {

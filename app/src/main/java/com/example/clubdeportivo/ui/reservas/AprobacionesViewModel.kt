@@ -12,6 +12,8 @@ import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.util.Fechas
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /**
  * Reservas de miembros y visitantes que están "en revisión" y esperan aprobación. Un encargado de área solo ve (y
@@ -44,14 +46,14 @@ class AprobacionesViewModel : ViewModel() {
                     .sortedWith(compareBy({ it.fecha }, { it.horaInicio }))
             } catch (e: Exception) {
                 pendientes = pendientes ?: emptyList()
-                mensaje = "No se pudieron cargar las reservas por aprobar."
+                mensaje = Textos.get(R.string.the_bookings_pending_approval_could_no)
             }
         }
     }
 
-    fun aprobar(reserva: Reserva) = resolver(reserva, "Reserva aprobada.") { repositorio.aprobarReserva(reserva.id) }
+    fun aprobar(reserva: Reserva) = resolver(reserva, Textos.get(R.string.booking_approved)) { repositorio.aprobarReserva(reserva.id) }
 
-    fun rechazar(reserva: Reserva) = resolver(reserva, "Reserva rechazada.") { repositorio.rechazarReserva(reserva.id) }
+    fun rechazar(reserva: Reserva) = resolver(reserva, Textos.get(R.string.booking_rejected)) { repositorio.rechazarReserva(reserva.id) }
 
     private fun resolver(reserva: Reserva, exito: String, accion: suspend () -> Unit) {
         if (reserva.id in enProceso) return
@@ -63,10 +65,10 @@ class AprobacionesViewModel : ViewModel() {
                 mensaje = exito
             } catch (e: IllegalStateException) {
                 // Reglas de negocio (otra área, ya respondida por alguien más, ya terminó...): se explican tal cual.
-                mensaje = e.message ?: "No se pudo completar la acción."
+                mensaje = e.message ?: Textos.get(R.string.the_action_could_not_be_completed_2)
                 cargar()
             } catch (e: Exception) {
-                mensaje = "No se pudo completar la acción. Intenta de nuevo."
+                mensaje = Textos.get(R.string.the_action_could_not_be_completed_3)
             }
             enProceso = enProceso - reserva.id
         }

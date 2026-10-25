@@ -2,6 +2,8 @@ package com.example.clubdeportivo.data
 
 import com.example.clubdeportivo.data.model.PaqueteFamiliar
 import com.example.clubdeportivo.data.model.PlanIndividual
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /**
  * Precios y reglas de negocio del club, en un solo lugar para que la app y
@@ -21,7 +23,7 @@ object Catalogos {
         TIPOS_DE_PERSONAL.firstOrNull { puesto.startsWith(it) } ?: puesto
 
     /** Cómo se cobra: membresías y paquetes se pagan cada mes; la visita se paga una sola vez, por día. */
-    val METODOS_DE_PAGO = listOf("Efectivo", "Tarjeta", "Transferencia")
+    val METODOS_DE_PAGO = listOf(Textos.get(R.string.cash), Textos.get(R.string.card), Textos.get(R.string.bank_transfer))
 
     fun precioPlanIndividual(plan: PlanIndividual): Double = when (plan) {
         PlanIndividual.NINO -> 1500.0
@@ -30,42 +32,42 @@ object Catalogos {
     }
 
     fun beneficiosPlanIndividual(plan: PlanIndividual): List<String> = when (plan) {
-        PlanIndividual.NINO -> listOf("Acceso a todas las áreas (tarifa infantil)")
-        PlanIndividual.NORMAL -> listOf("Acceso a todas las áreas")
+        PlanIndividual.NINO -> listOf(Textos.get(R.string.access_to_all_areas_kids_rate))
+        PlanIndividual.NORMAL -> listOf(Textos.get(R.string.access_to_all_areas))
         PlanIndividual.DELUXE -> listOf(
-            "Acceso a todas las áreas",
-            "Prioridad en reservaciones",
-            "Entrenamiento personalizado incluido",
-            "Agua gratis",
-            "Snacks incluidos"
+            Textos.get(R.string.access_to_all_areas),
+            Textos.get(R.string.booking_priority),
+            Textos.get(R.string.personal_training_included),
+            Textos.get(R.string.free_water),
+            Textos.get(R.string.snacks_included)
         )
     }
 
     fun nombrePlanIndividual(plan: PlanIndividual): String = when (plan) {
-        PlanIndividual.NINO -> "Individual niños"
-        PlanIndividual.NORMAL -> "Individual normal"
-        PlanIndividual.DELUXE -> "Individual deluxe"
+        PlanIndividual.NINO -> Textos.get(R.string.individual_kids)
+        PlanIndividual.NORMAL -> Textos.get(R.string.individual_standard)
+        PlanIndividual.DELUXE -> Textos.get(R.string.individual_deluxe)
     }
 
     val paquetesFamiliares = listOf(
         PaqueteFamiliar(
             id = 1,
-            nombre = "Familiar",
-            descripcion = "Incluye 2 adultos y 3 niños. Acceso a todas las áreas para todos los integrantes.",
+            nombre = Textos.get(R.string.family),
+            descripcion = Textos.get(R.string.includes_2_adults_and_3_children),
             maxIntegrantes = 5,
             precioMensual = 7000.0
         ),
         PaqueteFamiliar(
             id = 2,
-            nombre = "Pareja",
-            descripcion = "Incluye 2 adultos. Acceso a todas las áreas para ambos integrantes.",
+            nombre = Textos.get(R.string.couple),
+            descripcion = Textos.get(R.string.includes_2_adults_access_to_all),
             maxIntegrantes = 2,
             precioMensual = 2999.0
         ),
         PaqueteFamiliar(
             id = 3,
-            nombre = "Niños",
-            descripcion = "Paquete para hermanos. Acceso a todas las áreas.",
+            nombre = Textos.get(R.string.kids),
+            descripcion = Textos.get(R.string.package_for_siblings_access_to_all),
             maxIntegrantes = 3,
             precioMensual = 2800.0
         )

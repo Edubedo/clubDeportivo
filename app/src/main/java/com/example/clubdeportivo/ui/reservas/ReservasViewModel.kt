@@ -24,6 +24,8 @@ import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.ReglasReserva
 import kotlinx.coroutines.launch
+import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Textos
 
 /** Una hora de la cuadrícula ("hora" = 6 es 06:00-07:00) con su estado de ocupación. */
 data class HoraUi(
@@ -116,13 +118,13 @@ class ReservasViewModel(
         val actual = usuario ?: return null
         if (!actual.rol.esCliente()) return null
         val membresia = membresiaRepository.obtenerMembresia(actual.id)
-            ?: return "No encontramos una membresía a tu nombre. Habla con recepción para poder reservar."
+            ?: return Textos.get(R.string.we_couldn_t_find_a_membership)
         return when (ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy())) {
             EstadoMembresia.ACTIVA -> null
             EstadoMembresia.VENCIDA ->
-                "Tu membresía venció el ${Fechas.legible(membresia.fechaVencimiento)}. Renuévala en recepción para volver a reservar."
+                Textos.get(R.string.your_membership_expired_on_renew_it, Fechas.legible(membresia.fechaVencimiento))
             EstadoMembresia.SUSPENDIDA ->
-                "Tu membresía está suspendida (${membresia.motivoSuspension.ifBlank { "sin motivo registrado" }}). Habla con recepción."
+                Textos.get(R.string.manual_membresia_suspendida, membresia.motivoSuspension.ifBlank { Textos.get(R.string.no_reason_recorded) })
         }
     }
 
@@ -135,7 +137,7 @@ class ReservasViewModel(
                 cargarLista(areas)
             } catch (e: Exception) {
                 _ui.value = estado.copy(cargando = false)
-                _mensaje.value = "No se pudieron cargar las áreas."
+                _mensaje.value = Textos.get(R.string.the_areas_could_not_be_loaded)
             }
         }
     }
@@ -149,8 +151,8 @@ class ReservasViewModel(
     fun elegirArea(area: Area) {
         viewModelScope.launch {
             val (apertura, cierre) = rangoDeApertura(area)
-            val texto = "Horario · abierto ${apertura.take(5)} – ${cierre.take(5)} · máx. ${Catalogos.MAX_HORAS_POR_RESERVA} horas" +
-                if (esVisitanteExterno) " (requiere aprobación)" else ""
+            val texto = Textos.get(R.string.hours_open_max_hours, apertura.take(5), cierre.take(5), Catalogos.MAX_HORAS_POR_RESERVA) +
+                if (esVisitanteExterno) Textos.get(R.string.requires_approval) else ""
             _ui.value = estado.copy(area = area, horarioTexto = texto, desde = null, hasta = null, personas = 1, carril = null, carrilesDisponibles = emptyList())
             recalcularHoras(apertura, cierre)
         }
@@ -189,7 +191,7 @@ class ReservasViewModel(
             _ui.value = estado.copy(horas = horas, errorDisponibilidad = false)
         } catch (e: Exception) {
             _ui.value = estado.copy(horas = emptyList(), errorDisponibilidad = true)
-            _mensaje.value = "No se pudo consultar la disponibilidad."
+            _mensaje.value = Textos.get(R.string.the_availability_could_not_be_checked)
         }
     }
 
@@ -198,9 +200,9 @@ class ReservasViewModel(
         val celda = actual.horas.firstOrNull { it.hora == hora } ?: return
         if (!celda.seleccionable) {
             _mensaje.value = when {
-                celda.pasada -> "Esa hora ya comenzó."
-                celda.estado.torneo != null -> "A esa hora el área está reservada para el torneo \"${celda.estado.torneo.nombre}\"."
-                else -> "Esa hora ya alcanzó su cupo (${celda.estado.capacidad} personas). Elige otra hora."
+                celda.pasada -> Textos.get(R.string.that_hour_has_already_started)
+                celda.estado.torneo != null -> Textos.get(R.string.at_that_time_the_area_is, celda.estado.torneo.nombre)
+                else -> Textos.get(R.string.that_hour_has_reached_its_capacity, celda.estado.capacidad)
             }
             return
         }
@@ -221,6 +223,14 @@ class ReservasViewModel(
         } else {
             viewModelScope.launch { cargarCarrilesDisponibles() }
         }
+    }
+
+    /** Descarta la reserva a medias (deporte, cancha, horas...) y vuelve al primer paso. */
+    fun reiniciarProceso() {
+        _ui.value = estado.copy(
+            deporte = null, area = null, horas = emptyList(), errorDisponibilidad = false,
+            desde = null, hasta = null, personas = 1, carril = null, carrilesDisponibles = emptyList()
+        )
     }
 
     fun limpiarSeleccion() {
@@ -259,7 +269,7 @@ class ReservasViewModel(
             )
         } catch (e: Exception) {
             _ui.value = actual.copy(errorDisponibilidad = true)
-            _mensaje.value = "No se pudo consultar la disponibilidad de carriles."
+            _mensaje.value = Textos.get(R.string.the_lane_availability_could_not_be)
         }
     }
 
@@ -297,9 +307,9 @@ class ReservasViewModel(
                         requiereAprobacion = usuario.rol.esCliente()
                     )
                     _mensaje.value = if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) {
-                        "Solicitud enviada: tu reserva está en revisión. El encargado del área la aprobará o rechazará."
+                        Textos.get(R.string.request_sent_your_booking_is_under)
                     } else {
-                        "¡Reserva confirmada! ${Deportes.titulo(area.tipo, area.nombre)}, ${actual.fecha} de $horaInicio a $horaFin."
+                        Textos.get(R.string.booking_confirmed_from_to, Deportes.titulo(area.tipo, area.nombre), actual.fecha, horaInicio, horaFin)
                     }
                 }
                 // Siempre se vuelve a leer la ocupación real, haya funcionado o no.
@@ -308,7 +318,7 @@ class ReservasViewModel(
                 recalcularHoras(apertura, cierre)
                 cargarLista(estado.areas)
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo completar la reserva. Inténtalo de nuevo."
+                _mensaje.value = Textos.get(R.string.the_booking_could_not_be_completed)
             }
             _ui.value = estado.copy(enviando = false)
         }
@@ -319,32 +329,32 @@ class ReservasViewModel(
      * así un cupo que se llenó mientras se elegía el horario se detecta antes de guardar.
      */
     private suspend fun validar(area: Area, fecha: String, horaInicio: String, horaFin: String, personas: Int, carril: Int?): String? {
-        val usuario = usuario ?: return "Inicia sesión para reservar."
+        val usuario = usuario ?: return Textos.get(R.string.sign_in_to_book)
         motivoDeRestriccion()?.let { return it }
         if (area.carriles > 0) {
-            if (carril == null || carril !in 1..area.carriles) return "Selecciona un carril disponible."
+            if (carril == null || carril !in 1..area.carriles) return Textos.get(R.string.select_an_available_lane_2)
             val carrilOcupado = reservaRepository.obtenerReservasDeArea(area.id).any {
                 it.fecha == fecha &&
                     it.carril == carril &&
                     it.horaInicio < horaFin &&
                     it.horaFin > horaInicio
             }
-            if (carrilOcupado) return "Ese carril acaba de ocuparse. Selecciona otro."
+            if (carrilOcupado) return Textos.get(R.string.that_lane_has_just_been_taken)
         }
 
-        if (esVisitanteExterno && !area.permiteExternos) return "Esta área no admite reservaciones de visitantes externos."
-        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return "${area.nombre} está en mantenimiento."
+        if (esVisitanteExterno && !area.permiteExternos) return Textos.get(R.string.this_area_doesn_t_accept_bookings)
+        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get(R.string.is_under_maintenance, area.nombre)
         if (Fechas.horasDesdeAhora(fecha, horaInicio) < Catalogos.ANTICIPACION_MINIMA_HORAS) {
-            return "Ese horario ya comenzó."
+            return Textos.get(R.string.that_time_has_already_started)
         }
 
         if (!usuario.rol.esPersonal()) {
             if (reservaRepository.estaBloqueadoPorInasistencias(usuario.id)) {
-                return "No puedes reservar: tienes inasistencias recientes (${Catalogos.INASISTENCIAS_PARA_BLOQUEO} faltas) " +
-                    "y estás bloqueado por ${Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS} días."
+                return Textos.get(R.string.you_can_t_book_you_have, Catalogos.INASISTENCIAS_PARA_BLOQUEO) +
+                    Textos.get(R.string.and_you_are_blocked_for_days, Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS)
             }
             if (reservaRepository.contarReservasActivas(usuario.id) >= Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO) {
-                return "Has alcanzado el límite máximo de ${Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO} reservaciones activas permitidas."
+                return Textos.get(R.string.you_have_reached_the_maximum_limit, Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO)
             }
         }
 
@@ -376,7 +386,7 @@ class ReservasViewModel(
                 val area = areas.firstOrNull { it.id == reserva.areaId }
                 ReservaListada(
                     id = reserva.id,
-                    titulo = area?.let { Deportes.titulo(it.tipo, it.nombre) } ?: "Área eliminada",
+                    titulo = area?.let { Deportes.titulo(it.tipo, it.nombre) } ?: Textos.get(R.string.area_deleted_2),
                     emoji = area?.let { Deportes.emojiDe(it.tipo, it.emoji) } ?: "📍",
                     fecha = reserva.fecha,
                     horaInicio = reserva.horaInicio,
@@ -395,14 +405,14 @@ class ReservasViewModel(
             try {
                 val sinPenalizacion = reservaRepository.cancelarReserva(reserva.id)
                 _mensaje.value = if (sinPenalizacion) {
-                    "Reserva cancelada."
+                    Textos.get(R.string.booking_cancelled)
                 } else {
-                    "Reserva cancelada con menos de ${Catalogos.CANCELACION_SIN_PENALIZACION_HORAS} horas de anticipación."
+                    Textos.get(R.string.booking_cancelled_less_than_hours_in, Catalogos.CANCELACION_SIN_PENALIZACION_HORAS)
                 }
                 estado.area?.let { elegirArea(it) }
                 cargarLista(estado.areas)
             } catch (e: Exception) {
-                _mensaje.value = "No se pudo cancelar la reserva."
+                _mensaje.value = Textos.get(R.string.the_booking_could_not_be_cancelled)
             }
         }
     }
