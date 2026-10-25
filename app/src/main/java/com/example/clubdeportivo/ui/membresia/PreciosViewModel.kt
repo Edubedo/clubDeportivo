@@ -5,6 +5,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
+import com.example.clubdeportivo.data.SesionManager
+import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.repository.PreciosRepository
 import kotlinx.coroutines.launch
 
@@ -33,7 +35,14 @@ class PreciosViewModel(
         }
     }
 
+    /** Los precios solo los cambia un administrador; el resto del personal, los socios y los titulares de un plan solo los consultan. */
+    fun puedeEditar(): Boolean = SesionManager.usuarioActual?.rol?.esAdministrador() == true
+
     fun guardar(clave: String, precio: Double) {
+        if (!puedeEditar()) {
+            _mensaje.value = "Solo un administrador puede cambiar los precios."
+            return
+        }
         viewModelScope.launch {
             try {
                 preciosRepository.guardar(clave, precio)

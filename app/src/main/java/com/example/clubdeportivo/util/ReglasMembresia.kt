@@ -78,12 +78,42 @@ object ReglasMembresia {
         TipoMembresia.VISITA -> "Visita"
     }
 
+    const val ESQUEMA_ENLACE = "clubdeportivo"
+    private const val DESTINO_ENLACE = "registro"
+
+    /** Enlace de acceso que el titular comparte con su familiar: al abrirlo la app abre el registro con el código ya escrito. */
+    fun enlaceDeAcceso(codigo: String) = "$ESQUEMA_ENLACE://$DESTINO_ENLACE?codigo=${normalizarCodigo(codigo)}"
+
+    /** El código que trae un enlace de acceso, o null si el texto no es uno de nuestros enlaces o el código no es válido. */
+    fun codigoDeEnlace(enlace: String?): String? {
+        val texto = enlace?.trim().orEmpty()
+        val prefijo = "$ESQUEMA_ENLACE://$DESTINO_ENLACE"
+        if (!texto.startsWith(prefijo, ignoreCase = true)) return null
+        val codigo = texto.substringAfter("codigo=", "").substringBefore("&")
+        return normalizarCodigo(codigo).takeIf { esCodigo(it) }
+    }
+
+    /** Mensaje listo para mandar por WhatsApp, correo o SMS con el enlace de acceso y, por si el enlace no abre, el código. */
+    fun mensajeDeInvitacion(nombreFamiliar: String, nombreTitular: String, codigo: String): String =
+        "Hola ${nombreFamiliar.trim().substringBefore(" ")}, ${nombreTitular.trim()} te dio de alta en su plan familiar del Athletic Club.\n\n" +
+            "Crea tu cuenta con este enlace:\n${enlaceDeAcceso(codigo)}\n\n" +
+            "Si el enlace no abre la app, entra a Regístrate y escribe tu código: ${normalizarCodigo(codigo)}"
+
+    /** @return el motivo por el que los datos del familiar que agrega el titular no son válidos, o null. */
+    fun validarFamiliar(persona: PersonaForm, personasActuales: Int, tipo: TipoMembresia, paqueteId: Int?): String? {
+        if (tipo != TipoMembresia.FAMILIAR) return "Solo los paquetes familiares admiten más personas."
+        if (personasActuales >= maxPersonas(tipo, paqueteId)) {
+            return "Tu paquete ya tiene a todos sus integrantes (${maxPersonas(tipo, paqueteId)})."
+        }
+        if (persona.parentesco.trim().length < 3) return "Indica el parentesco (Cónyuge, Hijo, Hija...)."
+        return validarPersonas(tipo, paqueteId, listOf(persona))
+    }
+
     /** @return el motivo por el que los datos no son válidos, o null. */
     fun validarPersonas(tipo: TipoMembresia, paqueteId: Int?, personas: List<PersonaForm>): String? {
         if (personas.isEmpty()) return "Agrega al titular."
         val max = maxPersonas(tipo, paqueteId)
         if (personas.size > max) return "Este paquete admite máximo $max personas (titular incluido)."
-        if (tipo == TipoMembresia.FAMILIAR && personas.size < 2) return "Un paquete familiar necesita al menos 2 personas."
         personas.forEach { persona ->
             if (persona.nombre.trim().length < 3) return "Escribe el nombre completo de cada persona."
             if (persona.correo.isNotBlank() && !Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$").matches(persona.correo.trim())) {

@@ -20,8 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.example.clubdeportivo.ui.theme.Marca
-import com.example.clubdeportivo.ui.theme.SobreMarca
+import androidx.compose.ui.graphics.Color
+import com.example.clubdeportivo.ui.theme.NavyFijo
 
 /** Cabecera azul compartida por el inicio de sesión y el registro. Se extiende detrás de la barra de estado. */
 @Composable
@@ -30,7 +30,7 @@ fun EncabezadoAuth(subtitulo: String, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-            .background(Marca)
+            .background(NavyFijo)
     ) {
         Column(
             modifier = Modifier
@@ -42,13 +42,13 @@ fun EncabezadoAuth(subtitulo: String, modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .size(56.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(SobreMarca.copy(alpha = 0.18f)),
+                    .background(Color.White.copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Filled.SportsSoccer,
                     contentDescription = null,
-                    tint = SobreMarca,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -58,12 +58,12 @@ fun EncabezadoAuth(subtitulo: String, modifier: Modifier = Modifier) {
             Text(
                 text = "Athletic Club",
                 style = MaterialTheme.typography.headlineLarge,
-                color = SobreMarca
+                color = Color.White
             )
             Text(
                 text = subtitulo,
                 style = MaterialTheme.typography.bodyLarge,
-                color = SobreMarca.copy(alpha = 0.85f),
+                color = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.padding(top = 4.dp)
             )
         }

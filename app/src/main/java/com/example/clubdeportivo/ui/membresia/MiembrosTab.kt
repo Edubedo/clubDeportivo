@@ -589,6 +589,14 @@ private fun MembresiaFormDialog(
                 EspacioCampos()
             }
 
+            if (tipo == TipoMembresia.FAMILIAR && !esEdicion) {
+                Text(
+                    "Basta con registrar al titular: una vez que entre a la app, él mismo da de alta a su familia (hasta $maxPersonas personas) y les comparte su enlace de acceso.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             if (tipo == TipoMembresia.FAMILIAR && personas.size < maxPersonas) {
                 TextButton(
                     onClick = { personas.add(PersonaForm(null, "", "", "", parentescoPorDefecto)) },

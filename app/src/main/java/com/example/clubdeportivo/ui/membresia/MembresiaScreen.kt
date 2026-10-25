@@ -128,8 +128,9 @@ private fun PlanesTab(editable: Boolean, conTuMembresia: Boolean, viewModel: Pre
         }
     }
 
+    // Aunque la pantalla pida edición, solo un administrador la tiene (la misma regla vive en el ViewModel y en Firestore).
     fun editar(clave: String, nombre: String): (() -> Unit)? =
-        if (editable) ({ precioEnEdicion = Triple(clave, nombre, ClavesPrecio.de(clave, editados)) }) else null
+        if (editable && viewModel.puedeEditar()) ({ precioEnEdicion = Triple(clave, nombre, ClavesPrecio.de(clave, editados)) }) else null
 
     Scaffold(
         containerColor = FondoApp,
@@ -370,7 +371,8 @@ private fun TarjetaPlan(
 
 /** La membresía propia de un socio o visitante. */
 @Composable
-private fun TuMembresia(viewModel: MembresiaViewModel = viewModel()) {
+private fun TuMembresia(viewModel: MembresiaViewModel = viewModel(), familiaViewModel: FamiliaViewModel = viewModel()) {
+    val familia by familiaViewModel.familia.observeAsState()
     val titulo by viewModel.titulo.observeAsState("")
     val mensaje by viewModel.mensaje.observeAsState()
     val detalle by viewModel.detalle.observeAsState()
@@ -407,7 +409,8 @@ private fun TuMembresia(viewModel: MembresiaViewModel = viewModel()) {
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
-            integrantes.forEach { integrante ->
+            // Con el paquete familiar cargado se muestra "Tu familia" (más abajo); la lista anterior solo sirve de respaldo.
+            if (familia == null) integrantes.forEach { integrante ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                     Icon(
                         Icons.Filled.Person,
@@ -426,4 +429,5 @@ private fun TuMembresia(viewModel: MembresiaViewModel = viewModel()) {
             }
         }
     }
+    TarjetaFamilia(familiaViewModel)
 }

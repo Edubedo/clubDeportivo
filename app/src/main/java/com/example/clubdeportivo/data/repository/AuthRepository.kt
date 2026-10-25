@@ -16,8 +16,11 @@ interface AuthRepository {
      */
     suspend fun consultarCodigo(codigo: String): Resultado<EstadoCodigo>
 
-    /** Crea la cuenta (correo y contraseña propios) de un miembro que se registra con su código. */
-    suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String): Resultado<Usuario>
+    /**
+     * Crea la cuenta (correo y contraseña propios) de un miembro que se registra con su código. [terminosVersion] es la
+     * versión de los términos y condiciones que aceptó: queda guardada en su perfil junto con la fecha.
+     */
+    suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String, terminosVersion: String): Resultado<Usuario>
 
     /** Si el teléfono todavía recuerda una sesión de Firebase, la recupera para no pedir la contraseña cada vez. */
     suspend fun restaurarSesion(): Usuario?
@@ -76,7 +79,7 @@ class FakeAuthRepository : AuthRepository {
     override suspend fun consultarCodigo(codigo: String): Resultado<EstadoCodigo> =
         Resultado.Error("El registro por código solo está disponible con la base de datos real.")
 
-    override suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String): Resultado<Usuario> =
+    override suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String, terminosVersion: String): Resultado<Usuario> =
         Resultado.Error("El registro por código solo está disponible con la base de datos real.")
 
     override suspend fun restaurarSesion(): Usuario? = null

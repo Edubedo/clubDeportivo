@@ -12,7 +12,6 @@ import com.example.clubdeportivo.data.model.PlanIndividual
 import com.example.clubdeportivo.data.model.TipoMembresia
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
-import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.DocumentSnapshot
@@ -49,32 +48,9 @@ class FirebaseGestionMembresiasRepository(
     private val registroCodigos = db.collection("registroCodigos")
     private val pagos = db.collection("pagos")
 
-    private data class Cuenta(val codigo: String, val uid: String)
+    private suspend fun crearCuenta(): CuentaDeAcceso = CuentasDeAcceso.crear(miembros)
 
-    private fun authSecundaria(): FirebaseAuth {
-        val principal = FirebaseApp.getInstance()
-        val app = runCatching { FirebaseApp.getInstance(NOMBRE_APP_ALTAS) }
-            .getOrElse { FirebaseApp.initializeApp(principal.applicationContext, principal.options, NOMBRE_APP_ALTAS) }
-        return FirebaseAuth.getInstance(app)
-    }
-
-    /** Genera un código que no exista y crea su cuenta de acceso. */
-    private suspend fun crearCuenta(): Cuenta {
-        val auth = authSecundaria()
-        repeat(MAX_INTENTOS_CODIGO) {
-            val codigo = ReglasMembresia.generarCodigo()
-            if (miembros.document(codigo).get().await().exists()) return@repeat
-            try {
-                val uid = auth.createUserWithEmailAndPassword(ReglasMembresia.emailDeCodigo(codigo), codigo).await()
-                    .user?.uid ?: error("No se pudo crear la cuenta de acceso.")
-                auth.signOut()
-                return Cuenta(codigo, uid)
-            } catch (e: FirebaseAuthUserCollisionException) {
-                // Ya existía una cuenta con ese código: se genera otro.
-            }
-        }
-        error("No se pudo generar un código único, inténtalo de nuevo.")
-    }
+    private fun authSecundaria(): FirebaseAuth = CuentasDeAcceso.auth()
 
     override suspend fun obtenerTodas(): List<MembresiaDetalle> {
         val todas = membresias.get().await().documents.mapNotNull { it.toMembresia() }
@@ -170,12 +146,7 @@ class FirebaseGestionMembresiasRepository(
         return MembresiaDetalle(membresia, registradas)
     }
 
-    /** Documento público mínimo que permite saber si un código existe y si ya tiene cuenta, sin exponer datos personales. */
-    private fun datosRegistro(uidInterno: String) = mapOf(
-        "usuarioId" to uidInterno,
-        "cuentaCreada" to false,
-        "creadoEn" to FieldValue.serverTimestamp()
-    )
+    private fun datosRegistro(uidInterno: String) = datosDeRegistroCodigo(uidInterno)
 
     private fun datosPago(
         membresiaId: String,
@@ -199,30 +170,11 @@ class FirebaseGestionMembresiasRepository(
         "creadoEn" to FieldValue.serverTimestamp()
     )
 
-    private fun datosPersona(persona: PersonaForm, membresiaId: String, parentesco: String, uid: String, hoy: String) = mapOf(
-        "nombre" to persona.nombre.trim(),
-        "telefono" to persona.telefono.trim(),
-        "correo" to persona.correo.trim(),
-        "membresiaId" to membresiaId,
-        "parentesco" to parentesco,
-        "esTitular" to (parentesco == MiembroClub.PARENTESCO_TITULAR),
-        "usuarioId" to uid,
-        "fechaRegistro" to hoy,
-        "creadoEn" to FieldValue.serverTimestamp()
-    )
+    private fun datosPersona(persona: PersonaForm, membresiaId: String, parentesco: String, uid: String, hoy: String) =
+        datosDeMiembro(persona, membresiaId, parentesco, uid, hoy, esTitular = parentesco == MiembroClub.PARENTESCO_TITULAR)
 
-    /** Perfil de acceso de una persona con código. `email` es el correo interno de la cuenta, no el de contacto (ese vive en `miembros`). */
-    private fun datosUsuarioDeMiembro(persona: PersonaForm, codigo: String, rol: String, hoy: String) = mapOf(
-        "nombre" to persona.nombre.trim(),
-        "email" to ReglasMembresia.emailDeCodigo(codigo),
-        "telefono" to persona.telefono.trim(),
-        "rol" to rol,
-        "estado" to "ACTIVO",
-        "codigoMiembro" to codigo,
-        "fechaRegistro" to hoy,
-        "creadoEn" to FieldValue.serverTimestamp(),
-        "actualizadoEn" to FieldValue.serverTimestamp()
-    )
+    private fun datosUsuarioDeMiembro(persona: PersonaForm, codigo: String, rol: String, hoy: String) =
+        datosDeUsuarioMiembro(persona, codigo, rol, hoy)
 
     override suspend fun actualizar(
         membresiaId: String,
@@ -400,8 +352,4 @@ class FirebaseGestionMembresiasRepository(
         batch.commit().await()
     }
 
-    private companion object {
-        const val NOMBRE_APP_ALTAS = "altaMiembros"
-        const val MAX_INTENTOS_CODIGO = 10
-    }
 }

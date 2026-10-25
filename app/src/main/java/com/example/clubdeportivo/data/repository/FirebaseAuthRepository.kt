@@ -108,15 +108,15 @@ class FirebaseAuthRepository(
      *
      * Si algo falla a medias se deshace lo hecho, así el código sigue disponible para intentarlo otra vez.
      */
-    override suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String): Resultado<Usuario> {
+    override suspend fun registrarMiembro(codigo: String, nombre: String, correo: String, password: String, terminosVersion: String): Resultado<Usuario> {
         val codigoNormalizado = ReglasMembresia.normalizarCodigo(codigo)
         if (!ReglasMembresia.esCodigo(codigoNormalizado)) {
             return Resultado.Error("El código no tiene el formato correcto. Se ve así: CLB-7K3M9Q.")
         }
 
         val appCodigo = appSecundaria()
-        val authCodigo = FirebaseAuth.getInstance(appCodigo)
-        val dbCodigo = FirebaseFirestore.getInstance(appCodigo)
+        val authCodigo = FirebaseAuth.getInstance(appCodigo).also { EmuladoresFirebase.configurar(it) }
+        val dbCodigo = FirebaseFirestore.getInstance(appCodigo).also { EmuladoresFirebase.configurar(it) }
 
         var cuentaNueva: com.google.firebase.auth.FirebaseUser? = null
         var uidInterno: String? = null
@@ -170,6 +170,8 @@ class FirebaseAuthRepository(
                     "rol" to rol.name,
                     "estado" to "ACTIVO",
                     "codigoMiembro" to codigoNormalizado,
+                    "terminosVersion" to terminosVersion,
+                    "terminosAceptadosEn" to FieldValue.serverTimestamp(),
                     "fechaRegistro" to Fechas.hoy(),
                     "creadoEn" to FieldValue.serverTimestamp(),
                     "actualizadoEn" to FieldValue.serverTimestamp()

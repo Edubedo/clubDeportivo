@@ -120,6 +120,8 @@ import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.PrimaryNavy
 import com.example.clubdeportivo.ui.theme.SuccessOnDark
 import com.example.clubdeportivo.ui.theme.SoftBlueSelection
+import com.example.clubdeportivo.ui.theme.AzulAccion
+import com.example.clubdeportivo.ui.theme.NavyFijo
 import com.example.clubdeportivo.ui.theme.SobreMarca
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
@@ -352,7 +354,7 @@ private fun AccionesAdmin(
             cantidad = porVencer.size.toString(),
             titulo = "Membresías por vencer",
             detalle = "En los próximos 7 días",
-            color = ActionBlue,
+            color = AzulAccion,
             modifier = Modifier.weight(1f),
             onClick = { dialogo = "membresias" }
         )
@@ -824,14 +826,14 @@ private fun TarjetaIngresos(resumen: ResumenAdmin) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    brush = Brush.linearGradient(colors = listOf(PrimaryNavy, ActionBlue)),
+                    brush = Brush.linearGradient(colors = listOf(NavyFijo, ActionBlue)),
                     shape = RoundedCornerShape(16.dp)
                 )
         ) {
             Icon(
                 imageVector = Icons.Filled.AccountBalanceWallet,
                 contentDescription = null,
-                tint = SobreMarca.copy(alpha = 0.08f),
+                tint = Color.White.copy(alpha = 0.08f),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 12.dp, bottom = 8.dp)
@@ -847,7 +849,7 @@ private fun TarjetaIngresos(resumen: ResumenAdmin) {
                 text = dinero(resumen.ingresosMes),
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Bold,
-                color = SobreMarca,
+                color = Color.White,
                 maxLines = 1,
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -871,13 +873,13 @@ private fun TarjetaIngresos(resumen: ResumenAdmin) {
                 Text(
                     text = "Aún no hay cobros del mes pasado para comparar.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SobreMarca.copy(alpha = 0.78f)
+                    color = Color.White.copy(alpha = 0.78f)
                 )
             }
             Text(
                 text = if (resumen.cobrosMes == 1) "1 cobro registrado" else "${resumen.cobrosMes} cobros registrados",
                 style = MaterialTheme.typography.bodySmall,
-                color = SobreMarca.copy(alpha = 0.78f),
+                color = Color.White.copy(alpha = 0.78f),
                 modifier = Modifier.padding(top = 2.dp)
             )
             }

@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Sin colores propios del modo oscuro: la app usa la misma paleta clara en todos los casos. -->
+    <!-- Los colores de la interfaz viven en Compose (ui/theme/Color.kt), con versión clara y oscura. -->
 </resources>

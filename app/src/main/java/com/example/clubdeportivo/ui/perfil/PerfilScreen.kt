@@ -67,7 +67,10 @@ import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
 import com.example.clubdeportivo.ui.components.tipoInsigniaRol
 import com.example.clubdeportivo.ui.components.modifierReflejo
+import com.example.clubdeportivo.ui.components.PestanasPildora
 import com.example.clubdeportivo.ui.theme.FondoApp
+import com.example.clubdeportivo.ui.theme.ModoTema
+import com.example.clubdeportivo.ui.theme.PreferenciaTema
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.Superficie
@@ -245,6 +248,31 @@ fun PerfilScreen(
                         texto = "Guardar cambios",
                         cargando = guardando,
                         onClick = { viewModel.actualizarPerfil(nombre = nombre) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TarjetaClub(modifier = Modifier.fillMaxWidth()) {
+                val contexto = LocalContext.current
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "Apariencia",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextoPrincipal
+                    )
+                    Text(
+                        text = "Elige el modo claro u oscuro, o deja que siga al teléfono.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+                    )
+                    PestanasPildora(
+                        opciones = ModoTema.entries.map { it.etiqueta },
+                        seleccionada = PreferenciaTema.modo.ordinal,
+                        onSeleccion = { PreferenciaTema.elegir(contexto, ModoTema.entries[it]) },
+                        margenHorizontal = 0.dp
                     )
                 }
             }

@@ -428,9 +428,11 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 color = TextoSecundario,
                 letterSpacing = 0.4.sp
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Todas las fechas a la vista (se acomodan en varias filas): en una sola fila con scroll la última quedaba cortada.
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 viewModel.fechas.forEach { (fecha, etiqueta) ->
                     val activa = fecha == ui.fecha

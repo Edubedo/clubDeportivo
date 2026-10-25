@@ -46,6 +46,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.tono
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,12 +87,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val Tinta = Color(0xFF10233F)
-private val AzulClaro = Color(0xFFE8F2FF)
-private val Verde = Color(0xFF13835D)
-private val FondoVerde = Color(0xFFE7F6EF)
-private val Amarillo = Color(0xFF9A6500)
-private val FondoAmarillo = Color(0xFFFFF4D8)
+private val Tinta: Color @Composable @ReadOnlyComposable get() = tono(0xFF10233F, 0xFFE8EEF7)
+private val AzulClaro: Color @Composable @ReadOnlyComposable get() = tono(0xFFE8F2FF, 0xFF1B3358)
+private val Verde: Color @Composable @ReadOnlyComposable get() = tono(0xFF13835D, 0xFF6EE7A0)
+private val FondoVerde: Color @Composable @ReadOnlyComposable get() = tono(0xFFE7F6EF, 0xFF0F2E1E)
+private val Amarillo: Color @Composable @ReadOnlyComposable get() = tono(0xFF9A6500, 0xFFFBBF24)
+private val FondoAmarillo: Color @Composable @ReadOnlyComposable get() = tono(0xFFFFF4D8, 0xFF33260A)
 
 private data class Novedad(
     val categoria: String,
@@ -336,7 +339,7 @@ private fun NovedadDetalle(novedad: Novedad, onCerrar: () -> Unit) {
                 onClick = onCerrar,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB3261E))
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
             ) {
                 Text("Cerrar")
             }

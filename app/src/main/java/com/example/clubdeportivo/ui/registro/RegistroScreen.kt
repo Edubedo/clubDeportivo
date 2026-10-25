@@ -23,6 +23,8 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +39,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +64,10 @@ import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.RequisitosContrasena
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.modifierReflejo
+import com.example.clubdeportivo.ui.theme.BordeCampo
 import com.example.clubdeportivo.ui.theme.Exito
+import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.SobreMarca
 import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
@@ -64,6 +76,8 @@ import com.example.clubdeportivo.ui.theme.TextoSecundario
 
 @Composable
 fun RegistroScreen(
+    codigoInicial: String? = null,
+    onCodigoUsado: () -> Unit = {},
     onRegistroExitoso: () -> Unit,
     onVolverALogin: () -> Unit,
     viewModel: RegistroViewModel = viewModel()
@@ -74,6 +88,8 @@ fun RegistroScreen(
     var password by remember { mutableStateOf("") }
     var confirmar by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var aceptoTerminos by rememberSaveable { mutableStateOf(false) }
+    var leyendo by remember { mutableStateOf<DocumentoLegal?>(null) }
 
     val paso by viewModel.paso.observeAsState(PasoRegistro.CODIGO)
     val codigo by viewModel.codigo.observeAsState("")
@@ -83,11 +99,21 @@ fun RegistroScreen(
     val emailError by viewModel.emailError.observeAsState()
     val passwordError by viewModel.passwordError.observeAsState()
     val confirmarError by viewModel.confirmarError.observeAsState()
+    val terminosError by viewModel.terminosError.observeAsState()
     val cargando by viewModel.cargando.observeAsState(false)
     val errorGeneral by viewModel.errorGeneral.observeAsState()
     val registroExitoso by viewModel.registroExitoso.observeAsState(false)
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Llegó por un enlace de acceso: el código ya viene escrito y se verifica solo.
+    LaunchedEffect(codigoInicial) {
+        if (codigoInicial != null) {
+            codigoTexto = codigoInicial
+            viewModel.verificarCodigo(codigoInicial)
+            onCodigoUsado()
+        }
+    }
 
     LaunchedEffect(registroExitoso) {
         if (registroExitoso) onRegistroExitoso()
@@ -273,16 +299,29 @@ fun RegistroScreen(
                         esContrasena = !passwordVisible,
                         leadingIcon = { Icon(imageVector = Icons.Outlined.Lock, contentDescription = null) },
                         imeAction = ImeAction.Done,
-                        onAccion = { viewModel.registrar(nombre, email, password, confirmar) },
+                        onAccion = { viewModel.registrar(nombre, email, password, confirmar, aceptoTerminos) },
                         isError = confirmarError != null,
                         mensajeError = confirmarError
                     )
 
-                    Spacer(modifier = Modifier.height(28.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    AceptacionDeTerminos(
+                        aceptado = aceptoTerminos,
+                        error = terminosError,
+                        onCambio = {
+                            aceptoTerminos = it
+                            viewModel.limpiarErrorTerminos()
+                        },
+                        onLeer = { leyendo = it }
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     BotonPrimario(
                         texto = "Crear cuenta",
-                        onClick = { viewModel.registrar(nombre, email, password, confirmar) },
+                        onClick = { viewModel.registrar(nombre, email, password, confirmar, aceptoTerminos) },
+                        enabled = aceptoTerminos,
                         cargando = cargando
                     )
                 }
@@ -307,6 +346,66 @@ fun RegistroScreen(
                     }
                 }
             }
+        }
+    }
+
+    leyendo?.let { documento ->
+        TerminosScreen(
+            documentoInicial = documento,
+            onCerrar = { leyendo = null },
+            onAceptar = {
+                aceptoTerminos = true
+                viewModel.limpiarErrorTerminos()
+                leyendo = null
+            }
+        )
+    }
+}
+
+/**
+ * Casilla de aceptación con enlaces a los términos y al aviso de privacidad (se abren a pantalla completa).
+ * Hasta marcarla no se puede crear la cuenta.
+ */
+@Composable
+private fun AceptacionDeTerminos(
+    aceptado: Boolean,
+    error: String?,
+    onCambio: (Boolean) -> Unit,
+    onLeer: (DocumentoLegal) -> Unit
+) {
+    val estiloEnlace = TextLinkStyles(
+        style = SpanStyle(color = Marca, fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)
+    )
+    val texto = buildAnnotatedString {
+        append("He leído y acepto los ")
+        withLink(LinkAnnotation.Clickable("terminos", styles = estiloEnlace) { onLeer(DocumentoLegal.TERMINOS) }) {
+            append("Términos y condiciones")
+        }
+        append(" y el ")
+        withLink(LinkAnnotation.Clickable("privacidad", styles = estiloEnlace) { onLeer(DocumentoLegal.PRIVACIDAD) }) {
+            append("Aviso de privacidad")
+        }
+        append(" del club.")
+    }
+
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
+        Checkbox(
+            checked = aceptado,
+            onCheckedChange = onCambio,
+            colors = CheckboxDefaults.colors(
+                checkedColor = Marca,
+                checkmarkColor = SobreMarca,
+                uncheckedColor = BordeCampo
+            )
+        )
+        Column(modifier = Modifier.padding(top = 12.dp)) {
+            Text(text = texto, style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal)
+            Text(
+                text = error ?: if (aceptado) "Aceptaste la versión ${TerminosTexto.VERSION}." else "Es necesario aceptarlos para crear tu cuenta.",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (error != null) Peligro else TextoSecundario,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }

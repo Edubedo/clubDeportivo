@@ -5,6 +5,8 @@ import com.example.clubdeportivo.data.repository.AuthRepository
 import com.example.clubdeportivo.data.repository.FakeRestriccionHorarioRepository
 import com.example.clubdeportivo.data.repository.FirebaseAreaRepository
 import com.example.clubdeportivo.data.repository.FirebaseAuthRepository
+import com.example.clubdeportivo.data.repository.FamiliaRepository
+import com.example.clubdeportivo.data.repository.FirebaseFamiliaRepository
 import com.example.clubdeportivo.data.repository.FirebaseGestionMembresiasRepository
 import com.example.clubdeportivo.data.repository.FirebaseMembresiaRepository
 import com.example.clubdeportivo.data.repository.FirebasePreciosRepository
@@ -49,6 +51,7 @@ object AppContainer {
     val reservaRepository: ReservaRepository = FirebaseReservaRepository()
     val membresiaRepository: MembresiaRepository = FirebaseMembresiaRepository()
     val gestionMembresiasRepository: GestionMembresiasRepository = FirebaseGestionMembresiasRepository()
+    val familiaRepository: FamiliaRepository = FirebaseFamiliaRepository()
     val preciosRepository: PreciosRepository = FirebasePreciosRepository()
     val torneoRepository: TorneoRepository = FirebaseTorneoRepository()
     val personalRepository: PersonalRepository = FirebasePersonalRepository()

@@ -37,3 +37,16 @@ data class PersonaForm(
     val correo: String,
     val parentesco: String
 )
+
+/**
+ * El paquete familiar de una persona: quién lo contrata y a quiénes cubre. Solo el [esTitular] ve a todos los
+ * [miembros] y puede dar de alta a más hasta [maxPersonas]; cualquier otro integrante ve únicamente lo suyo.
+ */
+data class Familia(
+    val membresia: Membresia,
+    val esTitular: Boolean,
+    val miembros: List<MiembroClub>,
+    val maxPersonas: Int
+) {
+    val lugaresLibres get() = (maxPersonas - miembros.size).coerceAtLeast(0)
+}

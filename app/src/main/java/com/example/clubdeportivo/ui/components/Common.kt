@@ -141,6 +141,7 @@ import com.example.clubdeportivo.ui.theme.PeligroSuave
 import com.example.clubdeportivo.ui.theme.PrimaryNavy
 import com.example.clubdeportivo.ui.theme.SoftBlueSelection
 import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.LocalModoOscuro
 import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.UnavailableBorder
 import com.example.clubdeportivo.ui.theme.UnavailableContainer
@@ -408,14 +409,16 @@ fun modifierReflejo(
         ),
         label = "buttonMirrorProgress"
     )
+    // En oscuro el relleno es azul claro con texto oscuro: el brillo blanco lavaría el texto, así que se atenúa.
+    val intensidad = if (LocalModoOscuro.current) 0.3f else 1f
     return modifier.clip(shape).drawWithContent {
         drawContent()
         if (enabled) {
             drawRect(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0f to SoftBlueSelection.copy(alpha = 0.28f),
-                        0.5f to Color.White.copy(alpha = 0.08f),
+                        0f to SoftBlueSelection.copy(alpha = 0.28f * intensidad),
+                        0.5f to Color.White.copy(alpha = 0.08f * intensidad),
                         1f to Color.Transparent
                     )
                 )
@@ -426,9 +429,9 @@ fun modifierReflejo(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        SoftBlueSelection.copy(alpha = if (pressed || hovered) 0.52f else 0.36f),
-                        Color.White.copy(alpha = if (pressed || hovered) 0.62f else 0.44f),
-                        SoftBlueSelection.copy(alpha = if (pressed || hovered) 0.48f else 0.32f),
+                        SoftBlueSelection.copy(alpha = (if (pressed || hovered) 0.52f else 0.36f) * intensidad),
+                        Color.White.copy(alpha = (if (pressed || hovered) 0.62f else 0.44f) * intensidad),
+                        SoftBlueSelection.copy(alpha = (if (pressed || hovered) 0.48f else 0.32f) * intensidad),
                         Color.Transparent
                     ),
                     start = Offset(startX, size.height),
@@ -436,7 +439,7 @@ fun modifierReflejo(
                 )
             )
             drawLine(
-                color = SoftBlueSelection.copy(alpha = 0.58f),
+                color = SoftBlueSelection.copy(alpha = 0.58f * intensidad),
                 start = Offset(0f, 0.5f),
                 end = Offset(size.width, 0.5f),
                 strokeWidth = 1.dp.toPx()
@@ -510,11 +513,13 @@ fun ShimmerCTAButton(
         interactionSource = interactionSource
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val degradadoArriba = PrimaryNavy
+            val degradadoAbajo = if (LocalModoOscuro.current) Color(0xFF6C9AE6) else ActionBlue
             Canvas(modifier = Modifier.fillMaxSize().clip(shape)) {
                 if (buttonEnabled || cargando) {
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(PrimaryNavy, ActionBlue)
+                            colors = listOf(degradadoArriba, degradadoAbajo)
                         )
                     )
                     drawRect(
@@ -672,35 +677,39 @@ fun TarjetaClub(
 
 /** Tipos de insignia. El color solo comunica el estado, nunca decora. */
 enum class TipoInsignia(
-    val fondo: Color,
-    val texto: Color,
-    val borde: Color = Color.Transparent
+    private val colorFondo: @Composable () -> Color,
+    private val colorTexto: @Composable () -> Color,
+    private val colorBorde: @Composable () -> Color = { Color.Transparent }
 ) {
-    EXITO(ExitoSuave, AvailabilityForeground, AvailabilityBorder),
-    ALERTA(AlertaSuave, StatusAmberForeground, StatusAmberBorder),
-    PELIGRO(PeligroSuave, StatusRedForeground, StatusRedBorder),
-    MARCA(MarcaSuave, Marca),
-    NEUTRO(FondoApp, TextoSecundario),
-    CLASES(ActivityClassesContainer, ActivityClassesForeground),
-    TORNEO(AmberContainer, AmberForeground),
-    MANTENIMIENTO(MaintenanceContainer, MaintenanceForeground, MaintenanceBorder),
-    DISPONIBLE(AvailabilityContainer, AvailabilityForeground, AvailabilityBorder),
-    NO_DISPONIBLE(UnavailableContainer, UnavailableForeground, UnavailableBorder),
-    SUSPENDIDA(AmberContainer, StatusAmberForeground, StatusAmberBorder),
-    METRICA_ACTIVAS(MetricBlueContainer, MetricBlueForeground),
-    METRICA_ALTAS(MetricGreenContainer, MetricGreenForeground),
-    METRICA_VENCIMIENTOS(MetricAmberContainer, MetricAmberForeground),
-    METRICA_VENCIDAS(MetricRedContainer, MetricRedForeground),
-    METRICA_SUSPENDIDAS(MetricPurpleContainer, MetricPurpleForeground),
-    METRICA_RESERVAS(MetricBlueContainer, MetricBlueForeground),
-    METRICA_APROBAR(MetricAmberContainer, MetricOrangeForeground),
-    METRICA_MANTENIMIENTO(MetricOrangeContainer, MetricOrangeForeground),
-    METRICA_STOCK(MetricRedContainer, MetricRedForeground),
-    METRICA_PERSONAL(MetricPurpleContainer, MetricVioletForeground),
-    METRICA_TORNEOS(MetricGoldContainer, MetricGoldForeground),
-    ROL_ADMIN(RoleAdminContainer, RoleAdminForeground, RoleAdminBorder),
-    ROL_ENCARGADO(RoleManagerContainer, RoleManagerForeground, RoleManagerBorder),
-    ROL_SOCIO(RoleMemberContainer, RoleMemberForeground, RoleMemberBorder)
+    EXITO({ ExitoSuave }, { AvailabilityForeground }, { AvailabilityBorder }),
+    ALERTA({ AlertaSuave }, { StatusAmberForeground }, { StatusAmberBorder }),
+    PELIGRO({ PeligroSuave }, { StatusRedForeground }, { StatusRedBorder }),
+    MARCA({ MarcaSuave }, { Marca }),
+    NEUTRO({ FondoApp }, { TextoSecundario }),
+    CLASES({ ActivityClassesContainer }, { ActivityClassesForeground }),
+    TORNEO({ AmberContainer }, { AmberForeground }),
+    MANTENIMIENTO({ MaintenanceContainer }, { MaintenanceForeground }, { MaintenanceBorder }),
+    DISPONIBLE({ AvailabilityContainer }, { AvailabilityForeground }, { AvailabilityBorder }),
+    NO_DISPONIBLE({ UnavailableContainer }, { UnavailableForeground }, { UnavailableBorder }),
+    SUSPENDIDA({ AmberContainer }, { StatusAmberForeground }, { StatusAmberBorder }),
+    METRICA_ACTIVAS({ MetricBlueContainer }, { MetricBlueForeground }),
+    METRICA_ALTAS({ MetricGreenContainer }, { MetricGreenForeground }),
+    METRICA_VENCIMIENTOS({ MetricAmberContainer }, { MetricAmberForeground }),
+    METRICA_VENCIDAS({ MetricRedContainer }, { MetricRedForeground }),
+    METRICA_SUSPENDIDAS({ MetricPurpleContainer }, { MetricPurpleForeground }),
+    METRICA_RESERVAS({ MetricBlueContainer }, { MetricBlueForeground }),
+    METRICA_APROBAR({ MetricAmberContainer }, { MetricOrangeForeground }),
+    METRICA_MANTENIMIENTO({ MetricOrangeContainer }, { MetricOrangeForeground }),
+    METRICA_STOCK({ MetricRedContainer }, { MetricRedForeground }),
+    METRICA_PERSONAL({ MetricPurpleContainer }, { MetricVioletForeground }),
+    METRICA_TORNEOS({ MetricGoldContainer }, { MetricGoldForeground }),
+    ROL_ADMIN({ RoleAdminContainer }, { RoleAdminForeground }, { RoleAdminBorder }),
+    ROL_ENCARGADO({ RoleManagerContainer }, { RoleManagerForeground }, { RoleManagerBorder }),
+    ROL_SOCIO({ RoleMemberContainer }, { RoleMemberForeground }, { RoleMemberBorder });
+
+    val fondo: Color @Composable get() = colorFondo()
+    val texto: Color @Composable get() = colorTexto()
+    val borde: Color @Composable get() = colorBorde()
 }
 
 fun tipoInsigniaRol(rol: Rol): TipoInsignia = when (rol) {

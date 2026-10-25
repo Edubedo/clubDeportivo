@@ -213,6 +213,99 @@ await prueba('el encargado del área (Fútbol) aprueba', () => assertSucceeds(up
 await prueba('el encargado del área (Fútbol) rechaza', () => assertSucceeds(updateDoc(doc(ayudante, 'reservas/rB'), { estado: 'RECHAZADA' })));
 await prueba('el administrador aprueba cualquier reserva', () => assertSucceeds(updateDoc(doc(admin, 'reservas/rC'), { estado: 'CONFIRMADA' })));
 
+// ---- precios: solo el administrador (ni el encargado ni un socio ni el titular de un plan)
+await prueba('un encargado NO cambia precios aunque sea personal', () =>
+  assertFails(setDoc(doc(ayudante, 'precios/FAMILIAR_1'), { precio: 1, moneda: 'MXN' })));
+await prueba('un socio NO cambia precios', () => assertFails(setDoc(doc(miembroX, 'precios/FAMILIAR_1'), { precio: 1, moneda: 'MXN' })));
+await prueba('el administrador SÍ cambia el precio de un paquete familiar', () =>
+  assertSucceeds(setDoc(doc(admin, 'precios/FAMILIAR_1'), { precio: 7500, moneda: 'MXN' })));
+
+// ---- plan familiar: el titular da de alta a su familia
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  // Paquete "Pareja" (id 2, tope 2 personas) y paquete "Familiar" (id 1, tope 5); titulares ya registrados con su cuenta real.
+  await setDoc(doc(db, 'membresias/fam1'), { usuarioId: 'viejoT1', tipo: 'FAMILIAR', paqueteFamiliarId: 1, estado: 'ACTIVA', totalPersonas: 1 });
+  await setDoc(doc(db, 'membresias/par1'), { usuarioId: 'viejoT2', tipo: 'FAMILIAR', paqueteFamiliarId: 2, estado: 'ACTIVA', totalPersonas: 1 });
+  await setDoc(doc(db, 'membresias/ind1'), { usuarioId: 'viejoT3', tipo: 'INDIVIDUAL', plan: 'NORMAL', estado: 'ACTIVA', totalPersonas: 1 });
+  await setDoc(doc(db, 'membresias/fam2'), { usuarioId: 'viejoT4', tipo: 'FAMILIAR', paqueteFamiliarId: 1, estado: 'ACTIVA', totalPersonas: 1 });
+  await setDoc(doc(db, 'membresias/famVencida'), { usuarioId: 'viejoT5', tipo: 'FAMILIAR', paqueteFamiliarId: 1, estado: 'SUSPENDIDA', totalPersonas: 1 });
+  for (const [uid, cod, mem] of [['titular1', 'CLB-FAM001', 'fam1'], ['titular2', 'CLB-PAR001', 'par1'], ['titular3', 'CLB-IND001', 'ind1'],
+                                  ['titular4', 'CLB-FAM004', 'fam2'], ['titular5', 'CLB-FAM005', 'famVencida']]) {
+    await setDoc(doc(db, 'usuarios/' + uid), { nombre: 'T ' + uid, rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: cod });
+    await setDoc(doc(db, 'miembros/' + cod), { nombre: 'T ' + uid, usuarioId: uid, membresiaId: mem, parentesco: 'Titular', esTitular: true, cuentaCreada: true });
+  }
+  await setDoc(doc(db, 'usuarios/hijoYa'), { nombre: 'Hijo', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-HIJ001' });
+  await setDoc(doc(db, 'miembros/CLB-HIJ001'), { nombre: 'Hijo', usuarioId: 'hijoYa', membresiaId: 'fam1', parentesco: 'Hijo', esTitular: false, cuentaCreada: true });
+});
+const titular1 = env.authenticatedContext('titular1').firestore();
+const titular2 = env.authenticatedContext('titular2').firestore();
+const titular3 = env.authenticatedContext('titular3').firestore();
+const titular5 = env.authenticatedContext('titular5').firestore();
+const hijoYa = env.authenticatedContext('hijoYa').firestore();
+
+// Lo que hace la app al dar de alta a un familiar: miembro + registro del código + perfil interno + contador, en un lote.
+function altaFamiliar(db, { membresia, total, codigo, uid, parentesco = 'Hijo', rol = 'SOCIO' }) {
+  const lote = writeBatch(db);
+  lote.set(doc(db, 'miembros/' + codigo), { nombre: 'Familiar', membresiaId: membresia, parentesco, esTitular: false, usuarioId: uid });
+  lote.set(doc(db, 'usuarios/' + uid), { nombre: 'Familiar', rol, estado: 'ACTIVO', codigoMiembro: codigo });
+  lote.set(doc(db, 'registroCodigos/' + codigo), { usuarioId: uid, cuentaCreada: false });
+  lote.update(doc(db, 'membresias/' + membresia), { totalPersonas: total });
+  return lote.commit();
+}
+await prueba('el titular del paquete Familiar da de alta a un familiar', () =>
+  assertSucceeds(altaFamiliar(titular1, { membresia: 'fam1', total: 2, codigo: 'CLB-NEW001', uid: 'cuentaNew1' })));
+await prueba('el titular ve a su familia (consulta por membresía)', async () => {
+  const r = await assertSucceeds(getDocs(query(collection(titular1, 'miembros'), where('membresiaId', '==', 'fam1'))));
+  if (r.size !== 3) throw new Error('esperaba 3 (titular, hijo y el nuevo), hubo ' + r.size);
+});
+await prueba('un familiar NO ve a los demás integrantes (solo lo suyo)', () =>
+  assertFails(getDocs(query(collection(hijoYa, 'miembros'), where('membresiaId', '==', 'fam1')))));
+await prueba('un familiar NO puede dar de alta a más gente', () =>
+  assertFails(altaFamiliar(hijoYa, { membresia: 'fam1', total: 4, codigo: 'CLB-NEW002', uid: 'cuentaNew2' })));
+await prueba('el titular NO puede dar de alta en la membresía de OTRA familia', () =>
+  assertFails(altaFamiliar(titular1, { membresia: 'fam2', total: 2, codigo: 'CLB-NEW003', uid: 'cuentaNew3' })));
+await prueba('el titular de un plan INDIVIDUAL NO puede agregar gente', () =>
+  assertFails(altaFamiliar(titular3, { membresia: 'ind1', total: 2, codigo: 'CLB-NEW004', uid: 'cuentaNew4' })));
+await prueba('una membresía suspendida NO permite agregar familiares', () =>
+  assertFails(altaFamiliar(titular5, { membresia: 'famVencida', total: 2, codigo: 'CLB-NEW005', uid: 'cuentaNew5' })));
+await prueba('el titular NO se salta el tope: la pareja (2) no admite un tercero', async () => {
+  await assertSucceeds(altaFamiliar(titular2, { membresia: 'par1', total: 2, codigo: 'CLB-NEW006', uid: 'cuentaNew6', parentesco: 'Cónyuge' }));
+  await assertFails(altaFamiliar(titular2, { membresia: 'par1', total: 3, codigo: 'CLB-NEW007', uid: 'cuentaNew7' }));
+});
+await prueba('el titular NO puede agregar sin subir el contador (saltarse el tope)', () => {
+  const lote = writeBatch(titular1);
+  lote.set(doc(titular1, 'miembros/CLB-NEW008'), { nombre: 'F', membresiaId: 'fam1', parentesco: 'Hijo', esTitular: false, usuarioId: 'cuentaNew8' });
+  lote.set(doc(titular1, 'usuarios/cuentaNew8'), { nombre: 'F', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-NEW008' });
+  lote.set(doc(titular1, 'registroCodigos/CLB-NEW008'), { usuarioId: 'cuentaNew8', cuentaCreada: false });
+  return assertFails(lote.commit());
+});
+await prueba('el titular NO puede darle a un familiar rol de administrador ni de visitante', async () => {
+  await assertFails(altaFamiliar(titular1, { membresia: 'fam1', total: 3, codigo: 'CLB-NEW009', uid: 'cuentaNew9', rol: 'ADMIN' }));
+  await assertFails(altaFamiliar(titular1, { membresia: 'fam1', total: 3, codigo: 'CLB-NEW010', uid: 'cuentaNew10', rol: 'VISITANTE_EXTERNO' }));
+});
+await prueba('el titular NO puede crear a otro "Titular"', () => {
+  const lote = writeBatch(titular1);
+  lote.set(doc(titular1, 'miembros/CLB-NEW011'), { nombre: 'F', membresiaId: 'fam1', parentesco: 'Titular', esTitular: true, usuarioId: 'cuentaNew11' });
+  lote.set(doc(titular1, 'usuarios/cuentaNew11'), { nombre: 'F', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-NEW011' });
+  lote.set(doc(titular1, 'registroCodigos/CLB-NEW011'), { usuarioId: 'cuentaNew11', cuentaCreada: false });
+  lote.update(doc(titular1, 'membresias/fam1'), { totalPersonas: 3 });
+  return assertFails(lote.commit());
+});
+await prueba('el titular NO puede cambiar plan, precio ni estado de su membresía', async () => {
+  await assertFails(updateDoc(doc(titular1, 'membresias/fam1'), { estado: 'ACTIVA', precio: 1 }));
+  await assertFails(updateDoc(doc(titular1, 'membresias/fam1'), { paqueteFamiliarId: 1, totalPersonas: 2 }));
+});
+await prueba('el familiar invitado puede registrarse con su código (flujo normal de registro)', async () => {
+  const interno = env.authenticatedContext('cuentaNew1').firestore();
+  const lote = writeBatch(interno);
+  lote.update(doc(interno, 'registroCodigos/CLB-NEW001'), { cuentaCreada: true, usuarioNuevo: 'familiarReal' });
+  lote.update(doc(interno, 'miembros/CLB-NEW001'), { usuarioId: 'familiarReal', cuentaCreada: true, correoCuenta: 'f@correo.com' });
+  await assertSucceeds(lote.commit());
+  const real = env.authenticatedContext('familiarReal').firestore();
+  await assertSucceeds(setDoc(doc(real, 'usuarios/familiarReal'), { nombre: 'Familiar', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-NEW001', email: 'f@correo.com' }));
+  await assertSucceeds(getDoc(doc(real, 'membresias/fam1')));
+});
+
 await env.cleanup();
 console.log(fallos === 0 ? '\nTODAS LAS PRUEBAS DE REGLAS PASARON' : `\n${fallos} PRUEBA(S) FALLARON`);
 process.exit(fallos === 0 ? 0 : 1);

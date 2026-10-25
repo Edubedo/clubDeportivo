@@ -89,6 +89,7 @@ import com.example.clubdeportivo.ui.reservas.ReservasViewModel
 import com.example.clubdeportivo.ui.publicaciones.PublicacionesViewModel
 import com.example.clubdeportivo.ui.reservas.ReservasScreen
 import com.example.clubdeportivo.ui.theme.Borde
+import com.example.clubdeportivo.ui.theme.LocalModoOscuro
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
 import com.example.clubdeportivo.ui.theme.SobreMarca
@@ -99,7 +100,7 @@ import com.example.clubdeportivo.ui.theme.TextoTenue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClubDeportivoApp() {
+fun ClubDeportivoApp(codigoEntrante: String? = null, onCodigoUsado: () -> Unit = {}) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -112,11 +113,15 @@ fun ClubDeportivoApp() {
 
     // La cabecera azul del login queda detrás de la barra de estado, así que ahí los íconos van claros.
     val vista = LocalView.current
+    val modoOscuro = LocalModoOscuro.current
     if (!vista.isInEditMode) {
         SideEffect {
             val ventana = vista.context.buscarActividad()?.window
             if (ventana != null) {
-                WindowCompat.getInsetsController(ventana, vista).isAppearanceLightStatusBars = !enPantallaDeLogin
+                val controlador = WindowCompat.getInsetsController(ventana, vista)
+                // Íconos oscuros sobre barras claras y claros sobre barras oscuras (el login siempre es azul oscuro).
+                controlador.isAppearanceLightStatusBars = !enPantallaDeLogin && !modoOscuro
+                controlador.isAppearanceLightNavigationBars = !modoOscuro
             }
         }
     }
@@ -133,6 +138,16 @@ fun ClubDeportivoApp() {
         avisos.mensaje?.let {
             snackbarHostState.showSnackbar(it)
             avisos.onMensajeMostrado()
+        }
+    }
+
+    // Enlace de acceso de un plan familiar: sin sesión abre el registro con el código ya puesto.
+    LaunchedEffect(codigoEntrante) {
+        if (codigoEntrante != null && SesionManager.usuarioActual == null) {
+            navController.navigate(Destinations.REGISTRO) { launchSingleTop = true }
+        } else if (codigoEntrante != null) {
+            snackbarHostState.showSnackbar("Cierra sesión para crear una cuenta nueva con el enlace de acceso.")
+            onCodigoUsado()
         }
     }
 
@@ -281,6 +296,8 @@ fun ClubDeportivoApp() {
             }
             composable(Destinations.REGISTRO) {
                 RegistroScreen(
+                    codigoInicial = codigoEntrante,
+                    onCodigoUsado = onCodigoUsado,
                     onRegistroExitoso = {
                         navController.navigate(rutaInicial(SesionManager.usuarioActual?.rol)) {
                             popUpTo(Destinations.LOGIN) { inclusive = true }

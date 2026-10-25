@@ -24,6 +24,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Para probar contra los emuladores de Firebase: ./gradlew installDebug -PfirebaseEmulador=10.0.2.2
+        buildConfigField("String", "EMULADOR_FIREBASE", "\"${project.findProperty("firebaseEmulador") ?: ""}\"")
     }
 
     buildTypes {
@@ -39,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

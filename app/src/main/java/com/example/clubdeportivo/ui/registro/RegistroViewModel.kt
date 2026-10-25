@@ -50,6 +50,9 @@ class RegistroViewModel(
     private val _confirmarError = MutableLiveData<String?>()
     val confirmarError: LiveData<String?> = _confirmarError
 
+    private val _terminosError = MutableLiveData<String?>()
+    val terminosError: LiveData<String?> = _terminosError
+
     private val _cargando = MutableLiveData(false)
     val cargando: LiveData<Boolean> = _cargando
 
@@ -99,7 +102,7 @@ class RegistroViewModel(
         _codigoError.value = null
     }
 
-    fun registrar(nombre: String, email: String, password: String, confirmar: String) {
+    fun registrar(nombre: String, email: String, password: String, confirmar: String, aceptoTerminos: Boolean) {
         if (_cargando.value == true) return
         var esValido = true
 
@@ -132,12 +135,20 @@ class RegistroViewModel(
             _confirmarError.value = null
         }
 
+        // Sin aceptar los términos y condiciones no se crea la cuenta.
+        if (!aceptoTerminos) {
+            _terminosError.value = "Debes aceptar los términos y condiciones para crear tu cuenta."
+            esValido = false
+        } else {
+            _terminosError.value = null
+        }
+
         if (!esValido) return
 
         val codigoVerificado = _codigo.value.orEmpty()
         viewModelScope.launch {
             _cargando.value = true
-            when (val resultado = authRepository.registrarMiembro(codigoVerificado, nombre, email, password)) {
+            when (val resultado = authRepository.registrarMiembro(codigoVerificado, nombre, email, password, TerminosTexto.VERSION)) {
                 is Resultado.Exito -> {
                     SesionManager.iniciarSesion(resultado.datos)
                     _errorGeneral.value = null
@@ -147,6 +158,10 @@ class RegistroViewModel(
             }
             _cargando.value = false
         }
+    }
+
+    fun limpiarErrorTerminos() {
+        _terminosError.value = null
     }
 
     fun onErrorMostrado() {
