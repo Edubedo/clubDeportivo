@@ -55,8 +55,9 @@ import com.example.clubdeportivo.ui.theme.PeligroSuave
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
+import com.example.clubdeportivo.data.model.etiquetaDeporte
+import com.example.clubdeportivo.data.model.etiquetaArea
 
 @Composable
 fun ReservasEncargadoScreen(
@@ -73,12 +74,12 @@ fun ReservasEncargadoScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         EncabezadoPantalla(
-            titulo = Textos.get(R.string.bookings_in_my_area),
-            subtitulo = areaTrabajo.ifBlank { Textos.get(R.string.no_area_assigned) },
+            titulo = Textos.get("bookings_in_my_area"),
+            subtitulo = etiquetaDeporte(areaTrabajo).ifBlank { Textos.get("no_area_assigned") },
             modifier = Modifier.padding(horizontal = MargenPantalla)
         )
         PestanasPildora(
-            opciones = listOf(Textos.get(R.string.requests), Textos.get(R.string.bookings), Textos.get(R.string.schedules)),
+            opciones = listOf(Textos.get("requests"), Textos.get("bookings"), Textos.get("schedules")),
             seleccionada = pestana,
             onSeleccion = { pestana = it }
         )
@@ -95,7 +96,7 @@ fun ReservasEncargadoScreen(
             cargando -> FullScreenLoading()
             error != null -> EmptyState(mensaje = error.orEmpty(), icono = Icons.Outlined.EventBusy)
             reservas.none { it.estado == EstadoReserva.CONFIRMADA } -> EmptyState(
-                mensaje = Textos.get(R.string.there_are_no_confirmed_bookings_in, areaTrabajo),
+                mensaje = Textos.get("there_are_no_confirmed_bookings_in", etiquetaDeporte(areaTrabajo)),
                 icono = Icons.Outlined.EventBusy
             )
             else -> LazyColumn(
@@ -104,14 +105,14 @@ fun ReservasEncargadoScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(reservas.filter { it.estado == EstadoReserva.CONFIRMADA }, key = { it.id }) { reserva ->
-                    val nombre = reserva.usuarioNombre.ifBlank { Textos.get(R.string.user) }
+                    val nombre = reserva.usuarioNombre.ifBlank { Textos.get("user") }
 
                     ReservaEncargadoCard(
                         inicial = nombre.firstOrNull()?.uppercase() ?: "?",
                         nombre = nombre,
                         fecha = Fechas.legible(reserva.fecha),
                         horario = "${reserva.horaInicio}–${reserva.horaFin}",
-                        area = "${Deportes.emojiDe(reserva.deporte)} ${reserva.deporte} — ${reserva.areaNombre}",
+                        area = "${Deportes.emojiDe(reserva.deporte)} ${etiquetaDeporte(reserva.deporte)} — ${etiquetaArea(reserva.areaNombre)}",
                         asistencia = asistencias[reserva.id],
                         // La asistencia se toma cuando la reserva ya empezó, no antes.
                         yaEmpezo = Fechas.horasDesdeAhora(reserva.fecha, reserva.horaInicio) <= 0,
@@ -174,9 +175,9 @@ private fun ReservaEncargadoCard(
                 }
 
                 when (asistencia) {
-                    "ASISTIO" -> Insignia(Textos.get(R.string.attended), TipoInsignia.EXITO, icono = Icons.Filled.Check)
-                    "NO_ASISTIO" -> Insignia(Textos.get(R.string.didn_t_show_up), TipoInsignia.PELIGRO, icono = Icons.Filled.Close)
-                    else -> Insignia(Textos.get(R.string.to_confirm), TipoInsignia.ALERTA, icono = Icons.Filled.Schedule)
+                    "ASISTIO" -> Insignia(Textos.get("attended"), TipoInsignia.EXITO, icono = Icons.Filled.Check)
+                    "NO_ASISTIO" -> Insignia(Textos.get("didn_t_show_up"), TipoInsignia.PELIGRO, icono = Icons.Filled.Close)
+                    else -> Insignia(Textos.get("to_confirm"), TipoInsignia.ALERTA, icono = Icons.Filled.Schedule)
                 }
             }
 
@@ -189,7 +190,7 @@ private fun ReservaEncargadoCard(
 
             if (asistencia == null && !yaEmpezo) {
                 Text(
-                    text = Textos.get(R.string.attendance_is_recorded_when_the_bookin),
+                    text = Textos.get("attendance_is_recorded_when_the_bookin"),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario,
                     modifier = Modifier.padding(top = 8.dp)
@@ -200,7 +201,7 @@ private fun ReservaEncargadoCard(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     BotonTonal(
-                        texto = Textos.get(R.string.attended),
+                        texto = Textos.get("attended"),
                         icono = Icons.Filled.Check,
                         fondo = ExitoSuave,
                         color = Exito,
@@ -208,7 +209,7 @@ private fun ReservaEncargadoCard(
                         modifier = Modifier.weight(1f)
                     )
                     BotonTonal(
-                        texto = Textos.get(R.string.didn_t_come),
+                        texto = Textos.get("didn_t_come"),
                         icono = Icons.Filled.Close,
                         fondo = PeligroSuave,
                         color = Peligro,

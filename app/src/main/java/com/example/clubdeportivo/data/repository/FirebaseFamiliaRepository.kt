@@ -11,7 +11,6 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 private fun DocumentSnapshot.aMiembro() = MiembroClub(
@@ -56,19 +55,19 @@ class FirebaseFamiliaRepository(
     }
 
     override suspend fun agregarFamiliar(familia: Familia, persona: PersonaForm): MiembroClub {
-        require(familia.esTitular) { Textos.get(R.string.only_the_package_holder_can_add) }
+        require(familia.esTitular) { Textos.get("only_the_package_holder_can_add") }
         val membresia = familia.membresia
         ReglasMembresia.validarFamiliar(persona, familia.miembros.size, membresia.tipo, membresia.paqueteFamiliarId)
             ?.let { error(it) }
 
         // Se lee el estado más reciente: el paquete puede haberse suspendido o llenado desde que se abrió la pantalla.
         val documento = membresias.document(membresia.id).get().await()
-        val actual = documento.toMembresia() ?: error(Textos.get(R.string.your_membership_no_longer_exists))
+        val actual = documento.toMembresia() ?: error(Textos.get("your_membership_no_longer_exists"))
         if (ReglasMembresia.estadoEfectivo(actual, Fechas.hoy()) != EstadoMembresia.ACTIVA) {
-            error(Textos.get(R.string.your_membership_is_not_active_renew))
+            error(Textos.get("your_membership_is_not_active_renew"))
         }
         val total = documento.getLong("totalPersonas")?.toInt() ?: familia.miembros.size
-        if (total >= familia.maxPersonas) error(Textos.get(R.string.your_package_already_has_all_its_3, familia.maxPersonas))
+        if (total >= familia.maxPersonas) error(Textos.get("your_package_already_has_all_its_3", familia.maxPersonas))
 
         val cuenta = CuentasDeAcceso.crear(miembros)
         val hoy = Fechas.hoy()

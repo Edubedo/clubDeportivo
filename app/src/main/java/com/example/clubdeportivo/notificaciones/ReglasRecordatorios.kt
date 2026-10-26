@@ -1,7 +1,12 @@
 package com.example.clubdeportivo.notificaciones
 
-import com.example.clubdeportivo.R
+import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.model.ArticuloInventario
+import com.example.clubdeportivo.data.model.EntradaEspera
+import com.example.clubdeportivo.data.model.EstadoEspera
+import com.example.clubdeportivo.util.ReglasListaEspera
+import java.text.SimpleDateFormat
+import java.util.Locale
 import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Membresia
@@ -13,6 +18,7 @@ import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.Textos
 import java.util.Calendar
 import java.util.Date
+import com.example.clubdeportivo.data.model.etiquetaMotivoSuspension
 
 /**
  * Qué recordar y cuándo. Son funciones puras (reciben los datos ya leídos y devuelven recordatorios) para poder
@@ -59,8 +65,8 @@ object ReglasRecordatorios {
             if (minutos <= 0 || minutos > MINUTOS_ANTES_DE_RESERVA || !nuevo(clave)) return@mapNotNull null
             Recordatorio(
                 clave, CategoriaNotificacion.RESERVA_PROXIMA,
-                Textos.get(R.string.notif_reserva_proxima_titulo),
-                Textos.get(R.string.notif_reserva_proxima_mensaje, nombreDe(reserva), reserva.horaInicio, reserva.horaFin, Math.round(minutos).toInt()),
+                Textos.get("notif_reserva_proxima_titulo"),
+                Textos.get("notif_reserva_proxima_mensaje", nombreDe(reserva), reserva.horaInicio, reserva.horaFin, Math.round(minutos).toInt()),
                 Destinations.RESERVAS
             )
         }
@@ -76,19 +82,44 @@ object ReglasRecordatorios {
             when (reserva.estado) {
                 EstadoReserva.CONFIRMADA -> Recordatorio(
                     "respuesta:${reserva.id}:ok", CategoriaNotificacion.RESERVA_RESPUESTA,
-                    Textos.get(R.string.notif_reserva_aprobada_titulo),
-                    Textos.get(R.string.notif_reserva_aprobada_mensaje, nombreDe(reserva), cuando, reserva.horaInicio, reserva.horaFin),
+                    Textos.get("notif_reserva_aprobada_titulo"),
+                    Textos.get("notif_reserva_aprobada_mensaje", nombreDe(reserva), cuando, reserva.horaInicio, reserva.horaFin),
                     Destinations.RESERVAS
                 )
                 EstadoReserva.RECHAZADA -> Recordatorio(
                     "respuesta:${reserva.id}:no", CategoriaNotificacion.RESERVA_RESPUESTA,
-                    Textos.get(R.string.notif_reserva_rechazada_titulo),
-                    Textos.get(R.string.notif_reserva_rechazada_mensaje, nombreDe(reserva), cuando, reserva.horaInicio),
+                    Textos.get("notif_reserva_rechazada_titulo"),
+                    Textos.get("notif_reserva_rechazada_mensaje", nombreDe(reserva), cuando, reserva.horaInicio),
                     Destinations.RESERVAS
                 )
                 else -> null
             }
         }
+
+    /**
+     * Avisa cuando a la persona le apartaron un lugar en una hora en la que estaba en lista de espera. La clave lleva el
+     * momento del aviso: si vuelve a entrar a la fila y le toca otra vez, se avisa de nuevo.
+     */
+    fun listaEspera(entradas: List<EntradaEspera>, ahora: Date, nuevo: (String) -> Boolean): List<Recordatorio> {
+        val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+        return entradas
+            .filter { it.estado == EstadoEspera.AVISADO && ReglasListaEspera.vigente(it, ahora) }
+            .mapNotNull { entrada ->
+                val clave = "espera:${entrada.id}:${entrada.avisadoMillis}"
+                val limite = ReglasListaEspera.limiteMillis(entrada) ?: return@mapNotNull null
+                if (!nuevo(clave)) return@mapNotNull null
+                Recordatorio(
+                    clave, CategoriaNotificacion.LISTA_ESPERA,
+                    Textos.get("notif_espera_titulo"),
+                    Textos.get(
+                        "notif_espera_mensaje",
+                        Deportes.titulo(entrada.deporte, entrada.areaNombre), Fechas.legible(entrada.fecha),
+                        ReglasListaEspera.textoHora(entrada.hora), formatoHora.format(Date(limite))
+                    ),
+                    Destinations.RESERVAS
+                )
+            }
+    }
 
     fun membresia(membresia: Membresia?, hoy: String, nuevo: (String) -> Boolean): List<Recordatorio> {
         if (membresia == null) return emptyList()
@@ -98,8 +129,8 @@ object ReglasRecordatorios {
             if (nuevo(clave)) {
                 lista += Recordatorio(
                     clave, CategoriaNotificacion.MEMBRESIA,
-                    Textos.get(R.string.notif_membresia_suspendida_titulo),
-                    Textos.get(R.string.notif_membresia_suspendida_mensaje, membresia.motivoSuspension.ifBlank { Textos.get(R.string.not_specified) }),
+                    Textos.get("notif_membresia_suspendida_titulo"),
+                    Textos.get("notif_membresia_suspendida_mensaje", etiquetaMotivoSuspension(membresia.motivoSuspension).ifBlank { Textos.get("not_specified") }),
                     Destinations.MEMBRESIA
                 )
             }
@@ -111,7 +142,7 @@ object ReglasRecordatorios {
             if (nuevo(clave)) {
                 lista += Recordatorio(
                     clave, CategoriaNotificacion.MEMBRESIA,
-                    Textos.get(R.string.notif_membresia_hoy_titulo), Textos.get(R.string.notif_membresia_hoy_mensaje), Destinations.MEMBRESIA
+                    Textos.get("notif_membresia_hoy_titulo"), Textos.get("notif_membresia_hoy_mensaje"), Destinations.MEMBRESIA
                 )
             }
         } else if (dias in 1..DIAS_ANTES_DE_VENCER) {
@@ -119,9 +150,9 @@ object ReglasRecordatorios {
             if (nuevo(clave)) {
                 lista += Recordatorio(
                     clave, CategoriaNotificacion.MEMBRESIA,
-                    Textos.get(R.string.notif_membresia_pronto_titulo),
-                    if (dias == 1) Textos.get(R.string.notif_membresia_manana_mensaje)
-                    else Textos.get(R.string.notif_membresia_pronto_mensaje, dias, Fechas.legible(membresia.fechaVencimiento)),
+                    Textos.get("notif_membresia_pronto_titulo"),
+                    if (dias == 1) Textos.get("notif_membresia_manana_mensaje")
+                    else Textos.get("notif_membresia_pronto_mensaje", dias, Fechas.legible(membresia.fechaVencimiento)),
                     Destinations.MEMBRESIA
                 )
             }
@@ -138,12 +169,12 @@ object ReglasRecordatorios {
             if (!nuevo(clave)) return@mapNotNull null
             Recordatorio(
                 clave, CategoriaNotificacion.TORNEO,
-                Textos.get(R.string.notif_torneo_titulo, torneo.nombre),
+                Textos.get("notif_torneo_titulo", torneo.nombre),
                 if (comoCliente) {
-                    if (torneo.horaInicio.isNotBlank()) Textos.get(R.string.notif_torneo_cliente_hora, torneo.horaInicio)
-                    else Textos.get(R.string.notif_torneo_cliente)
+                    if (torneo.horaInicio.isNotBlank()) Textos.get("notif_torneo_cliente_hora", torneo.horaInicio)
+                    else Textos.get("notif_torneo_cliente")
                 } else {
-                    Textos.get(R.string.notif_torneo_personal, torneo.inscritos, torneo.cupoMaximo)
+                    Textos.get("notif_torneo_personal", torneo.inscritos, torneo.cupoMaximo)
                 },
                 Destinations.RESERVAS
             )
@@ -158,7 +189,7 @@ object ReglasRecordatorios {
                 if (!nuevo(clave)) return@mapNotNull null
                 Recordatorio(
                     clave, CategoriaNotificacion.AVISOS,
-                    Textos.get(R.string.notif_aviso_titulo), aviso.titulo.ifBlank { aviso.mensaje.take(120) }
+                    Textos.get("notif_aviso_titulo"), aviso.titulo.ifBlank { aviso.mensaje.take(120) }
                 )
             }
 
@@ -172,9 +203,9 @@ object ReglasRecordatorios {
         if (sinAvisar.isEmpty()) return null
         return Recordatorio(
             sinAvisar.map { "solicitud:${it.id}" }, CategoriaNotificacion.SOLICITUDES,
-            Textos.get(R.string.notif_solicitudes_titulo),
-            if (sinAvisar.size == 1) Textos.get(R.string.notif_solicitudes_una, sinAvisar.first().usuarioNombre.ifBlank { Textos.get(R.string.user) })
-            else Textos.get(R.string.notif_solicitudes_varias, sinAvisar.size),
+            Textos.get("notif_solicitudes_titulo"),
+            if (sinAvisar.size == 1) Textos.get("notif_solicitudes_una", sinAvisar.first().usuarioNombre.ifBlank { Textos.get("user") })
+            else Textos.get("notif_solicitudes_varias", sinAvisar.size),
             Destinations.RESERVAS
         )
     }
@@ -189,9 +220,9 @@ object ReglasRecordatorios {
         if (pendientes.isEmpty()) return null
         return Recordatorio(
             pendientes.map { "asistencia:${it.id}" }, CategoriaNotificacion.ASISTENCIA,
-            Textos.get(R.string.notif_asistencia_titulo),
-            if (pendientes.size == 1) Textos.get(R.string.notif_asistencia_una, pendientes.first().usuarioNombre.ifBlank { Textos.get(R.string.user) })
-            else Textos.get(R.string.notif_asistencia_varias, pendientes.size),
+            Textos.get("notif_asistencia_titulo"),
+            if (pendientes.size == 1) Textos.get("notif_asistencia_una", pendientes.first().usuarioNombre.ifBlank { Textos.get("user") })
+            else Textos.get("notif_asistencia_varias", pendientes.size),
             Destinations.RESERVAS
         )
     }
@@ -205,8 +236,8 @@ object ReglasRecordatorios {
         val nombres = bajos.take(3).joinToString(", ") { it.nombre } + if (bajos.size > 3) "…" else ""
         return Recordatorio(
             clave, CategoriaNotificacion.STOCK,
-            Textos.get(R.string.notif_stock_titulo),
-            if (bajos.size == 1) Textos.get(R.string.notif_stock_uno, nombres) else Textos.get(R.string.notif_stock_varios, bajos.size, nombres),
+            Textos.get("notif_stock_titulo"),
+            if (bajos.size == 1) Textos.get("notif_stock_uno", nombres) else Textos.get("notif_stock_varios", bajos.size, nombres),
             Destinations.INVENTARIO
         )
     }
@@ -222,9 +253,9 @@ object ReglasRecordatorios {
         val hoyVencen = porVencer.count { diasHasta(hoy, it.fechaVencimiento) == 0 }
         return Recordatorio(
             clave, CategoriaNotificacion.VENCIMIENTOS,
-            Textos.get(R.string.notif_vencimientos_titulo),
-            if (hoyVencen > 0) Textos.get(R.string.notif_vencimientos_con_hoy, porVencer.size, hoyVencen)
-            else Textos.get(R.string.notif_vencimientos_mensaje, porVencer.size),
+            Textos.get("notif_vencimientos_titulo"),
+            if (hoyVencen > 0) Textos.get("notif_vencimientos_con_hoy", porVencer.size, hoyVencen)
+            else Textos.get("notif_vencimientos_mensaje", porVencer.size),
             Destinations.MEMBRESIA
         )
     }

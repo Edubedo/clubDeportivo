@@ -5,7 +5,6 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.repository.AuthRepository
@@ -66,14 +65,14 @@ class LoginViewModel(
         val emailLimpio = email.trim()
 
         if (emailLimpio.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(emailLimpio).matches()) {
-            _emailError.value = Textos.get(R.string.login_error_correo)
+            _emailError.value = Textos.get("login_error_correo")
             esValido = false
         } else {
             _emailError.value = null
         }
 
         if (password.isEmpty()) {
-            _passwordError.value = Textos.get(R.string.login_error_password)
+            _passwordError.value = Textos.get("login_error_password")
             esValido = false
         } else {
             _passwordError.value = null
@@ -101,14 +100,14 @@ class LoginViewModel(
     fun olvideContrasena(email: String) {
         val emailLimpio = email.trim()
         if (emailLimpio.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(emailLimpio).matches()) {
-            _emailError.value = Textos.get(R.string.login_error_correo_enlace)
+            _emailError.value = Textos.get("login_error_correo_enlace")
             return
         }
         _emailError.value = null
         viewModelScope.launch {
             _cargando.value = true
             _aviso.value = when (val resultado = authRepository.enviarRestablecimiento(emailLimpio)) {
-                is Resultado.Exito -> Textos.get(R.string.login_correo_enviado, emailLimpio)
+                is Resultado.Exito -> Textos.get("login_correo_enviado", emailLimpio)
                 is Resultado.Error -> resultado.mensaje
             }
             _cargando.value = false

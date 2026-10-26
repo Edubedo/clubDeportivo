@@ -252,6 +252,21 @@ Uso de un área por una persona en una fecha y rango de horas. **PK:** id autom�
 | `sinPenalizacion` | Boolean | N | `true` si se canceló con 4 horas o más de anticipación (solo si `CANCELADA`) |
 | `creadoEn` / `actualizadoEn` | Timestamp | N | Auditoría |
 
+#### `listaEspera`
+Personas esperando lugar en una hora llena de un área. **PK:** `{areaId}_{fecha}_{hora}_{usuarioId}` (una por persona,
+área, día y hora). **FK:** `usuarioId` → `usuarios`, `areaId` → `areas`. Reglas en `util/ReglasListaEspera.kt`.
+
+| Campo | Tipo | Req | Descripción |
+|---|---|---|---|
+| `usuarioId` / `usuarioNombre` | String | S | Quién espera |
+| `areaId` / `areaNombre` / `deporte` | String | S | Área (con copia del nombre y deporte) |
+| `fecha` | String | S | Día |
+| `hora` | Number | S | Hora de inicio (9 = 09:00 a 10:00) |
+| `personas` | Number | S | Lugares que necesita |
+| `estado` | String | S | `ESPERANDO` · `AVISADO` (se le apartó un lugar) · `ATENDIDA` (ya reservó) · `CANCELADA` |
+| `creadoMillis` | Number | S | Orden de llegada a la fila |
+| `avisadoMillis` | Number | N | Cuándo se le apartó el lugar; lo conserva `MINUTOS_PRIORIDAD_LISTA_ESPERA` (30) minutos |
+
 #### `materialAsignado`
 Material del inventario que se aparta para una reserva. **PK:** id automático. **FK:** `reservaId` → `reservas`,
 `herramientaId` → `herramientas`, `areaId` → `areas`.
@@ -392,6 +407,13 @@ precios, config: independientes
 4. Cancelar es gratis con 4 horas o más de anticipación. Con menos se permite, pero se avisa de la penalización.
 
 El personal no tiene límite de reservas ni bloqueo por inasistencias, y ve las reservas de todos.
+
+**Lista de espera (socios y visitantes):** una hora llena se puede tocar para entrar a su lista de espera. Cuando se
+libera un lugar (cancelación o rechazo), se aparta al primero de la fila durante 30 minutos: le llega una notificación
+y en "Mi lista de espera" ve hasta qué hora se lo guardan. Mientras esté apartado, nadie más puede tomarlo; si no
+reserva a tiempo, pasa al siguiente. Como no hay servidor, el lugar lo aparta la app de quien cancela o rechaza, la de
+quien abre el horario de esa área y la revisión periódica (cada ~15 min) de quien espera. Los torneos no tienen lista de
+espera porque hoy una inscripción no se puede cancelar.
 
 ### 3. Membresías (personal)
 

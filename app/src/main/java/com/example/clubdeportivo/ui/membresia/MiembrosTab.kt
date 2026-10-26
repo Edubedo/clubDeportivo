@@ -47,7 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.ClavesPrecio
 import com.example.clubdeportivo.data.model.EstadoMembresia
@@ -97,12 +96,13 @@ import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Textos
+import com.example.clubdeportivo.data.model.etiquetaMotivoSuspension
 
 private val filtros = listOf<Pair<String, EstadoMembresia?>>(
-    Textos.get(R.string.all) to null,
-    Textos.get(R.string.active_3) to EstadoMembresia.ACTIVA,
-    Textos.get(R.string.expired_2) to EstadoMembresia.VENCIDA,
-    Textos.get(R.string.suspended_2) to EstadoMembresia.SUSPENDIDA
+    Textos.get("all") to null,
+    Textos.get("active_3") to EstadoMembresia.ACTIVA,
+    Textos.get("expired_2") to EstadoMembresia.VENCIDA,
+    Textos.get("suspended_2") to EstadoMembresia.SUSPENDIDA
 )
 
 /** Miembros del club: buscar, registrar (con código único y cobro), editar, renovar y suspender con motivo. */
@@ -170,7 +170,7 @@ internal fun MiembrosTab(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             BotonFlotanteAgregar(
-                texto = Textos.get(R.string.register_member),
+                texto = Textos.get("register_member"),
                 visible = listState.botonFlotanteVisible(),
                 onClick = {
                     enEdicion = null
@@ -182,14 +182,14 @@ internal fun MiembrosTab(
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             EncabezadoPantalla(
-                titulo = Textos.get(R.string.club_members),
+                titulo = Textos.get("club_members"),
                 modifier = Modifier.padding(horizontal = MargenPantalla)
             )
             Column(modifier = Modifier.padding(horizontal = MargenPantalla)) {
                 CampoBusqueda(
                     value = busqueda,
                     onValueChange = { busqueda = it },
-                    placeholder = Textos.get(R.string.search_by_name_or_code)
+                    placeholder = Textos.get("search_by_name_or_code")
                 )
             }
             PestanasPildora(
@@ -201,8 +201,8 @@ internal fun MiembrosTab(
             when {
                 cargando && membresias.isEmpty() -> FullScreenLoading()
                 visibles.isEmpty() -> EmptyState(
-                    if (membresias.isEmpty()) Textos.get(R.string.there_are_no_registered_members_yet)
-                    else Textos.get(R.string.no_member_matches_the_search)
+                    if (membresias.isEmpty()) Textos.get("there_are_no_registered_members_yet")
+                    else Textos.get("no_member_matches_the_search")
                 )
                 else -> LazyColumn(
                     state = listState,
@@ -251,7 +251,7 @@ internal fun MiembrosTab(
 
     suspendiendo?.let { detalle ->
         DialogoSuspension(
-            nombre = detalle.titular?.nombre ?: Textos.get(R.string.this_member),
+            nombre = detalle.titular?.nombre ?: Textos.get("this_member"),
             onConfirmar = { motivo ->
                 viewModel.cambiarEstado(detalle, EstadoMembresia.SUSPENDIDA, motivo)
                 suspendiendo = null
@@ -264,7 +264,7 @@ internal fun MiembrosTab(
         val membresia = detalle.membresia
         val precio = ClavesPrecio.deMembresia(membresia.tipo, membresia.plan, membresia.paqueteFamiliarId, precios)
         DialogoRenovar(
-            nombre = detalle.titular?.nombre ?: Textos.get(R.string.member),
+            nombre = detalle.titular?.nombre ?: Textos.get("member"),
             plan = ReglasMembresia.etiquetaPlan(membresia),
             precio = precio,
             vigenteHasta = Fechas.legible(ReglasMembresia.fechasDeRenovacion(membresia, hoy).second),
@@ -278,12 +278,12 @@ internal fun MiembrosTab(
 
     restableciendo?.let { persona ->
         DialogoConfirmacion(
-            titulo = Textos.get(R.string.reset_access),
-            mensaje = Textos.get(R.string.will_be_able_to_sign_up, persona.nombre, persona.codigo) +
-                Textos.get(R.string.manual_cuenta_actual, persona.correo.ifBlank { Textos.get(R.string.the_one_they_created) }) +
-                Textos.get(R.string.use_it_only_if_they_typed),
-            textoConfirmar = Textos.get(R.string.reset),
-            textoCancelar = Textos.get(R.string.cancel),
+            titulo = Textos.get("reset_access"),
+            mensaje = Textos.get("will_be_able_to_sign_up", persona.nombre, persona.codigo) +
+                Textos.get("manual_cuenta_actual", persona.correo.ifBlank { Textos.get("the_one_they_created") }) +
+                Textos.get("use_it_only_if_they_typed"),
+            textoConfirmar = Textos.get("reset"),
+            textoCancelar = Textos.get("cancel"),
             onConfirmar = {
                 viewModel.restablecerAcceso(persona.codigo)
                 restableciendo = null
@@ -295,10 +295,10 @@ internal fun MiembrosTab(
     dandoDeBaja?.let { detalle ->
         val nombres = detalle.personas.joinToString { it.nombre }
         DialogoConfirmacion(
-            titulo = stringResource(R.string.miembro_baja_titulo),
-            mensaje = stringResource(R.string.miembro_baja_mensaje, nombres),
-            textoConfirmar = stringResource(R.string.miembro_dar_baja),
-            textoCancelar = stringResource(R.string.cancelar),
+            titulo = tr("miembro_baja_titulo"),
+            mensaje = tr("miembro_baja_mensaje", nombres),
+            textoConfirmar = tr("miembro_dar_baja"),
+            textoCancelar = tr("cancelar"),
             onConfirmar = {
                 viewModel.darDeBaja(detalle)
                 dandoDeBaja = null
@@ -335,14 +335,14 @@ private fun TarjetaMiembro(
         Row(modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp), verticalAlignment = Alignment.Top) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    titular?.nombre ?: Textos.get(R.string.no_name),
+                    titular?.nombre ?: Textos.get("no_name"),
                     style = MaterialTheme.typography.titleMedium,
                     color = TextoPrincipal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = titular?.codigo?.takeIf { it.isNotBlank() } ?: Textos.get(R.string.no_code_earlier_registration),
+                    text = titular?.codigo?.takeIf { it.isNotBlank() } ?: Textos.get("no_code_earlier_registration"),
                     style = MaterialTheme.typography.titleSmall,
                     letterSpacing = 0.5.sp,
                     color = if (titular?.codigo.isNullOrBlank()) TextoSecundario else Marca,
@@ -350,7 +350,7 @@ private fun TarjetaMiembro(
                 )
                 Text(
                     "${ReglasMembresia.etiquetaPlan(membresia)} · ${dinero(membresia.precio)}" +
-                        if (detalle.personas.size > 1) Textos.get(R.string.people_2, detalle.personas.size) else "",
+                        if (detalle.personas.size > 1) Textos.get("people_2", detalle.personas.size) else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoSecundario,
                     modifier = Modifier.padding(top = 4.dp)
@@ -358,14 +358,14 @@ private fun TarjetaMiembro(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                     Insignia(
                         texto = when (estado) {
-                            EstadoMembresia.ACTIVA -> Textos.get(R.string.active_2)
-                            EstadoMembresia.VENCIDA -> Textos.get(R.string.expired)
-                            EstadoMembresia.SUSPENDIDA -> Textos.get(R.string.suspended)
+                            EstadoMembresia.ACTIVA -> Textos.get("active_2")
+                            EstadoMembresia.VENCIDA -> Textos.get("expired")
+                            EstadoMembresia.SUSPENDIDA -> Textos.get("suspended")
                         },
                         tipo = tipoInsignia
                     )
                     Text(
-                        text = if (membresia.tipo == TipoMembresia.VISITA) Textos.get(R.string.valid, Fechas.legible(membresia.fechaVencimiento)) else Textos.get(R.string.expires, Fechas.legible(membresia.fechaVencimiento)),
+                        text = if (membresia.tipo == TipoMembresia.VISITA) Textos.get("valid", Fechas.legible(membresia.fechaVencimiento)) else Textos.get("expires", Fechas.legible(membresia.fechaVencimiento)),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.padding(start = 8.dp)
@@ -379,7 +379,7 @@ private fun TarjetaMiembro(
                     ) {
                         Icon(Icons.Default.Warning, contentDescription = null, tint = Alerta, modifier = Modifier.padding(top = 2.dp).height(16.dp))
                         Text(
-                            text = Textos.get(R.string.reason, membresia.motivoSuspension),
+                            text = Textos.get("reason", etiquetaMotivoSuspension(membresia.motivoSuspension)),
                             style = MaterialTheme.typography.bodySmall,
                             color = Alerta
                         )
@@ -388,10 +388,10 @@ private fun TarjetaMiembro(
                 if (conCodigo.isNotEmpty()) {
                     Text(
                         text = when {
-                            registrados == conCodigo.size && conCodigo.size == 1 -> Textos.get(R.string.already_created_their_account_in_the)
-                            registrados == conCodigo.size -> Textos.get(R.string.everyone_created_their_account_in_the)
-                            registrados == 0 && conCodigo.size == 1 -> Textos.get(R.string.hasn_t_created_their_account_in)
-                            else -> Textos.get(R.string.of_created_their_account_in_the, registrados, conCodigo.size)
+                            registrados == conCodigo.size && conCodigo.size == 1 -> Textos.get("already_created_their_account_in_the")
+                            registrados == conCodigo.size -> Textos.get("everyone_created_their_account_in_the")
+                            registrados == 0 && conCodigo.size == 1 -> Textos.get("hasn_t_created_their_account_in")
+                            else -> Textos.get("of_created_their_account_in_the", registrados, conCodigo.size)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
@@ -403,36 +403,36 @@ private fun TarjetaMiembro(
                 IconButton(
                     onClick = { menuAbierto = true }
                 ) {
-                    Icon(Icons.Default.MoreVert, contentDescription = Textos.get(R.string.more_options), tint = TextoSecundario)
+                    Icon(Icons.Default.MoreVert, contentDescription = Textos.get("more_options"), tint = TextoSecundario)
                 }
                 DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
                     DropdownMenuItem(
-                        text = { Text(Textos.get(R.string.edit)) },
+                        text = { Text(Textos.get("edit")) },
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                         onClick = { menuAbierto = false; onEditar() }
                     )
                     if (membresia.tipo != TipoMembresia.VISITA) {
                         DropdownMenuItem(
-                            text = { Text(Textos.get(R.string.renew_for_one_month)) },
+                            text = { Text(Textos.get("renew_for_one_month")) },
                             leadingIcon = { Icon(Icons.Default.Autorenew, contentDescription = null) },
                             onClick = { menuAbierto = false; onRenovar() }
                         )
                     }
                     when (estado) {
                         EstadoMembresia.ACTIVA -> DropdownMenuItem(
-                            text = { Text(Textos.get(R.string.suspend)) },
+                            text = { Text(Textos.get("suspend")) },
                             leadingIcon = { Icon(Icons.Default.Pause, contentDescription = null) },
                             onClick = { menuAbierto = false; onSuspender() }
                         )
                         EstadoMembresia.SUSPENDIDA -> DropdownMenuItem(
-                            text = { Text(Textos.get(R.string.reactivate)) },
+                            text = { Text(Textos.get("reactivate")) },
                             leadingIcon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
                             onClick = { menuAbierto = false; onReactivar() }
                         )
                         EstadoMembresia.VENCIDA -> Unit
                     }
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.miembro_dar_baja), color = Peligro) },
+                        text = { Text(tr("miembro_dar_baja"), color = Peligro) },
                         leadingIcon = { Icon(Icons.Default.PersonOff, contentDescription = null, tint = Peligro) },
                         onClick = { menuAbierto = false; onBaja() }
                     )
@@ -488,7 +488,7 @@ private fun MembresiaFormDialog(
     val suspendiendoAhora = esEdicion && estado == EstadoMembresia.SUSPENDIDA && membresia?.estado != EstadoMembresia.SUSPENDIDA
 
     DialogoFormulario(
-        titulo = if (esEdicion) Textos.get(R.string.edit_membership) else Textos.get(R.string.register_member),
+        titulo = if (esEdicion) Textos.get("edit_membership") else Textos.get("register_member"),
         onCerrar = onCerrar,
         pie = {
             if (error != null) {
@@ -501,7 +501,7 @@ private fun MembresiaFormDialog(
             }
 
             BotonPrimario(
-                texto = if (esEdicion) Textos.get(R.string.save_changes) else Textos.get(R.string.charge_and_register, dinero(precioVigente)),
+                texto = if (esEdicion) Textos.get("save_changes") else Textos.get("charge_and_register", dinero(precioVigente)),
                 cargando = guardando,
                 enabled = !suspendiendoAhora || motivoCompleto(motivo, detalleMotivo),
                 onClick = {
@@ -519,9 +519,9 @@ private fun MembresiaFormDialog(
         }
     ) {
         if (!esEdicion) {
-            EtiquetaCampo(Textos.get(R.string.membership_type))
+            EtiquetaCampo(Textos.get("membership_type"))
             PestanasPildora(
-                opciones = listOf(Textos.get(R.string.individual), Textos.get(R.string.family), Textos.get(R.string.visit)),
+                opciones = listOf(Textos.get("individual"), Textos.get("family"), Textos.get("visit")),
                 seleccionada = tipo.ordinal,
                 onSeleccion = {
                     tipo = TipoMembresia.entries[it]
@@ -537,7 +537,7 @@ private fun MembresiaFormDialog(
             TipoMembresia.INDIVIDUAL -> {
                 EtiquetaCampo("PLAN")
                 PestanasPildora(
-                    opciones = listOf(Textos.get(R.string.kids), Textos.get(R.string.standard), Textos.get(R.string.deluxe)),
+                    opciones = listOf(Textos.get("kids"), Textos.get("standard"), Textos.get("deluxe")),
                     seleccionada = plan.ordinal,
                     onSeleccion = { plan = PlanIndividual.entries[it] },
                     margenHorizontal = 0.dp
@@ -545,7 +545,7 @@ private fun MembresiaFormDialog(
                 EspacioCampos()
             }
             TipoMembresia.FAMILIAR -> {
-                EtiquetaCampo(Textos.get(R.string.lbl_paquete))
+                EtiquetaCampo(Textos.get("lbl_paquete"))
                 PestanasPildora(
                     opciones = Catalogos.paquetesFamiliares.map { it.nombre },
                     seleccionada = Catalogos.paquetesFamiliares.indexOfFirst { it.id == paqueteId }.coerceAtLeast(0),
@@ -560,16 +560,16 @@ private fun MembresiaFormDialog(
             TipoMembresia.VISITA -> Unit
         }
 
-        EtiquetaCampo(Textos.get(R.string.lbl_precio))
+        EtiquetaCampo(Textos.get("lbl_precio"))
         Text(
-            text = "${dinero(precioVigente)} ${if (tipo == TipoMembresia.VISITA) Textos.get(R.string.per_visit) else Textos.get(R.string.per_month)}",
+            text = "${dinero(precioVigente)} ${if (tipo == TipoMembresia.VISITA) Textos.get("per_visit") else Textos.get("per_month")}",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Marca
         )
         if (esEdicion && membresia != null && membresia.precio != precioVigente) {
             Text(
-                Textos.get(R.string.this_membership_was_registered_at_it, dinero(membresia.precio)),
+                Textos.get("this_membership_was_registered_at_it", dinero(membresia.precio)),
                 style = MaterialTheme.typography.bodySmall,
                 color = TextoSecundario,
                 modifier = Modifier.padding(top = 2.dp)
@@ -578,7 +578,7 @@ private fun MembresiaFormDialog(
 
         if (!esEdicion) {
             EspacioCampos()
-            EtiquetaCampo(Textos.get(R.string.payment_method))
+            EtiquetaCampo(Textos.get("payment_method"))
             PestanasPildora(
                 opciones = MetodoPago.entries.map { it.etiqueta },
                 seleccionada = metodoPago.ordinal,
@@ -586,7 +586,7 @@ private fun MembresiaFormDialog(
                 margenHorizontal = 0.dp
             )
             Text(
-                text = Textos.get(R.string.when_registering_a_payment_of_is, dinero(precioVigente)),
+                text = Textos.get("when_registering_a_payment_of_is", dinero(precioVigente)),
                 style = MaterialTheme.typography.bodySmall,
                 color = TextoSecundario
             )
@@ -595,9 +595,9 @@ private fun MembresiaFormDialog(
         EspacioCampos()
 
         if (anteriorALosCodigos) {
-            EtiquetaCampo(Textos.get(R.string.lbl_personas))
+            EtiquetaCampo(Textos.get("lbl_personas"))
             Text(
-                Textos.get(R.string.this_membership_was_registered_before),
+                Textos.get("this_membership_was_registered_before"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextoSecundario
             )
@@ -606,7 +606,7 @@ private fun MembresiaFormDialog(
             personas.forEachIndexed { indice, persona ->
                 val registrada = existente?.personas?.firstOrNull { it.codigo == persona.codigo && persona.codigo != null }
                 CamposPersona(
-                    titulo = if (indice == 0) Textos.get(R.string.lbl_titular) else Textos.get(R.string.member_2, indice),
+                    titulo = if (indice == 0) Textos.get("lbl_titular") else Textos.get("member_2", indice),
                     persona = persona,
                     conParentesco = indice > 0,
                     cuentaCreada = registrada?.cuentaCreada,
@@ -619,7 +619,7 @@ private fun MembresiaFormDialog(
 
             if (tipo == TipoMembresia.FAMILIAR && !esEdicion) {
                 Text(
-                    Textos.get(R.string.it_s_enough_to_register_the, maxPersonas),
+                    Textos.get("it_s_enough_to_register_the", maxPersonas),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario
                 )
@@ -632,7 +632,7 @@ private fun MembresiaFormDialog(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = Marca)
                     Text(
-                        Textos.get(R.string.add_member_of, personas.size, maxPersonas),
+                        Textos.get("add_member_of", personas.size, maxPersonas),
                         color = Marca,
                         fontWeight = FontWeight.Bold
                     )
@@ -642,16 +642,16 @@ private fun MembresiaFormDialog(
         }
 
         if (esEdicion && membresia != null && ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy()) != EstadoMembresia.VENCIDA) {
-            EtiquetaCampo(Textos.get(R.string.lbl_estado))
+            EtiquetaCampo(Textos.get("lbl_estado"))
             PestanasPildora(
-                opciones = listOf(Textos.get(R.string.active_2), Textos.get(R.string.suspended)),
+                opciones = listOf(Textos.get("active_2"), Textos.get("suspended")),
                 seleccionada = if (estado == EstadoMembresia.SUSPENDIDA) 1 else 0,
                 onSeleccion = { estado = if (it == 1) EstadoMembresia.SUSPENDIDA else EstadoMembresia.ACTIVA },
                 margenHorizontal = 0.dp
             )
             if (suspendiendoAhora) {
                 Spacer(modifier = Modifier.height(4.dp))
-                EtiquetaCampo(Textos.get(R.string.reason_for_suspension))
+                EtiquetaCampo(Textos.get("reason_for_suspension"))
                 SelectorMotivoSuspension(
                     seleccion = motivo,
                     onSeleccion = { motivo = it },
@@ -660,7 +660,7 @@ private fun MembresiaFormDialog(
                 )
             } else if (estado == EstadoMembresia.SUSPENDIDA && !membresia.motivoSuspension.isBlank()) {
                 Text(
-                    text = Textos.get(R.string.reason, membresia.motivoSuspension),
+                    text = Textos.get("reason", etiquetaMotivoSuspension(membresia.motivoSuspension)),
                     style = MaterialTheme.typography.bodySmall,
                     color = Alerta
                 )
@@ -684,10 +684,10 @@ private fun CamposPersona(
         Column(modifier = Modifier.weight(1f)) {
             EtiquetaCampo(titulo)
             persona.codigo?.let {
-                Text(Textos.get(R.string.code_2, it), style = MaterialTheme.typography.titleSmall, letterSpacing = 0.5.sp, color = Marca)
+                Text(Textos.get("code_2", it), style = MaterialTheme.typography.titleSmall, letterSpacing = 0.5.sp, color = Marca)
                 if (cuentaCreada != null) {
                     Text(
-                        text = if (cuentaCreada) Textos.get(R.string.already_created_their_account_in_the) else Textos.get(R.string.hasn_t_created_their_account_in),
+                        text = if (cuentaCreada) Textos.get("already_created_their_account_in_the") else Textos.get("hasn_t_created_their_account_in"),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario
                     )
@@ -696,7 +696,7 @@ private fun CamposPersona(
         }
         if (onQuitar != null) {
             IconButton(onClick = onQuitar, modifier = modifierReflejo(Modifier, enabled = true)) {
-                Icon(Icons.Default.Close, contentDescription = Textos.get(R.string.remove_member), tint = TextoSecundario)
+                Icon(Icons.Default.Close, contentDescription = Textos.get("remove_member"), tint = TextoSecundario)
             }
         }
     }
@@ -705,28 +705,28 @@ private fun CamposPersona(
             onClick = onRestablecerAcceso,
             modifier = modifierReflejo(Modifier, enabled = true)
         ) {
-            Text(Textos.get(R.string.reset_access), color = Marca, fontWeight = FontWeight.SemiBold)
+            Text(Textos.get("reset_access"), color = Marca, fontWeight = FontWeight.SemiBold)
         }
     }
     Spacer(modifier = Modifier.height(4.dp))
     CampoTexto(
         value = persona.nombre,
         onValueChange = { onCambio(persona.copy(nombre = it)) },
-        placeholder = Textos.get(R.string.full_name_2),
+        placeholder = Textos.get("full_name_2"),
         capitalizacion = KeyboardCapitalization.Words
     )
     Spacer(modifier = Modifier.height(12.dp))
     CampoTexto(
         value = persona.telefono,
         onValueChange = { onCambio(persona.copy(telefono = it.filter { c -> c.isDigit() || c == ' ' }.take(15))) },
-        placeholder = Textos.get(R.string.phone_optional_2),
+        placeholder = Textos.get("phone_optional_2"),
         tipoTeclado = KeyboardType.Phone
     )
     Spacer(modifier = Modifier.height(12.dp))
     CampoTexto(
         value = persona.correo,
         onValueChange = { onCambio(persona.copy(correo = it)) },
-        placeholder = Textos.get(R.string.email_optional_2),
+        placeholder = Textos.get("email_optional_2"),
         tipoTeclado = KeyboardType.Email,
         imeAction = if (conParentesco) ImeAction.Next else ImeAction.Done
     )
@@ -735,7 +735,7 @@ private fun CamposPersona(
         CampoTexto(
             value = persona.parentesco,
             onValueChange = { onCambio(persona.copy(parentesco = it)) },
-            placeholder = Textos.get(R.string.relationship_spouse_son),
+            placeholder = Textos.get("relationship_spouse_son"),
             capitalizacion = KeyboardCapitalization.Sentences,
             imeAction = ImeAction.Done
         )
@@ -749,14 +749,14 @@ private fun CodigosDialog(detalle: MembresiaDetalle, onCerrar: () -> Unit) {
     val contexto = LocalContext.current
 
     DialogoFormulario(
-        titulo = stringResource(R.string.miembro_registrado),
+        titulo = tr("miembro_registrado"),
         onCerrar = onCerrar,
-        pie = { BotonPrimario(texto = stringResource(R.string.listo), onClick = onCerrar) },
+        pie = { BotonPrimario(texto = tr("listo"), onClick = onCerrar) },
         confirmarSalida = false
     ) {
         Text(
-            Textos.get(R.string.give_each_person_their_code_with) +
-                Textos.get(R.string.write_it_down_now_or_look),
+            Textos.get("give_each_person_their_code_with") +
+                Textos.get("write_it_down_now_or_look"),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoSecundario
         )
@@ -773,9 +773,9 @@ private fun CodigosDialog(detalle: MembresiaDetalle, onCerrar: () -> Unit) {
                     }
                     TextButton(onClick = {
                         portapapeles.setText(AnnotatedString(persona.codigo))
-                        Toast.makeText(contexto, Textos.get(R.string.code_copied), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(contexto, Textos.get("code_copied"), Toast.LENGTH_SHORT).show()
                     }, modifier = modifierReflejo(Modifier, enabled = true)) {
-                        Text(Textos.get(R.string.copy), color = Marca, fontWeight = FontWeight.Bold)
+                        Text(Textos.get("copy"), color = Marca, fontWeight = FontWeight.Bold)
                     }
                 }
             }

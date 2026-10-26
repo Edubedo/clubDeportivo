@@ -57,7 +57,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.clubdeportivo.R
+import androidx.compose.material3.AlertDialog
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Area
@@ -100,6 +103,8 @@ import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.util.Textos
+import com.example.clubdeportivo.data.model.etiquetaDeporte
+import com.example.clubdeportivo.data.model.etiquetaArea
 
 @Composable
 fun ReservasScreen(initialTab: Int = 0) {
@@ -109,10 +114,10 @@ fun ReservasScreen(initialTab: Int = 0) {
     val puedeAprobar = rol?.esAdministrador() == true || rol?.esEncargado() == true
     var pestana by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, 3)) }
     val opciones = when {
-        esCliente -> listOf(Textos.get(R.string.space), Textos.get(R.string.tournament_2), Textos.get(R.string.my_bookings))
-        esAdmin -> listOf(Textos.get(R.string.space), Textos.get(R.string.tournament_2), Textos.get(R.string.bookings), Textos.get(R.string.requests))
-        puedeAprobar -> listOf(Textos.get(R.string.space), Textos.get(R.string.tournament_2), Textos.get(R.string.requests))
-        else -> listOf(Textos.get(R.string.space), Textos.get(R.string.tournament_2))
+        esCliente -> listOf(Textos.get("space"), Textos.get("tournament_2"), Textos.get("my_bookings"))
+        esAdmin -> listOf(Textos.get("space"), Textos.get("tournament_2"), Textos.get("bookings"), Textos.get("requests"))
+        puedeAprobar -> listOf(Textos.get("space"), Textos.get("tournament_2"), Textos.get("requests"))
+        else -> listOf(Textos.get("space"), Textos.get("tournament_2"))
     }
 
     Column(modifier = Modifier.fillMaxSize().background(FondoApp)) {
@@ -144,11 +149,29 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
     val reservas by viewModel.reservas.observeAsState(emptyList())
     val mensaje by viewModel.mensaje.observeAsState()
     val restriccion by viewModel.restriccion.observeAsState()
+    val esperas by viewModel.esperas.observeAsState(emptyList())
+    val ofertaEspera by viewModel.ofertaEspera.observeAsState()
+    val permiteEspera = SesionManager.usuarioActual?.rol?.esCliente() == true
+
+    // Al volver a la pantalla (por ejemplo, desde la notificación) se revisa si ya le tocó en la lista de espera.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refrescarEsperas() }
+
+    ofertaEspera?.let { hora ->
+        ui.area?.let { area ->
+            DialogoListaEspera(
+                area = area,
+                fecha = viewModel.fechas.firstOrNull { it.first == ui.fecha }?.second ?: Fechas.legible(ui.fecha),
+                hora = hora,
+                onConfirmar = { personas -> viewModel.unirseAEspera(personas) },
+                onCancelar = { viewModel.cerrarOfertaEspera() }
+            )
+        }
+    }
 
     // Con horas ya elegidas hay una reserva a medias: salirse pide confirmación y, si se acepta, la descarta.
     ProtegerSalida(
         activo = ui.desde != null && !ui.enviando,
-        mensaje = R.string.salir_reserva_mensaje,
+        mensaje = "salir_reserva_mensaje",
         alAbandonar = { viewModel.reiniciarProceso() }
     )
 
@@ -209,7 +232,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                 .verticalScroll(scroll)
                 .padding(horizontal = MargenPantalla)
         ) {
-            EncabezadoPantalla(titulo = Textos.get(R.string.book_a_space))
+            EncabezadoPantalla(titulo = Textos.get("book_a_space"))
             restriccion?.let { motivo ->
                 TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = AlertaSuave) {
                     Row(
@@ -226,10 +249,10 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             Pasos(pasoActual = paso)
             Spacer(modifier = Modifier.height(20.dp))
 
-            Seccion(Textos.get(R.string.select_the_sport))
+            Seccion(Textos.get("select_the_sport"))
             if (deportes.isEmpty()) {
                 Text(
-                    Textos.get(R.string.there_are_no_areas_yet),
+                    Textos.get("there_are_no_areas_yet"),
                     color = TextoSecundario,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -247,8 +270,8 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                     Box(modifier = Modifier.weight(1f)) {
                         TarjetaOpcion(
                             emoji = Deportes.emojiDe(deporte, muestra.emoji),
-                            titulo = deporte,
-                            detalle = ui.areas.count { it.tipo == deporte }.let { if (it == 1) Textos.get(R.string.n_1_area) else Textos.get(R.string.areas_2, it) },
+                            titulo = etiquetaDeporte(deporte),
+                            detalle = ui.areas.count { it.tipo == deporte }.let { if (it == 1) Textos.get("n_1_area") else Textos.get("areas_2", it) },
                             seleccionada = deporte == ui.deporte,
                             habilitada = true,
                             onClick = { viewModel.elegirDeporte(deporte) }
@@ -260,7 +283,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             if (ui.deporte != null) {
                 Spacer(modifier = Modifier.height(20.dp))
                 Column(modifier = Modifier.onGloballyPositioned { canchaY = it.positionInParent().y.toInt() }) {
-                    Seccion(Textos.get(R.string.select_the_court))
+                    Seccion(Textos.get("select_the_court"))
 
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
@@ -274,11 +297,11 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                             Box(modifier = Modifier.weight(1f)) {
                                 TarjetaOpcion(
                                     emoji = Deportes.emojiDe(area.tipo, area.emoji),
-                                    titulo = area.nombre,
+                                    titulo = etiquetaArea(area.nombre),
                                     detalle = when {
-                                        area.disponibilidad == DisponibilidadArea.MANTENIMIENTO -> Textos.get(R.string.under_maintenance)
-                                        bloqueada -> Textos.get(R.string.doesn_t_admit_visitors)
-                                        else -> Textos.get(R.string.capacity, area.capacidad)
+                                        area.disponibilidad == DisponibilidadArea.MANTENIMIENTO -> Textos.get("under_maintenance")
+                                        bloqueada -> Textos.get("doesn_t_admit_visitors")
+                                        else -> Textos.get("capacity", area.capacidad)
                                     },
                                     seleccionada = area.id == ui.area?.id,
                                     habilitada = !bloqueada,
@@ -293,16 +316,31 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             ui.area?.let { area ->
                 Spacer(modifier = Modifier.height(20.dp))
                 Column(modifier = Modifier.onGloballyPositioned { horarioY = it.positionInParent().y.toInt() }) {
-                    SeccionHorario(ui = ui, area = area, viewModel = viewModel)
+                    SeccionHorario(ui = ui, area = area, viewModel = viewModel, permiteEspera = permiteEspera)
+                }
+            }
+
+            if (esperas.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(28.dp))
+                TituloSeccion(Textos.get("espera_seccion"))
+                Spacer(modifier = Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    esperas.forEach { espera ->
+                        TarjetaEspera(
+                            espera = espera,
+                            onReservar = { viewModel.reservarDesdeEspera(espera) },
+                            onSalir = { viewModel.salirDeEspera(espera) }
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-            TituloSeccion(Textos.get(R.string.current_bookings))
+            TituloSeccion(Textos.get("current_bookings"))
             Spacer(modifier = Modifier.height(10.dp))
             if (reservas.isEmpty()) {
                 Text(
-                    Textos.get(R.string.no_upcoming_bookings),
+                    Textos.get("no_upcoming_bookings"),
                     color = TextoSecundario,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -334,7 +372,7 @@ private fun Seccion(texto: String) {
 @Composable
 private fun Pasos(pasoActual: Int) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        listOf(Textos.get(R.string.sport), Textos.get(R.string.court), Textos.get(R.string.time)).forEachIndexed { indice, nombre ->
+        listOf(Textos.get("sport"), Textos.get("court"), Textos.get("time")).forEachIndexed { indice, nombre ->
             val numero = indice + 1
             val hecho = numero < pasoActual
             val actual = numero == pasoActual
@@ -428,12 +466,12 @@ private fun etiquetaHora(hora: Int): Pair<String, String> {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: ReservasViewModel) {
-    Seccion(Textos.get(R.string.lbl_horario))
+private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: ReservasViewModel, permiteEspera: Boolean) {
+    Seccion(Textos.get("lbl_horario"))
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                Textos.get(R.string.lbl_fecha),
+                Textos.get("lbl_fecha"),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextoSecundario,
@@ -487,7 +525,7 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     text = if (desde != null && hasta != null) {
                         "%02d:00 → %02d:00 (%dh)".format(desde, hasta + 1, ui.horasElegidas)
                     } else {
-                        Textos.get(R.string.tap_the_hours_you_want_to)
+                        Textos.get("tap_the_hours_you_want_to")
                     },
                     style = MaterialTheme.typography.titleSmall,
                     color = TextoPrincipal,
@@ -497,15 +535,15 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                     TextButton(
                         onClick = { viewModel.limpiarSeleccion() }
                     ) {
-                        Text(Textos.get(R.string.clear), color = Marca, fontWeight = FontWeight.SemiBold)
+                        Text(Textos.get("clear"), color = Marca, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
 
             if (ui.horas.isEmpty()) {
                 Text(
-                    if (ui.errorDisponibilidad) Textos.get(R.string.the_availability_could_not_be_checked_2)
-                    else Textos.get(R.string.there_are_no_times_available_that),
+                    if (ui.errorDisponibilidad) Textos.get("the_availability_could_not_be_checked_2")
+                    else Textos.get("there_are_no_times_available_that"),
                     color = Peligro,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
@@ -521,27 +559,41 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 ) {
                     ui.horas.forEach { celda ->
                         val elegida = ui.desde != null && ui.hasta != null && celda.hora in ui.desde..ui.hasta
-                        CeldaHora(celda = celda, elegida = elegida, modifier = Modifier.weight(1f), onClick = { viewModel.tocarHora(celda.hora) })
+                        CeldaHora(
+                            celda = celda,
+                            elegida = elegida,
+                            permiteEspera = permiteEspera,
+                            modifier = Modifier.weight(1f),
+                            onClick = { viewModel.tocarHora(celda.hora) }
+                        )
                     }
                     repeat(relleno) { Spacer(modifier = Modifier.weight(1f)) }
                 }
 
-                Leyenda()
+                Leyenda(mostrarEspera = permiteEspera)
+                if (permiteEspera && ui.horas.any { it.esperable && !it.enEspera }) {
+                    Text(
+                        Textos.get("espera_pista"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
 
             if (ui.desde != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 if (area.carriles > 0) {
                     Text(
-                        Textos.get(R.string.lbl_carril),
+                        Textos.get("lbl_carril"),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextoSecundario,
                         letterSpacing = 0.4.sp
                     )
                     Text(
-                        if (ui.carrilesDisponibles.isEmpty()) Textos.get(R.string.there_are_no_free_lanes_at)
-                        else Textos.get(R.string.select_an_available_lane),
+                        if (ui.carrilesDisponibles.isEmpty()) Textos.get("there_are_no_free_lanes_at")
+                        else Textos.get("select_an_available_lane"),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
@@ -559,7 +611,7 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                                 modifier = Modifier.heightIn(min = 44.dp)
                             ) {
                                 Text(
-                                    Textos.get(R.string.lane_2, carril),
+                                    Textos.get("lane_2", carril),
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = if (seleccionado) SobreMarca else if (disponible) TextoPrincipal else TextoTenue
@@ -572,14 +624,14 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            Textos.get(R.string.lbl_personas),
+                            Textos.get("lbl_personas"),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = TextoSecundario,
                             letterSpacing = 0.4.sp
                         )
                         Text(
-                            Textos.get(R.string.free_spots_of, ui.maxPersonas, area.capacidad),
+                            Textos.get("free_spots_of", ui.maxPersonas, area.capacidad),
                             style = MaterialTheme.typography.bodySmall,
                             color = TextoSecundario
                         )
@@ -613,17 +665,17 @@ private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel
                 text = if (listo) {
                     "$etiquetaFecha · %02d:00 → %02d:00 (%dh) · %s".format(
                         desde, hasta!! + 1, ui.horasElegidas,
-                        if (ui.personas == 1) Textos.get(R.string.n_1_person) else Textos.get(R.string.people_5, ui.personas)
-                    ) + (ui.carril?.let { Textos.get(R.string.lane_3, it) } ?: "")
+                        if (ui.personas == 1) Textos.get("n_1_person") else Textos.get("people_5", ui.personas)
+                    ) + (ui.carril?.let { Textos.get("lane_3", it) } ?: "")
                 } else {
-                    Textos.get(R.string.choose_the_hours_you_want_to)
+                    Textos.get("choose_the_hours_you_want_to")
                 },
                 style = MaterialTheme.typography.titleSmall,
                 color = if (listo) TextoPrincipal else TextoSecundario,
                 modifier = Modifier.padding(bottom = 10.dp)
             )
             BotonPrimario(
-                texto = Textos.get(R.string.confirm_booking),
+                texto = Textos.get("confirm_booking"),
                 enabled = listo,
                 cargando = ui.enviando,
                 onClick = { viewModel.confirmar() }
@@ -633,10 +685,11 @@ private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel
 }
 
 @Composable
-private fun CeldaHora(celda: HoraUi, elegida: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun CeldaHora(celda: HoraUi, elegida: Boolean, permiteEspera: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val estado = celda.estado
     val ocupada = estado.lleno || estado.torneo != null
-    val habilitada = celda.seleccionable && !ocupada
+    // Una hora llena también se puede tocar (socios y visitantes): ofrece entrar a la lista de espera.
+    val habilitada = (celda.seleccionable && !ocupada) || (permiteEspera && celda.esperable)
     val pocosLugares = !celda.pasada && estado.pocosLugares
     val fondo = when {
         elegida -> Marca
@@ -660,9 +713,10 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, modifier: Modifier, onCli
         shape = RoundedCornerShape(10.dp),
         color = fondo,
         border = BorderStroke(
-            if (elegida) 1.5.dp else 1.dp,
+            if (elegida || celda.enEspera) 1.5.dp else 1.dp,
             when {
                 elegida -> Marca
+                celda.enEspera -> Alerta
                 ocupada -> UnavailableBorder
                 celda.pasada -> Borde
                 pocosLugares -> StatusAmberBorder
@@ -672,25 +726,27 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, modifier: Modifier, onCli
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text(numero, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = texto, maxLines = 1)
-            Text(sufijo, fontSize = 12.sp, color = texto, maxLines = 1)
+            Text(if (celda.enEspera) ICONO_ESPERA else sufijo, fontSize = 12.sp, color = texto, maxLines = 1)
         }
     }
 }
 
+private const val ICONO_ESPERA = "⏳"
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Leyenda() {
+private fun Leyenda(mostrarEspera: Boolean) {
     FlowRow(
         modifier = Modifier.padding(top = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         listOf(
-            Textos.get(R.string.available) to AvailabilityContainer,
-            Textos.get(R.string.few_spots) to AlertaSuave,
-            Textos.get(R.string.occupied_2) to UnavailableContainer,
-            Textos.get(R.string.selected) to Marca,
-            Textos.get(R.string.already_passed) to FondoApp
+            Textos.get("available") to AvailabilityContainer,
+            Textos.get("few_spots") to AlertaSuave,
+            Textos.get("occupied_2") to UnavailableContainer,
+            Textos.get("selected") to Marca,
+            Textos.get("already_passed") to FondoApp
         ).forEach { (nombre, color) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -708,6 +764,104 @@ private fun Leyenda() {
                 )
             }
         }
+        if (mostrarEspera) {
+            Text("$ICONO_ESPERA ${Textos.get("espera_leyenda")}", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+        }
+    }
+}
+
+/** Ofrece entrar a la lista de espera de una hora llena, con cuántas personas. */
+@Composable
+private fun DialogoListaEspera(area: Area, fecha: String, hora: Int, onConfirmar: (Int) -> Unit, onCancelar: () -> Unit) {
+    var personas by rememberSaveable { mutableIntStateOf(1) }
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = Superficie,
+        title = { Text(Textos.get("espera_titulo_dialogo"), style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
+        text = {
+            Column {
+                Text(
+                    Textos.get(
+                        "espera_mensaje_dialogo",
+                        Deportes.titulo(area.tipo, area.nombre), fecha, "%02d:00".format(hora), "%02d:00".format(hora + 1),
+                        Catalogos.MINUTOS_PRIORIDAD_LISTA_ESPERA
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextoSecundario
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(Textos.get("lbl_personas"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextoSecundario, letterSpacing = 0.4.sp)
+                    ContadorPersonas(
+                        valor = personas,
+                        puedeBajar = personas > 1,
+                        puedeSubir = personas < area.capacidad,
+                        onMenos = { personas-- },
+                        onMas = { personas++ }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirmar(personas) }) {
+                Text(Textos.get("espera_unirme"), color = Marca, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) {
+                Text(Textos.get("cancel"), color = TextoSecundario, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    )
+}
+
+/** Una hora en la que la persona está esperando lugar: su lugar en la fila o, si ya le tocó, hasta cuándo puede reservar. */
+@Composable
+private fun TarjetaEspera(espera: EsperaListada, onReservar: () -> Unit, onSalir: () -> Unit) {
+    val entrada = espera.entrada
+    val leTocaReservar = espera.limite != null
+    TarjetaClub(modifier = Modifier.fillMaxWidth(), destacada = leTocaReservar, fondo = if (leTocaReservar) AlertaSuave else Superficie) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(espera.emoji, fontSize = 26.sp)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(espera.titulo, style = MaterialTheme.typography.titleSmall, color = TextoPrincipal, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "${Fechas.legible(entrada.fecha)} · %02d:00–%02d:00 · %s".format(
+                            entrada.hora, entrada.hora + 1,
+                            if (entrada.personas == 1) Textos.get("n_1_person") else Textos.get("people_5", entrada.personas)
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario
+                    )
+                }
+            }
+            Text(
+                text = when {
+                    leTocaReservar -> Textos.get("espera_tu_turno", espera.limite!!)
+                    espera.posicion != null -> Textos.get("espera_posicion", espera.posicion)
+                    else -> Textos.get("espera_en_fila")
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (leTocaReservar) Alerta else TextoPrincipal,
+                modifier = Modifier.padding(top = 10.dp)
+            )
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onSalir) {
+                    Text(Textos.get("espera_salir"), color = Peligro, fontWeight = FontWeight.SemiBold)
+                }
+                if (leTocaReservar) {
+                    TextButton(onClick = onReservar) {
+                        Text(Textos.get("espera_reservar"), color = Marca, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -716,7 +870,7 @@ private fun ContadorPersonas(valor: Int, puedeBajar: Boolean, puedeSubir: Boolea
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         BotonIcono(
             Icons.Filled.Remove,
-            Textos.get(R.string.one_person_less),
+            Textos.get("one_person_less"),
             onMenos,
             enabled = puedeBajar,
             conReflejo = false
@@ -731,7 +885,7 @@ private fun ContadorPersonas(valor: Int, puedeBajar: Boolean, puedeSubir: Boolea
         )
         BotonIcono(
             Icons.Filled.Add,
-            Textos.get(R.string.one_more_person),
+            Textos.get("one_more_person"),
             onMas,
             enabled = puedeSubir,
             conReflejo = false

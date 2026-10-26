@@ -6,13 +6,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
+import com.example.clubdeportivo.data.GestorListaEspera
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.util.Fechas
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /**
@@ -46,14 +46,18 @@ class AprobacionesViewModel : ViewModel() {
                     .sortedWith(compareBy({ it.fecha }, { it.horaInicio }))
             } catch (e: Exception) {
                 pendientes = pendientes ?: emptyList()
-                mensaje = Textos.get(R.string.the_bookings_pending_approval_could_no)
+                mensaje = Textos.get("the_bookings_pending_approval_could_no")
             }
         }
     }
 
-    fun aprobar(reserva: Reserva) = resolver(reserva, Textos.get(R.string.booking_approved)) { repositorio.aprobarReserva(reserva.id) }
+    fun aprobar(reserva: Reserva) = resolver(reserva, Textos.get("booking_approved")) { repositorio.aprobarReserva(reserva.id) }
 
-    fun rechazar(reserva: Reserva) = resolver(reserva, Textos.get(R.string.booking_rejected)) { repositorio.rechazarReserva(reserva.id) }
+    fun rechazar(reserva: Reserva) = resolver(reserva, Textos.get("booking_rejected")) {
+        repositorio.rechazarReserva(reserva.id)
+        // El lugar que ocupaba la solicitud se aparta para el primero de la lista de espera de esas horas.
+        runCatching { GestorListaEspera.promover(reserva.areaId, reserva.fecha) }
+    }
 
     private fun resolver(reserva: Reserva, exito: String, accion: suspend () -> Unit) {
         if (reserva.id in enProceso) return
@@ -65,10 +69,10 @@ class AprobacionesViewModel : ViewModel() {
                 mensaje = exito
             } catch (e: IllegalStateException) {
                 // Reglas de negocio (otra área, ya respondida por alguien más, ya terminó...): se explican tal cual.
-                mensaje = e.message ?: Textos.get(R.string.the_action_could_not_be_completed_2)
+                mensaje = e.message ?: Textos.get("the_action_could_not_be_completed_2")
                 cargar()
             } catch (e: Exception) {
-                mensaje = Textos.get(R.string.the_action_could_not_be_completed_3)
+                mensaje = Textos.get("the_action_could_not_be_completed_3")
             }
             enProceso = enProceso - reserva.id
         }

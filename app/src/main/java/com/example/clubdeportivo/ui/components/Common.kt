@@ -83,7 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
+import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -97,7 +97,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.ui.theme.Alerta
 import com.example.clubdeportivo.ui.theme.AlertaSuave
@@ -327,7 +326,7 @@ fun CampoBusqueda(
                         shape = RoundedCornerShape(10.dp)
                     )
                 ) {
-                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.borrar_busqueda))
+                    Icon(Icons.Filled.Close, contentDescription = tr("borrar_busqueda"))
                 }
             }
         } else null
@@ -853,10 +852,10 @@ fun DialogoFormulario(
 
     if (confirmandoSalida) {
         DialogoConfirmacion(
-            titulo = stringResource(R.string.salir_formulario_titulo),
-            mensaje = stringResource(R.string.salir_formulario_mensaje),
-            textoConfirmar = stringResource(R.string.salir_si),
-            textoCancelar = stringResource(R.string.seguir_editando),
+            titulo = tr("salir_formulario_titulo"),
+            mensaje = tr("salir_formulario_mensaje"),
+            textoConfirmar = tr("salir_si"),
+            textoCancelar = tr("seguir_editando"),
             onConfirmar = {
                 confirmandoSalida = false
                 onCerrar()
@@ -897,7 +896,7 @@ fun DialogoFormulario(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.cerrar),
+                            contentDescription = tr("cerrar"),
                             tint = TextoSecundario
                         )
                     }
@@ -930,7 +929,7 @@ fun DialogoConfirmacion(
     textoConfirmar: String,
     onConfirmar: () -> Unit,
     onCancelar: () -> Unit,
-    textoCancelar: String = stringResource(R.string.volver),
+    textoCancelar: String = tr("volver"),
     conReflejo: Boolean = true
 ) {
     AlertDialog(

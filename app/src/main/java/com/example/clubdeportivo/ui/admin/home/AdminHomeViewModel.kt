@@ -18,7 +18,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Lo que pasa en el club hoy; null mientras no se ha podido leer ese dato. */
@@ -58,7 +57,7 @@ class AdminHomeViewModel : ViewModel() {
             try {
                 MigracionEsquema.asegurar(FirebaseFirestore.getInstance())
             } catch (e: Exception) {
-                Log.w("Esquema", Textos.get(R.string.the_database_structure_could_not_be), e)
+                Log.w("Esquema", Textos.get("the_database_structure_could_not_be"), e)
             }
 
             val hoy = Fechas.hoy()

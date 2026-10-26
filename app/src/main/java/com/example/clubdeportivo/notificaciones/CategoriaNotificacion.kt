@@ -1,8 +1,6 @@
 package com.example.clubdeportivo.notificaciones
 
-import androidx.annotation.StringRes
 import androidx.core.app.NotificationManagerCompat
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esEncargado
@@ -27,25 +25,26 @@ enum class TipoUsuario {
  * sistema) y un interruptor en Perfil → Notificaciones. [tipos] limita quién la recibe.
  */
 enum class CategoriaNotificacion(
-    @StringRes val nombre: Int,
-    @StringRes val descripcion: Int,
+    val nombre: String,
+    val descripcion: String,
     val importancia: Int,
     val tipos: Set<TipoUsuario>
 ) {
     // ---- Miembros y visitantes
-    RESERVA_PROXIMA(R.string.notif_cat_reserva_proxima, R.string.notif_cat_reserva_proxima_desc, NotificationManagerCompat.IMPORTANCE_HIGH, setOf(TipoUsuario.CLIENTE)),
-    RESERVA_RESPUESTA(R.string.notif_cat_reserva_respuesta, R.string.notif_cat_reserva_respuesta_desc, NotificationManagerCompat.IMPORTANCE_HIGH, setOf(TipoUsuario.CLIENTE)),
-    MEMBRESIA(R.string.notif_cat_membresia, R.string.notif_cat_membresia_desc, NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.CLIENTE)),
+    RESERVA_PROXIMA("notif_cat_reserva_proxima", "notif_cat_reserva_proxima_desc", NotificationManagerCompat.IMPORTANCE_HIGH, setOf(TipoUsuario.CLIENTE)),
+    RESERVA_RESPUESTA("notif_cat_reserva_respuesta", "notif_cat_reserva_respuesta_desc", NotificationManagerCompat.IMPORTANCE_HIGH, setOf(TipoUsuario.CLIENTE)),
+    MEMBRESIA("notif_cat_membresia", "notif_cat_membresia_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.CLIENTE)),
+    LISTA_ESPERA("notif_cat_espera", "notif_cat_espera_desc", NotificationManagerCompat.IMPORTANCE_HIGH, setOf(TipoUsuario.CLIENTE)),
 
     // ---- Encargados y administradores
-    SOLICITUDES(R.string.notif_cat_solicitudes, R.string.notif_cat_solicitudes_desc, NotificationManagerCompat.IMPORTANCE_HIGH, setOf(TipoUsuario.ENCARGADO, TipoUsuario.ADMINISTRADOR)),
-    ASISTENCIA(R.string.notif_cat_asistencia, R.string.notif_cat_asistencia_desc, NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ENCARGADO)),
-    STOCK(R.string.notif_cat_stock, R.string.notif_cat_stock_desc, NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ENCARGADO, TipoUsuario.ADMINISTRADOR)),
-    VENCIMIENTOS(R.string.notif_cat_vencimientos, R.string.notif_cat_vencimientos_desc, NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ADMINISTRADOR)),
+    SOLICITUDES("notif_cat_solicitudes", "notif_cat_solicitudes_desc", NotificationManagerCompat.IMPORTANCE_HIGH, setOf(TipoUsuario.ENCARGADO, TipoUsuario.ADMINISTRADOR)),
+    ASISTENCIA("notif_cat_asistencia", "notif_cat_asistencia_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ENCARGADO)),
+    STOCK("notif_cat_stock", "notif_cat_stock_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ENCARGADO, TipoUsuario.ADMINISTRADOR)),
+    VENCIMIENTOS("notif_cat_vencimientos", "notif_cat_vencimientos_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ADMINISTRADOR)),
 
     // ---- Todos
-    TORNEO(R.string.notif_cat_torneo, R.string.notif_cat_torneo_desc, NotificationManagerCompat.IMPORTANCE_DEFAULT, TipoUsuario.entries.toSet()),
-    AVISOS(R.string.notif_cat_avisos, R.string.notif_cat_avisos_desc, NotificationManagerCompat.IMPORTANCE_DEFAULT, TipoUsuario.entries.toSet());
+    TORNEO("notif_cat_torneo", "notif_cat_torneo_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, TipoUsuario.entries.toSet()),
+    AVISOS("notif_cat_avisos", "notif_cat_avisos_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, TipoUsuario.entries.toSet());
 
     val canalId: String get() = "club_${name.lowercase()}"
 

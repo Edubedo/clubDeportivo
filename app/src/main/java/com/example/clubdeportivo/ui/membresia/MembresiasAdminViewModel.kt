@@ -4,18 +4,19 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.ClavesPrecio
 import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.MembresiaDetalle
 import com.example.clubdeportivo.data.model.MetodoPago
+import com.example.clubdeportivo.data.model.MotivoSuspension
 import com.example.clubdeportivo.data.model.PersonaForm
 import com.example.clubdeportivo.data.model.PlanIndividual
 import com.example.clubdeportivo.data.model.TipoMembresia
 import com.example.clubdeportivo.data.repository.GestionMembresiasRepository
 import com.example.clubdeportivo.data.repository.PreciosRepository
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.Idioma
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Textos
 import kotlinx.coroutines.launch
@@ -60,7 +61,7 @@ class MembresiasAdminViewModel(
             try {
                 _membresias.value = repositorio.obtenerTodas()
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_memberships_could_not_be_loaded)
+                _mensaje.value = Textos.get("the_memberships_could_not_be_loaded")
             }
             _cargando.value = false
         }
@@ -95,7 +96,7 @@ class MembresiasAdminViewModel(
                 _guardadoExitoso.value = (_guardadoExitoso.value ?: 0) + 1
                 cargar()
             } catch (e: Exception) {
-                _errorFormulario.value = e.message ?: Textos.get(R.string.the_member_could_not_be_registered)
+                _errorFormulario.value = e.message ?: Textos.get("the_member_could_not_be_registered")
             }
             _guardando.value = false
         }
@@ -111,7 +112,7 @@ class MembresiasAdminViewModel(
     ) {
         val membresia = detalle.membresia
         if (estado == EstadoMembresia.SUSPENDIDA && membresia.estado != EstadoMembresia.SUSPENDIDA && motivoSuspension.isNullOrBlank()) {
-            _errorFormulario.value = Textos.get(R.string.choose_why_the_membership_is_being)
+            _errorFormulario.value = Textos.get("choose_why_the_membership_is_being")
             return
         }
         val anteriorALosCodigos = detalle.personas.any { it.codigo.isBlank() }
@@ -139,11 +140,11 @@ class MembresiasAdminViewModel(
                     repositorio.actualizar(membresia.id, plan, paqueteId, precio, personas)
                 }
                 if (estado != null && estado != membresia.estado) repositorio.cambiarEstado(membresia.id, estado, motivoSuspension)
-                _mensaje.value = Textos.get(R.string.changes_saved_2)
+                _mensaje.value = Textos.get("changes_saved_2")
                 _guardadoExitoso.value = (_guardadoExitoso.value ?: 0) + 1
                 cargar()
             } catch (e: Exception) {
-                _errorFormulario.value = e.message ?: Textos.get(R.string.the_changes_could_not_be_saved)
+                _errorFormulario.value = e.message ?: Textos.get("the_changes_could_not_be_saved")
             }
             _guardando.value = false
         }
@@ -154,13 +155,13 @@ class MembresiasAdminViewModel(
             try {
                 repositorio.cambiarEstado(detalle.membresia.id, estado, motivo)
                 _mensaje.value = if (estado == EstadoMembresia.SUSPENDIDA) {
-                    Textos.get(R.string.membership_suspended_while_it_is_they)
+                    Textos.get("membership_suspended_while_it_is_they")
                 } else {
-                    Textos.get(R.string.membership_reactivated)
+                    Textos.get("membership_reactivated")
                 }
                 cargar()
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_status_could_not_be_changed)
+                _mensaje.value = Textos.get("the_status_could_not_be_changed")
             }
         }
     }
@@ -169,11 +170,11 @@ class MembresiasAdminViewModel(
     fun darDeBaja(detalle: MembresiaDetalle) {
         viewModelScope.launch {
             try {
-                repositorio.darDeBaja(detalle.membresia.id, Textos.get(R.string.miembro_motivo_baja))
-                _mensaje.value = Textos.get(R.string.miembro_baja_ok)
+                repositorio.darDeBaja(detalle.membresia.id, Textos.en(Idioma.ES, MotivoSuspension.CLAVE_BAJA_MIEMBRO))
+                _mensaje.value = Textos.get("miembro_baja_ok")
                 cargar()
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.miembro_baja_error)
+                _mensaje.value = Textos.get("miembro_baja_error")
             }
         }
     }
@@ -184,11 +185,11 @@ class MembresiasAdminViewModel(
             try {
                 val precio = ClavesPrecio.deMembresia(membresia.tipo, membresia.plan, membresia.paqueteFamiliarId, preciosActuales())
                 repositorio.renovar(membresia.id, precio, metodoPago)
-                _mensaje.value = Textos.get(R.string.payment_of_recorded_membership_renewed, dinero(precio)) +
+                _mensaje.value = Textos.get("payment_of_recorded_membership_renewed", dinero(precio)) +
                     "${Fechas.legible(ReglasMembresia.fechasDeRenovacion(membresia, Fechas.hoy()).second)}."
                 cargar()
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_membership_could_not_be_renewed)
+                _mensaje.value = Textos.get("the_membership_could_not_be_renewed")
             }
         }
     }
@@ -199,11 +200,11 @@ class MembresiasAdminViewModel(
             _guardando.value = true
             try {
                 repositorio.restablecerAcceso(codigo)
-                _mensaje.value = Textos.get(R.string.done_can_sign_up_again, codigo)
+                _mensaje.value = Textos.get("done_can_sign_up_again", codigo)
                 _guardadoExitoso.value = (_guardadoExitoso.value ?: 0) + 1
                 cargar()
             } catch (e: Exception) {
-                _mensaje.value = e.message ?: Textos.get(R.string.the_access_could_not_be_reset)
+                _mensaje.value = e.message ?: Textos.get("the_access_could_not_be_reset")
             }
             _guardando.value = false
         }

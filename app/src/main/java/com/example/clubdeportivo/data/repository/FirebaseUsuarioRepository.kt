@@ -5,7 +5,6 @@ import com.example.clubdeportivo.util.Resultado
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 class FirebaseUsuarioRepository(
@@ -35,7 +34,7 @@ class FirebaseUsuarioRepository(
         } catch (e: Exception) {
 
             Resultado.Error(
-                e.message ?: Textos.get(R.string.the_profile_could_not_be_updated)
+                e.message ?: Textos.get("the_profile_could_not_be_updated")
             )
         }
     }

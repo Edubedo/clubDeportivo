@@ -18,7 +18,6 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 private fun DocumentSnapshot.toMiembro(): MiembroClub = MiembroClub(
@@ -71,7 +70,7 @@ class FirebaseGestionMembresiasRepository(
         val lista = mutableListOf(
             MiembroClub(
                 codigo = "",
-                nombre = titular.getString("nombre") ?: Textos.get(R.string.no_name),
+                nombre = titular.getString("nombre") ?: Textos.get("no_name"),
                 telefono = titular.getString("telefono") ?: "",
                 correo = titular.getString("email") ?: "",
                 membresiaId = membresia.id,
@@ -144,7 +143,7 @@ class FirebaseGestionMembresiasRepository(
         )
         batch.commit().await()
 
-        val membresia = membresias.document(membresiaId).get().await().toMembresia() ?: error(Textos.get(R.string.the_created_membership_could_not_be))
+        val membresia = membresias.document(membresiaId).get().await().toMembresia() ?: error(Textos.get("the_created_membership_could_not_be"))
         return MembresiaDetalle(membresia, registradas)
     }
 
@@ -258,7 +257,7 @@ class FirebaseGestionMembresiasRepository(
     override suspend fun cambiarEstado(membresiaId: String, estado: EstadoMembresia, motivo: String?) {
         val cambios = mutableMapOf<String, Any>("estado" to estado.name, "actualizadoEn" to FieldValue.serverTimestamp())
         if (estado == EstadoMembresia.SUSPENDIDA) {
-            require(!motivo.isNullOrBlank()) { Textos.get(R.string.say_why_the_membership_is_being) }
+            require(!motivo.isNullOrBlank()) { Textos.get("say_why_the_membership_is_being") }
             cambios["motivoSuspension"] = motivo
             cambios["suspendidaEn"] = Fechas.hoy()
             cambios["suspendidaPor"] = SesionManager.usuarioActual?.id ?: ""
@@ -275,7 +274,7 @@ class FirebaseGestionMembresiasRepository(
     }
 
     override suspend fun darDeBaja(membresiaId: String, motivo: String) {
-        require(motivo.isNotBlank()) { Textos.get(R.string.say_why_the_member_is_being) }
+        require(motivo.isNotBlank()) { Textos.get("say_why_the_member_is_being") }
         val batch = db.batch()
         batch.update(
             membresias.document(membresiaId),
@@ -303,7 +302,7 @@ class FirebaseGestionMembresiasRepository(
 
     override suspend fun renovar(membresiaId: String, precio: Double, metodoPago: MetodoPago) {
         val documento = membresias.document(membresiaId).get().await()
-        val membresia = documento.toMembresia() ?: error(Textos.get(R.string.the_membership_no_longer_exists))
+        val membresia = documento.toMembresia() ?: error(Textos.get("the_membership_no_longer_exists"))
         val hoy = Fechas.hoy()
         val (inicio, vence) = ReglasMembresia.fechasDeRenovacion(membresia, hoy)
         val batch = db.batch()
@@ -339,8 +338,8 @@ class FirebaseGestionMembresiasRepository(
 
     override suspend fun restablecerAcceso(codigo: String) {
         val miembro = miembros.document(codigo).get().await()
-        if (!miembro.exists()) error(Textos.get(R.string.that_member_no_longer_exists))
-        if (miembro.getBoolean("cuentaCreada") != true) error(Textos.get(R.string.this_member_hasn_t_signed_up))
+        if (!miembro.exists()) error(Textos.get("that_member_no_longer_exists"))
+        if (miembro.getBoolean("cuentaCreada") != true) error(Textos.get("this_member_hasn_t_signed_up"))
 
         val membresiaId = miembro.getString("membresiaId").orEmpty()
         val tipo = membresias.document(membresiaId).get().await().toMembresia()?.tipo ?: TipoMembresia.INDIVIDUAL
@@ -357,9 +356,9 @@ class FirebaseGestionMembresiasRepository(
         val auth = authSecundaria()
         val uidNuevo = try {
             auth.createUserWithEmailAndPassword(ReglasMembresia.emailDeCodigo(codigo), codigo).await().user?.uid
-                ?: error(Textos.get(R.string.the_code_could_not_be_prepared))
+                ?: error(Textos.get("the_code_could_not_be_prepared"))
         } catch (e: FirebaseAuthUserCollisionException) {
-            error(Textos.get(R.string.this_code_still_has_its_original))
+            error(Textos.get("this_code_still_has_its_original"))
         }
         auth.signOut()
 

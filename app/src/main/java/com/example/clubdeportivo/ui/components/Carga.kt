@@ -39,12 +39,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.res.stringResource
+import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.SobreMarca
 import com.example.clubdeportivo.ui.theme.TextoSecundario
@@ -169,7 +168,7 @@ fun CargandoMarca(modifier: Modifier = Modifier, tamano: Dp = 64.dp, sobreOscuro
  */
 @Composable
 fun PantallaCarga(modifier: Modifier = Modifier, conMargen: Boolean = false) {
-    val descripcion = stringResource(R.string.cargando)
+    val descripcion = tr("cargando")
     Column(
         modifier = modifier
             .fillMaxSize()

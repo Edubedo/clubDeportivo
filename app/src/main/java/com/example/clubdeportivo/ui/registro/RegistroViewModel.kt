@@ -13,7 +13,6 @@ import com.example.clubdeportivo.util.ReglasContrasena
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Resultado
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Los dos pasos del registro: primero el código del miembro, después sus datos. */
@@ -69,11 +68,11 @@ class RegistroViewModel(
         _yaRegistrado.value = false
         val limpio = ReglasMembresia.normalizarCodigo(texto)
         if (texto.isBlank()) {
-            _codigoError.value = Textos.get(R.string.enter_your_member_code)
+            _codigoError.value = Textos.get("enter_your_member_code")
             return
         }
         if (!ReglasMembresia.esCodigo(limpio)) {
-            _codigoError.value = Textos.get(R.string.the_code_looks_like_this_clb)
+            _codigoError.value = Textos.get("the_code_looks_like_this_clb")
             return
         }
         _codigoError.value = null
@@ -109,14 +108,14 @@ class RegistroViewModel(
         var esValido = true
 
         if (nombre.trim().length < 3) {
-            _nombreError.value = Textos.get(R.string.enter_your_full_name)
+            _nombreError.value = Textos.get("enter_your_full_name")
             esValido = false
         } else {
             _nombreError.value = null
         }
 
         if (!Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) {
-            _emailError.value = Textos.get(R.string.enter_a_valid_email_address)
+            _emailError.value = Textos.get("enter_a_valid_email_address")
             esValido = false
         } else {
             _emailError.value = null
@@ -131,7 +130,7 @@ class RegistroViewModel(
         }
 
         if (confirmar != password) {
-            _confirmarError.value = Textos.get(R.string.the_passwords_don_t_match_2)
+            _confirmarError.value = Textos.get("the_passwords_don_t_match_2")
             esValido = false
         } else {
             _confirmarError.value = null
@@ -139,7 +138,7 @@ class RegistroViewModel(
 
         // Sin aceptar los términos y condiciones no se crea la cuenta.
         if (!aceptoTerminos) {
-            _terminosError.value = Textos.get(R.string.you_must_accept_the_terms_and)
+            _terminosError.value = Textos.get("you_must_accept_the_terms_and")
             esValido = false
         } else {
             _terminosError.value = null

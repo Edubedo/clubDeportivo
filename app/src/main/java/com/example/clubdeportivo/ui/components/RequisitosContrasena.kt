@@ -23,7 +23,6 @@ import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.ReglasContrasena
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Lista de requisitos de la contraseña: cada uno se marca en verde en cuanto se cumple. */
@@ -40,7 +39,7 @@ fun RequisitosContrasena(contrasena: String, modifier: Modifier = Modifier) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(
                     imageVector = if (requisito.cumple) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
-                    contentDescription = if (requisito.cumple) Textos.get(R.string.met) else Textos.get(R.string.missing),
+                    contentDescription = if (requisito.cumple) Textos.get("met") else Textos.get("missing"),
                     tint = if (requisito.cumple) Exito else BordeCampo,
                     modifier = Modifier.size(18.dp)
                 )

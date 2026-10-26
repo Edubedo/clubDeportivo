@@ -46,7 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -54,7 +54,6 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import java.io.File
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.ui.components.SelectorIdioma
 import com.example.clubdeportivo.ui.components.BotonPrimario
@@ -114,7 +113,7 @@ fun PerfilScreen(
             uriCamara = uri
             camara.launch(uri)
         } catch (e: Exception) {
-            viewModel.mostrarMensaje(context.getString(R.string.perfil_camara_error))
+            viewModel.mostrarMensaje(tr("perfil_camara_error"))
         }
     }
 
@@ -152,7 +151,7 @@ fun PerfilScreen(
                 if (fotoPerfil != null) {
                     AsyncImage(
                         model = fotoPerfil,
-                        contentDescription = stringResource(R.string.foto_perfil),
+                        contentDescription = tr("foto_perfil"),
                         modifier = Modifier
                             .size(96.dp)
                             .clip(CircleShape)
@@ -174,20 +173,20 @@ fun PerfilScreen(
                     onClick = { selectorFoto.launch("image/*") }
                 ) {
                     Text(
-                        text = if (fotoPerfil == null) stringResource(R.string.agregar_foto) else stringResource(R.string.cambiar_foto),
+                        text = if (fotoPerfil == null) tr("agregar_foto") else tr("cambiar_foto"),
                         color = Marca,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 if (fotoPerfil != null) {
                     TextButton(enabled = !subiendoFoto, onClick = { viewModel.quitarFoto() }) {
-                        Text(text = stringResource(R.string.quitar_foto), color = Peligro, fontWeight = FontWeight.SemiBold)
+                        Text(text = tr("quitar_foto"), color = Peligro, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
 
             Text(
-                text = usuario?.nombre ?: stringResource(R.string.perfil_title),
+                text = usuario?.nombre ?: tr("perfil_title"),
                 style = MaterialTheme.typography.headlineMedium,
                 color = TextoPrincipal
             )
@@ -201,13 +200,13 @@ fun PerfilScreen(
             TarjetaClub(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = stringResource(R.string.perfil_info_personal),
+                        text = tr("perfil_info_personal"),
                         style = MaterialTheme.typography.titleMedium,
                         color = TextoPrincipal
                     )
 
                     Text(
-                        text = stringResource(R.string.perfil_actualiza_datos),
+                        text = tr("perfil_actualiza_datos"),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.padding(top = 2.dp)
@@ -215,29 +214,29 @@ fun PerfilScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    EtiquetaCampo(stringResource(R.string.perfil_nombre_etiqueta))
+                    EtiquetaCampo(tr("perfil_nombre_etiqueta"))
                     CampoTexto(
                         value = nombre,
                         onValueChange = { nombre = it },
-                        placeholder = stringResource(R.string.perfil_nombre_placeholder),
+                        placeholder = tr("perfil_nombre_placeholder"),
                         leadingIcon = { Icon(imageVector = Icons.Outlined.Person, contentDescription = null) }
                     )
 
                     EspacioCampos()
 
-                    EtiquetaCampo(stringResource(R.string.perfil_correo_etiqueta))
+                    EtiquetaCampo(tr("perfil_correo_etiqueta"))
                     CampoTexto(
                         value = correo,
                         onValueChange = {},
                         readOnly = true,
                         tipoTeclado = KeyboardType.Email,
                         leadingIcon = { Icon(imageVector = Icons.Outlined.Email, contentDescription = null) },
-                        mensajeError = stringResource(R.string.perfil_correo_fijo)
+                        mensajeError = tr("perfil_correo_fijo")
                     )
 
                     EspacioCampos()
 
-                    EtiquetaCampo(stringResource(R.string.perfil_rol_etiqueta))
+                    EtiquetaCampo(tr("perfil_rol_etiqueta"))
                     CampoTexto(
                         value = usuario?.rol?.nombreLegible() ?: "",
                         onValueChange = {},
@@ -248,7 +247,7 @@ fun PerfilScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     BotonPrimario(
-                        texto = stringResource(R.string.guardar_cambios),
+                        texto = tr("guardar_cambios"),
                         cargando = guardando,
                         onClick = { viewModel.actualizarPerfil(nombre = nombre) }
                     )
@@ -261,18 +260,18 @@ fun PerfilScreen(
                 val contexto = LocalContext.current
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = stringResource(R.string.apariencia_titulo),
+                        text = tr("apariencia_titulo"),
                         style = MaterialTheme.typography.titleMedium,
                         color = TextoPrincipal
                     )
                     Text(
-                        text = stringResource(R.string.apariencia_descripcion),
+                        text = tr("apariencia_descripcion"),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                     )
                     PestanasPildora(
-                        opciones = ModoTema.entries.map { stringResource(it.etiqueta) },
+                        opciones = ModoTema.entries.map { tr(it.etiqueta) },
                         seleccionada = PreferenciaTema.modo.ordinal,
                         onSeleccion = { PreferenciaTema.elegir(contexto, ModoTema.entries[it]) },
                         margenHorizontal = 0.dp
@@ -285,12 +284,12 @@ fun PerfilScreen(
             TarjetaClub(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = stringResource(R.string.idioma_titulo),
+                        text = tr("idioma_titulo"),
                         style = MaterialTheme.typography.titleMedium,
                         color = TextoPrincipal
                     )
                     Text(
-                        text = stringResource(R.string.idioma_descripcion),
+                        text = tr("idioma_descripcion"),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
@@ -308,13 +307,13 @@ fun PerfilScreen(
             TarjetaClub(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = stringResource(R.string.sesion_titulo),
+                        text = tr("sesion_titulo"),
                         style = MaterialTheme.typography.titleMedium,
                         color = TextoPrincipal
                     )
 
                     Text(
-                        text = stringResource(R.string.sesion_descripcion),
+                        text = tr("sesion_descripcion"),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.padding(top = 2.dp)
@@ -323,7 +322,7 @@ fun PerfilScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     BotonSecundario(
-                        texto = stringResource(R.string.logout_button),
+                        texto = tr("logout_button"),
                         colorTexto = Peligro,
                         conReflejo = false,
                         onClick = { confirmandoSalida = true }
@@ -338,7 +337,7 @@ fun PerfilScreen(
             onDismissRequest = { mostrarOpcionesFoto = false },
             shape = RoundedCornerShape(20.dp),
             containerColor = Superficie,
-            title = { Text(stringResource(R.string.foto_perfil), style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
+            title = { Text(tr("foto_perfil"), style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
             text = {
                 Column {
                     TextButton(
@@ -350,7 +349,7 @@ fun PerfilScreen(
                     ) {
                         Icon(Icons.Outlined.PhotoCamera, contentDescription = null, tint = Marca)
                         Text(
-                            stringResource(R.string.tomar_foto),
+                            tr("tomar_foto"),
                             color = TextoPrincipal,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f).padding(start = 12.dp)
@@ -365,7 +364,7 @@ fun PerfilScreen(
                     ) {
                         Icon(Icons.Outlined.PhotoLibrary, contentDescription = null, tint = Marca)
                         Text(
-                            stringResource(R.string.elegir_galeria),
+                            tr("elegir_galeria"),
                             color = TextoPrincipal,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f).padding(start = 12.dp)
@@ -376,7 +375,7 @@ fun PerfilScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { mostrarOpcionesFoto = false }) {
-                    Text(stringResource(R.string.cancelar), color = TextoSecundario, fontWeight = FontWeight.SemiBold)
+                    Text(tr("cancelar"), color = TextoSecundario, fontWeight = FontWeight.SemiBold)
                 }
             }
         )
@@ -384,10 +383,10 @@ fun PerfilScreen(
 
     if (confirmandoSalida) {
         DialogoConfirmacion(
-            titulo = stringResource(R.string.logout_button),
-            mensaje = stringResource(R.string.logout_confirmar),
-            textoConfirmar = stringResource(R.string.logout_button),
-            textoCancelar = stringResource(R.string.cancelar),
+            titulo = tr("logout_button"),
+            mensaje = tr("logout_confirmar"),
+            textoConfirmar = tr("logout_button"),
+            textoCancelar = tr("cancelar"),
             conReflejo = false,
             onConfirmar = {
                 confirmandoSalida = false

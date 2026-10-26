@@ -88,7 +88,6 @@ import java.util.Date
 import com.example.clubdeportivo.util.Idioma
 import com.example.clubdeportivo.util.PreferenciaIdioma
 import java.util.Locale
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 private val Tinta: Color @Composable @ReadOnlyComposable get() = tono(0xFF10233F, 0xFFE8EEF7)
@@ -145,7 +144,7 @@ fun MiembroHomeScreen(
             Column(modifier = Modifier.weight(1f)) {
                 Text(fechaHoy, style = MaterialTheme.typography.labelLarge, color = TextoSecundario)
                 Spacer(Modifier.height(4.dp))
-                Text(Textos.get(R.string.hello, nombre), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Tinta)
+                Text(Textos.get("hello", nombre), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Tinta)
             }
             Surface(shape = RoundedCornerShape(16.dp), color = AzulClaro) {
                 Row(
@@ -154,18 +153,18 @@ fun MiembroHomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(Icons.Filled.WbSunny, contentDescription = null, tint = Color(0xFFD38B13), modifier = Modifier.size(18.dp))
-                    Text(Textos.get(R.string.n_24_sunny), style = MaterialTheme.typography.labelMedium, color = Tinta)
+                    Text(Textos.get("n_24_sunny"), style = MaterialTheme.typography.labelMedium, color = Tinta)
                 }
             }
         }
 
         Spacer(Modifier.height(24.dp))
-        TituloSeccion(Textos.get(R.string.what_s_happening_at_the_club))
+        TituloSeccion(Textos.get("what_s_happening_at_the_club"))
         Spacer(Modifier.height(12.dp))
         if (novedades.isEmpty()) {
             Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Superficie)) {
                 Text(
-                    Textos.get(R.string.when_the_club_publishes_news_for),
+                    Textos.get("when_the_club_publishes_news_for"),
                     modifier = Modifier.fillMaxWidth().padding(18.dp),
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoSecundario
@@ -226,8 +225,8 @@ fun MiembroHomeScreen(
                         )
                     }
                     TextButton(onClick = { indiceNovedad = (indiceNovedad + 1) % novedades.size }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                        Text(Textos.get(R.string.next), color = Marca)
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = Textos.get(R.string.next_news_item), tint = Marca, modifier = Modifier.size(16.dp))
+                        Text(Textos.get("next"), color = Marca)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = Textos.get("next_news_item"), tint = Marca, modifier = Modifier.size(16.dp))
                     }
                 }
                 FilledTonalButton(
@@ -245,13 +244,13 @@ fun MiembroHomeScreen(
 
         Spacer(Modifier.height(22.dp))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TituloSeccion(Textos.get(R.string.your_upcoming_bookings), modifier = Modifier.weight(1f))
-            TextButton(onClick = onReservar) { Text(Textos.get(R.string.see_all), color = Marca) }
+            TituloSeccion(Textos.get("your_upcoming_bookings"), modifier = Modifier.weight(1f))
+            TextButton(onClick = onReservar) { Text(Textos.get("see_all"), color = Marca) }
         }
         MemberBookingCard(reserva = reservasActivas.firstOrNull(), onClick = onReservar)
         Spacer(Modifier.height(14.dp))
         OutlinedButton(onClick = onMembresia, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-            Text(Textos.get(R.string.view_my_membership))
+            Text(Textos.get("view_my_membership"))
         }
     }
 
@@ -264,11 +263,11 @@ fun MiembroHomeScreen(
 }
 
 private fun Publicacion.aNovedad() = Novedad(
-    categoria = Textos.get(R.string.club_news),
+    categoria = Textos.get("club_news"),
     titulo = titulo,
-    descripcion = descripcion + vigencia.takeIf { it.isNotBlank() }?.let { Textos.get(R.string.n_nvalid_until, Fechas.legible(it)) }.orEmpty(),
+    descripcion = descripcion + vigencia.takeIf { it.isNotBlank() }?.let { Textos.get("n_nvalid_until", Fechas.legible(it)) }.orEmpty(),
     imagen = imagenUrl,
-    accion = Textos.get(R.string.view_details)
+    accion = Textos.get("view_details")
 )
 
 @Composable
@@ -282,8 +281,8 @@ private fun MemberBookingCard(reserva: ReservaListada?, onClick: () -> Unit) {
     ) {
         if (reserva == null) {
             Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
-                Text(Textos.get(R.string.you_don_t_have_any_upcoming), style = MaterialTheme.typography.titleMedium, color = Tinta, fontWeight = FontWeight.SemiBold)
-                Text(Textos.get(R.string.explore_the_available_spaces_to_schedu), style = MaterialTheme.typography.bodyMedium, color = TextoSecundario, modifier = Modifier.padding(top = 5.dp))
+                Text(Textos.get("you_don_t_have_any_upcoming"), style = MaterialTheme.typography.titleMedium, color = Tinta, fontWeight = FontWeight.SemiBold)
+                Text(Textos.get("explore_the_available_spaces_to_schedu"), style = MaterialTheme.typography.bodyMedium, color = TextoSecundario, modifier = Modifier.padding(top = 5.dp))
             }
         } else {
             Row(
@@ -293,7 +292,7 @@ private fun MemberBookingCard(reserva: ReservaListada?, onClick: () -> Unit) {
             ) {
                 Surface(color = AzulClaro, shape = RoundedCornerShape(14.dp)) {
                     Column(modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(Textos.get(R.string.lbl_fecha), style = MaterialTheme.typography.labelSmall, color = Marca, fontWeight = FontWeight.Bold)
+                        Text(Textos.get("lbl_fecha"), style = MaterialTheme.typography.labelSmall, color = Marca, fontWeight = FontWeight.Bold)
                         Text(reserva.fecha.substringAfterLast("-"), style = MaterialTheme.typography.titleLarge, color = Tinta, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -301,18 +300,18 @@ private fun MemberBookingCard(reserva: ReservaListada?, onClick: () -> Unit) {
                     Text(reserva.titulo, style = MaterialTheme.typography.titleMedium, color = Tinta, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text("${Fechas.legible(reserva.fecha)} · ${reserva.horaInicio}–${reserva.horaFin}", style = MaterialTheme.typography.bodyMedium, color = TextoSecundario)
-                    reserva.carril?.let { Text(Textos.get(R.string.lane, it), style = MaterialTheme.typography.bodySmall, color = TextoSecundario) }
+                    reserva.carril?.let { Text(Textos.get("lane", it), style = MaterialTheme.typography.bodySmall, color = TextoSecundario) }
                     val (estadoColor, estadoFondo) = if (reserva.estado == EstadoReserva.CONFIRMADA) Verde to FondoVerde else Amarillo to FondoAmarillo
                     Surface(color = estadoFondo, shape = RoundedCornerShape(50), modifier = Modifier.padding(top = 8.dp)) {
                         Text(
-                            if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) Textos.get(R.string.request_under_review) else reserva.estado.name.lowercase().replaceFirstChar { it.uppercase() },
+                            if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) Textos.get("request_under_review") else reserva.estado.name.lowercase().replaceFirstChar { it.uppercase() },
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = estadoColor
                         )
                     }
                 }
-                Icon(Icons.Filled.ChevronRight, contentDescription = Textos.get(R.string.view_my_bookings), tint = TextoSecundario)
+                Icon(Icons.Filled.ChevronRight, contentDescription = Textos.get("view_my_bookings"), tint = TextoSecundario)
             }
         }
     }
@@ -349,7 +348,7 @@ private fun NovedadDetalle(novedad: Novedad, onCerrar: () -> Unit) {
                 shape = RoundedCornerShape(14.dp),
                 colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
             ) {
-                Text(Textos.get(R.string.close))
+                Text(Textos.get("close"))
             }
         }
         }
@@ -385,9 +384,9 @@ fun EncargadoHomeScreen(
             .padding(bottom = 24.dp)
     ) {
         Spacer(Modifier.height(18.dp))
-        Text(Textos.get(R.string.my_area, area.uppercase()), style = MaterialTheme.typography.labelMedium, color = Marca, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(Textos.get("my_area", area.uppercase()), style = MaterialTheme.typography.labelMedium, color = Marca, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(Modifier.height(5.dp))
-        Text(Textos.get(R.string.good_morning, nombre), style = MaterialTheme.typography.headlineSmall, color = Tinta, fontWeight = FontWeight.Bold)
+        Text(Textos.get("good_morning", nombre), style = MaterialTheme.typography.headlineSmall, color = Tinta, fontWeight = FontWeight.Bold)
 
         Spacer(Modifier.height(16.dp))
         Card(
@@ -400,13 +399,13 @@ fun EncargadoHomeScreen(
                 Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = if (pendientes > 0) Amarillo else Verde, modifier = Modifier.size(28.dp))
                 Column {
                     Text(
-                        if (pendientes > 0) Textos.get(R.string.pending_requests, pendientes) else Textos.get(R.string.all_clear),
+                        if (pendientes > 0) Textos.get("pending_requests", pendientes) else Textos.get("all_clear"),
                         style = MaterialTheme.typography.titleMedium,
                         color = if (pendientes > 0) Amarillo else Verde,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        if (pendientes > 0) Textos.get(R.string.review_your_area_s_requests) else Textos.get(R.string.you_have_no_pending_requests),
+                        if (pendientes > 0) Textos.get("review_your_area_s_requests") else Textos.get("you_have_no_pending_requests"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Tinta
                     )
@@ -415,17 +414,17 @@ fun EncargadoHomeScreen(
         }
 
         Spacer(Modifier.height(22.dp))
-        TituloSeccion(Textos.get(R.string.today_in_your_area))
+        TituloSeccion(Textos.get("today_in_your_area"))
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            EncargadoMetric(reservasHoy.size.toString(), Textos.get(R.string.bookings_today), Textos.get(R.string.confirmed, confirmadasHoy), Icons.Filled.CalendarMonth, Modifier.weight(1f))
-            EncargadoMetric(pendientes.toString(), Textos.get(R.string.requests), Textos.get(R.string.pending_review), Icons.Filled.Schedule, Modifier.weight(1f))
+            EncargadoMetric(reservasHoy.size.toString(), Textos.get("bookings_today"), Textos.get("confirmed", confirmadasHoy), Icons.Filled.CalendarMonth, Modifier.weight(1f))
+            EncargadoMetric(pendientes.toString(), Textos.get("requests"), Textos.get("pending_review"), Icons.Filled.Schedule, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(22.dp))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TituloSeccion(Textos.get(R.string.next_booking), modifier = Modifier.weight(1f))
-            TextButton(onClick = onReservas) { Text(Textos.get(R.string.schedule), color = Marca) }
+            TituloSeccion(Textos.get("next_booking"), modifier = Modifier.weight(1f))
+            TextButton(onClick = onReservas) { Text(Textos.get("schedule"), color = Marca) }
         }
         val proximaReserva = reservasArea.firstOrNull()
         if (proximaReserva == null) {
@@ -434,7 +433,7 @@ fun EncargadoHomeScreen(
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = Superficie)
             ) {
-                Text(Textos.get(R.string.there_are_no_upcoming_bookings_in), modifier = Modifier.padding(18.dp), color = TextoSecundario)
+                Text(Textos.get("there_are_no_upcoming_bookings_in"), modifier = Modifier.padding(18.dp), color = TextoSecundario)
             }
         } else {
             Card(
@@ -449,14 +448,14 @@ fun EncargadoHomeScreen(
                         Text("${Fechas.legible(proximaReserva.fecha)} · ${proximaReserva.horaInicio}", style = MaterialTheme.typography.titleLarge, color = Tinta, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         val confirmada = proximaReserva.estado == EstadoReserva.CONFIRMADA
                         StatePill(
-                            if (confirmada) Textos.get(R.string.confirmed_2) else Textos.get(R.string.request),
+                            if (confirmada) Textos.get("confirmed_2") else Textos.get("request"),
                             if (confirmada) FondoVerde else FondoAmarillo,
                             if (confirmada) Verde else Amarillo
                         )
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        listOfNotNull(proximaReserva.carril?.let { Textos.get(R.string.lane, it) }, proximaReserva.titulo).joinToString(" · "),
+                        listOfNotNull(proximaReserva.carril?.let { Textos.get("lane", it) }, proximaReserva.titulo).joinToString(" · "),
                         style = MaterialTheme.typography.titleMedium,
                         color = Tinta,
                         fontWeight = FontWeight.SemiBold
@@ -464,9 +463,9 @@ fun EncargadoHomeScreen(
                     Spacer(Modifier.height(5.dp))
                     Text(
                         Textos.get(
-                            R.string.manual_usuario_hasta,
-                            proximaReserva.usuarioNombre.ifBlank { Textos.get(R.string.user) } +
-                                (if (proximaReserva.personas > 1) Textos.get(R.string.people, proximaReserva.personas - 1) else ""),
+                            "manual_usuario_hasta",
+                            proximaReserva.usuarioNombre.ifBlank { Textos.get("user") } +
+                                (if (proximaReserva.personas > 1) Textos.get("people", proximaReserva.personas - 1) else ""),
                             proximaReserva.horaFin
                         ),
                         style = MaterialTheme.typography.bodyMedium,
@@ -477,11 +476,11 @@ fun EncargadoHomeScreen(
         }
 
         Spacer(Modifier.height(22.dp))
-        TituloSeccion(Textos.get(R.string.club_news_2))
+        TituloSeccion(Textos.get("club_news_2"))
         Spacer(Modifier.height(12.dp))
         if (novedades.isEmpty()) {
             Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Superficie)) {
-                Text(Textos.get(R.string.when_news_for_staff_is_published), modifier = Modifier.padding(18.dp), color = TextoSecundario)
+                Text(Textos.get("when_news_for_staff_is_published"), modifier = Modifier.padding(18.dp), color = TextoSecundario)
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -516,7 +515,7 @@ fun EncargadoHomeScreen(
                                     ),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
-                                    Text(Textos.get(R.string.view_details))
+                                    Text(Textos.get("view_details"))
                                     Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Marca, modifier = Modifier.size(18.dp))
                                 }
                             }

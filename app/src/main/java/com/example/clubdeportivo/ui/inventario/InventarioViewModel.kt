@@ -14,7 +14,6 @@ import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.data.repository.InventarioRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 data class ActividadInventario(
@@ -54,7 +53,7 @@ class InventarioViewModel(
     private val _mensaje = MutableLiveData<String?>()
     val mensaje: LiveData<String?> = _mensaje
 
-    private val _filtroDeporte = MutableLiveData(Textos.get(R.string.all_2))
+    private val _filtroDeporte = MutableLiveData(Textos.get("all_2"))
     val filtroDeporte: LiveData<String> = _filtroDeporte
 
     private val _mostrarModal = MutableLiveData(false)
@@ -67,7 +66,7 @@ class InventarioViewModel(
     private val _historial = MutableLiveData<List<ActividadInventario>>(emptyList())
     val historial: LiveData<List<ActividadInventario>> = _historial
 
-    private val _deportes = MutableLiveData(listOf(Textos.get(R.string.all_2)) + Deportes.predefinidos)
+    private val _deportes = MutableLiveData(listOf(Textos.get("all_2")) + Deportes.predefinidos)
     val deportes: LiveData<List<String>> = _deportes
 
     init {
@@ -85,12 +84,12 @@ class InventarioViewModel(
                     // Un encargado solo trabaja con el deporte de su área: ni filtro "Todos" ni otros deportes.
                     listOfNotNull(actual.areaTrabajo?.trim()?.takeIf { it.isNotEmpty() })
                 } else {
-                    listOf(Textos.get(R.string.all_2)) +
+                    listOf(Textos.get("all_2")) +
                         (Deportes.predefinidos + deportesDelClub() + propios).filter { it.isNotBlank() }.distinct()
                 }
-                if (actual?.rol?.esEncargado() == true) _filtroDeporte.value = _deportes.value.orEmpty().firstOrNull() ?: Textos.get(R.string.all_2)
+                if (actual?.rol?.esEncargado() == true) _filtroDeporte.value = _deportes.value.orEmpty().firstOrNull() ?: Textos.get("all_2")
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_inventory_could_not_be_loaded)
+                _mensaje.value = Textos.get("the_inventory_could_not_be_loaded")
             }
             _cargando.value = false
         }
@@ -107,8 +106,8 @@ class InventarioViewModel(
     }
 
     fun obtenerArticulosFiltrados(): List<ArticuloInventario> {
-        val deporte = _filtroDeporte.value ?: Textos.get(R.string.all_2)
-        return if (deporte == Textos.get(R.string.all_2)) {
+        val deporte = _filtroDeporte.value ?: Textos.get("all_2")
+        return if (deporte == Textos.get("all_2")) {
             _articulos.value ?: emptyList()
         } else {
             _articulos.value?.filter { it.deporte == deporte } ?: emptyList()
@@ -146,9 +145,9 @@ class InventarioViewModel(
             try {
                 val creado = repositorio.crear(nombre.trim(), deporte, cantidadInicial, stockMinimo, icono)
                 _articulos.value = (_articulos.value.orEmpty() + creado)
-                registrarActividad(Textos.get(R.string.added_units, nombre.trim(), cantidadInicial))
+                registrarActividad(Textos.get("added_units", nombre.trim(), cantidadInicial))
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_item_could_not_be_added)
+                _mensaje.value = Textos.get("the_item_could_not_be_added")
             }
         }
         return true
@@ -174,7 +173,7 @@ class InventarioViewModel(
             )
             listaActual[indice] = editado
             _articulos.value = listaActual
-            registrarActividad(Textos.get(R.string.edited, nombre.trim()))
+            registrarActividad(Textos.get("edited", nombre.trim()))
             guardar { repositorio.actualizar(editado) }
         }
         _mostrarModal.value = false
@@ -186,7 +185,7 @@ class InventarioViewModel(
         val listaActual = _articulos.value?.toMutableList() ?: return
         if (listaActual.removeAll { it.id == articulo.id }) {
             _articulos.value = listaActual
-            registrarActividad(Textos.get(R.string.deleted_from_the_inventory, articulo.nombre))
+            registrarActividad(Textos.get("deleted_from_the_inventory", articulo.nombre))
             guardar { repositorio.eliminar(articulo.id) }
         }
     }
@@ -208,7 +207,7 @@ class InventarioViewModel(
             listaActual[indice] = articulo.copy(cantidad = nuevaCantidad)
             _articulos.value = listaActual
             val signo = if (nuevaCantidad > articulo.cantidad) "+1" else "-1"
-            registrarActividad(Textos.get(R.string.now_units, articulo.nombre, signo, nuevaCantidad))
+            registrarActividad(Textos.get("now_units", articulo.nombre, signo, nuevaCantidad))
             guardar { repositorio.actualizarCantidad(articulo.id, nuevaCantidad) }
         }
     }
@@ -219,7 +218,7 @@ class InventarioViewModel(
             try {
                 operacion()
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_change_could_not_be_saved_2)
+                _mensaje.value = Textos.get("the_change_could_not_be_saved_2")
                 try {
                     _articulos.value = repositorio.obtenerArticulos().filter { usuario().puedeVerDeporte(it.deporte) }
                 } catch (_: Exception) { }

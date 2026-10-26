@@ -22,10 +22,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.notificaciones.CategoriaNotificacion
 import com.example.clubdeportivo.notificaciones.Notificador
@@ -60,12 +59,12 @@ fun TarjetaNotificaciones() {
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                text = stringResource(R.string.notif_perfil_titulo),
+                text = tr("notif_perfil_titulo"),
                 style = MaterialTheme.typography.titleMedium,
                 color = TextoPrincipal
             )
             Text(
-                text = stringResource(R.string.notif_perfil_descripcion),
+                text = tr("notif_perfil_descripcion"),
                 style = MaterialTheme.typography.bodySmall,
                 color = TextoSecundario,
                 modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
@@ -73,13 +72,13 @@ fun TarjetaNotificaciones() {
 
             if (!permitidas) {
                 Text(
-                    text = stringResource(R.string.notif_perfil_desactivadas),
+                    text = tr("notif_perfil_desactivadas"),
                     style = MaterialTheme.typography.bodySmall,
                     color = Alerta,
                     modifier = Modifier.padding(bottom = 10.dp)
                 )
                 BotonSecundario(
-                    texto = stringResource(R.string.notif_perfil_abrir_ajustes),
+                    texto = tr("notif_perfil_abrir_ajustes"),
                     conReflejo = false,
                     onClick = {
                         contexto.startActivity(
@@ -100,8 +99,8 @@ fun TarjetaNotificaciones() {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(categoria.nombre), style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
-                        Text(stringResource(categoria.descripcion), style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+                        Text(tr(categoria.nombre), style = MaterialTheme.typography.titleSmall, color = TextoPrincipal)
+                        Text(tr(categoria.descripcion), style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
                     }
                     Switch(
                         checked = estados[categoria] == true,

@@ -1,15 +1,12 @@
 package com.example.clubdeportivo.ui.components
 
-import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.stringResource
-import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.tr
 
 /**
  * Un proceso a medias (por ejemplo, una reserva con deporte y horas ya elegidos) que no se debe perder sin querer.
@@ -22,8 +19,8 @@ object ProcesoEnCurso {
     var activo by mutableStateOf(false)
         private set
 
-    @get:StringRes
-    var mensaje by mutableIntStateOf(R.string.salir_proceso_mensaje)
+    /** Clave del texto (en assets/i18n) que explica qué se pierde al salir. */
+    var mensaje by mutableStateOf("salir_proceso_mensaje")
         private set
 
     /** Salida que está esperando la respuesta de la persona; mientras no sea null se muestra [DialogoSalidaProceso]. */
@@ -32,7 +29,7 @@ object ProcesoEnCurso {
 
     private var alAbandonar: (() -> Unit)? = null
 
-    internal fun registrar(@StringRes mensaje: Int, alAbandonar: () -> Unit) {
+    internal fun registrar(mensaje: String, alAbandonar: () -> Unit) {
         this.mensaje = mensaje
         this.alAbandonar = alAbandonar
         activo = true
@@ -69,7 +66,7 @@ object ProcesoEnCurso {
 @Composable
 fun ProtegerSalida(
     activo: Boolean,
-    @StringRes mensaje: Int = R.string.salir_proceso_mensaje,
+    mensaje: String = "salir_proceso_mensaje",
     alAbandonar: () -> Unit = {}
 ) {
     val descartar by rememberUpdatedState(alAbandonar)
@@ -84,10 +81,10 @@ fun ProtegerSalida(
 fun DialogoSalidaProceso() {
     if (ProcesoEnCurso.salidaPendiente == null) return
     DialogoConfirmacion(
-        titulo = stringResource(R.string.salir_proceso_titulo),
-        mensaje = stringResource(ProcesoEnCurso.mensaje),
-        textoConfirmar = stringResource(R.string.salir_si),
-        textoCancelar = stringResource(R.string.seguir_aqui),
+        titulo = tr("salir_proceso_titulo"),
+        mensaje = tr(ProcesoEnCurso.mensaje),
+        textoConfirmar = tr("salir_si"),
+        textoCancelar = tr("seguir_aqui"),
         onConfirmar = ProcesoEnCurso::confirmarSalida,
         onCancelar = ProcesoEnCurso::cancelarSalida
     )

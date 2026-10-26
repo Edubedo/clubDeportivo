@@ -32,7 +32,6 @@ import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Reserva vigente con su estado y la opción de cancelarla (siempre pide confirmación antes). */
@@ -66,16 +65,16 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                         color = TextoSecundario
                     )
                     Text(
-                        text = if (reserva.personas == 1) Textos.get(R.string.n_1_person) else Textos.get(R.string.people_4, reserva.personas),
+                        text = if (reserva.personas == 1) Textos.get("n_1_person") else Textos.get("people_4", reserva.personas),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario
                     )
                 }
                 Insignia(
                     texto = when {
-                        pendiente -> Textos.get(R.string.under_review_2)
-                        rechazada -> Textos.get(R.string.rejected)
-                        else -> Textos.get(R.string.confirmed_2)
+                        pendiente -> Textos.get("under_review_2")
+                        rechazada -> Textos.get("rejected")
+                        else -> Textos.get("confirmed_2")
                     },
                     tipo = when {
                         pendiente -> TipoInsignia.ALERTA
@@ -93,7 +92,7 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                         onClick = { confirmando = true }
                     ) {
                         Text(
-                            if (pendiente) Textos.get(R.string.cancel_request) else Textos.get(R.string.cancel_booking),
+                            if (pendiente) Textos.get("cancel_request") else Textos.get("cancel_booking"),
                             color = Peligro,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -105,10 +104,10 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
 
     if (confirmando) {
         DialogoConfirmacion(
-            titulo = Textos.get(R.string.cancel_booking),
-            mensaje = Textos.get(R.string.cancel_on_at, reserva.titulo, Fechas.legible(reserva.fecha), reserva.horaInicio) +
-                    Textos.get(R.string.if_there_are_less_than_hours, Catalogos.CANCELACION_SIN_PENALIZACION_HORAS),
-            textoConfirmar = Textos.get(R.string.cancel_booking),
+            titulo = Textos.get("cancel_booking"),
+            mensaje = Textos.get("cancel_on_at", reserva.titulo, Fechas.legible(reserva.fecha), reserva.horaInicio) +
+                    Textos.get("if_there_are_less_than_hours", Catalogos.CANCELACION_SIN_PENALIZACION_HORAS),
+            textoConfirmar = Textos.get("cancel_booking"),
             onConfirmar = {
                 confirmando = false
                 onCancelar()

@@ -36,7 +36,6 @@ import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.BordeCampo
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Máximo de caracteres del detalle cuando el motivo es "Otro". */
@@ -91,7 +90,7 @@ internal fun SelectorMotivoSuspension(
             CampoTexto(
                 value = detalle,
                 onValueChange = { onDetalle(it.take(LIMITE_DETALLE)) },
-                placeholder = Textos.get(R.string.write_the_reason),
+                placeholder = Textos.get("write_the_reason"),
                 singleLine = false,
                 minLines = 2,
                 capitalizacion = KeyboardCapitalization.Sentences,
@@ -112,23 +111,23 @@ internal fun DialogoSuspension(
     var detalle by remember { mutableStateOf("") }
 
     DialogoFormulario(
-        titulo = Textos.get(R.string.suspend_membership),
+        titulo = Textos.get("suspend_membership"),
         onCerrar = onCancelar,
         pie = {
             BotonPrimario(
-                texto = Textos.get(R.string.suspend_membership),
+                texto = Textos.get("suspend_membership"),
                 enabled = motivoCompleto(seleccion, detalle),
                 onClick = { seleccion?.let { onConfirmar(it.textoGuardado(detalle)) } }
             )
         }
     ) {
         Text(
-            text = Textos.get(R.string.why_is_s_membership_being_suspended, nombre),
+            text = Textos.get("why_is_s_membership_being_suspended", nombre),
             style = MaterialTheme.typography.titleSmall,
             color = TextoPrincipal
         )
         Text(
-            text = Textos.get(R.string.while_it_is_suspended_they_won),
+            text = Textos.get("while_it_is_suspended_they_won"),
             style = MaterialTheme.typography.bodySmall,
             color = TextoSecundario,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
@@ -155,11 +154,11 @@ internal fun DialogoRenovar(
     var metodo by remember { mutableStateOf(MetodoPago.EFECTIVO) }
 
     DialogoFormulario(
-        titulo = Textos.get(R.string.renew_membership),
+        titulo = Textos.get("renew_membership"),
         onCerrar = onCancelar,
         pie = {
             BotonPrimario(
-                texto = Textos.get(R.string.charge_and_renew, dinero(precio)),
+                texto = Textos.get("charge_and_renew", dinero(precio)),
                 onClick = { onConfirmar(metodo) }
             )
         }
@@ -169,7 +168,7 @@ internal fun DialogoRenovar(
                 Text(nombre, style = MaterialTheme.typography.titleMedium, color = TextoPrincipal)
                 Text(plan, style = MaterialTheme.typography.bodyMedium, color = TextoSecundario)
                 Text(
-                    text = Textos.get(R.string.one_more_month_until, vigenteHasta),
+                    text = Textos.get("one_more_month_until", vigenteHasta),
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextoSecundario
                 )
@@ -184,7 +183,7 @@ internal fun DialogoRenovar(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        EtiquetaCampo(Textos.get(R.string.payment_method))
+        EtiquetaCampo(Textos.get("payment_method"))
         PestanasPildora(
             opciones = MetodoPago.entries.map { it.etiqueta },
             seleccionada = metodo.ordinal,

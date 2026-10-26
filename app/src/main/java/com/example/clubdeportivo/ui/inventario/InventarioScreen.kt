@@ -80,8 +80,8 @@ import com.example.clubdeportivo.ui.components.modifierReflejo
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
+import com.example.clubdeportivo.data.model.etiquetaDeporte
 
 @Composable
 fun InventarioScreen(
@@ -90,10 +90,10 @@ fun InventarioScreen(
     val articulos by viewModel.articulos.observeAsState(emptyList())
     val cargando by viewModel.cargando.observeAsState(true)
     val mensaje by viewModel.mensaje.observeAsState()
-    val filtroDeporte by viewModel.filtroDeporte.observeAsState(Textos.get(R.string.all_2))
+    val filtroDeporte by viewModel.filtroDeporte.observeAsState(Textos.get("all_2"))
     val mostrarModal by viewModel.mostrarModal.observeAsState(false)
     val articuloEnEdicion by viewModel.articuloEnEdicion.observeAsState()
-    val articulosFiltrados = if (filtroDeporte == Textos.get(R.string.all_2)) {
+    val articulosFiltrados = if (filtroDeporte == Textos.get("all_2")) {
         articulos
     } else {
         articulos.filter { it.deporte == filtroDeporte }
@@ -117,7 +117,7 @@ fun InventarioScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             BotonFlotanteAgregar(
-                texto = Textos.get(R.string.add_item),
+                texto = Textos.get("add_item"),
                 visible = listState.botonFlotanteVisible(),
                 onClick = { viewModel.abrirModalAgregar() }
             )
@@ -131,7 +131,7 @@ fun InventarioScreen(
             // Un encargado solo tiene el deporte de su área: no hay nada que filtrar.
             if (deportes.size > 1) {
                 PestanasPildora(
-                    opciones = deportes,
+                    opciones = deportes.map(::etiquetaDeporte),
                     seleccionada = deportes.indexOf(filtroDeporte).coerceAtLeast(0),
                     onSeleccion = { viewModel.filtrarPorDeporte(deportes[it]) }
                 )
@@ -141,7 +141,7 @@ fun InventarioScreen(
                 FullScreenLoading()
             } else if (articulosFiltrados.isEmpty()) {
                 EmptyState(
-                    mensaje = Textos.get(R.string.there_are_no_items_in_this),
+                    mensaje = Textos.get("there_are_no_items_in_this"),
                     icono = Icons.Outlined.Inventory2
                 )
             } else {
@@ -168,7 +168,7 @@ fun InventarioScreen(
     if (mostrarModal) {
         ModalArticulo(
             articuloEnEdicion = articuloEnEdicion,
-            deportes = deportes.filterNot { it == Textos.get(R.string.all_2) },
+            deportes = deportes.filterNot { it == Textos.get("all_2") },
             existeNombre = { nombre, id -> viewModel.existeNombre(nombre, id) },
             onGuardar = { id, nombre, deporte, cantidad, stockMinimo ->
                 if (id != null) {
@@ -183,10 +183,10 @@ fun InventarioScreen(
 
     articuloAEliminar?.let { articulo ->
         DialogoConfirmacion(
-            titulo = Textos.get(R.string.delete_item),
-            mensaje = Textos.get(R.string.are_you_sure_you_want_to_2, articulo.nombre),
-            textoConfirmar = Textos.get(R.string.delete),
-            textoCancelar = Textos.get(R.string.cancel),
+            titulo = Textos.get("delete_item"),
+            mensaje = Textos.get("are_you_sure_you_want_to_2", articulo.nombre),
+            textoConfirmar = Textos.get("delete"),
+            textoCancelar = Textos.get("cancel"),
             onConfirmar = {
                 viewModel.eliminarArticulo(articulo)
                 articuloAEliminar = null
@@ -228,7 +228,7 @@ fun ArticuloCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = articulo.deporte,
+                        text = etiquetaDeporte(articulo.deporte),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario
                     )
@@ -240,7 +240,7 @@ fun ArticuloCard(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
-                        contentDescription = Textos.get(R.string.edit_3, articulo.nombre),
+                        contentDescription = Textos.get("edit_3", articulo.nombre),
                         tint = TextoSecundario,
                         modifier = Modifier.size(20.dp)
                     )
@@ -251,7 +251,7 @@ fun ArticuloCard(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
-                        contentDescription = Textos.get(R.string.delete_3, articulo.nombre),
+                        contentDescription = Textos.get("delete_3", articulo.nombre),
                         tint = Peligro,
                         modifier = Modifier.size(20.dp)
                     )
@@ -267,14 +267,14 @@ fun ArticuloCard(
             ) {
                 if (stockBajo) {
                     Insignia(
-                        texto = Textos.get(R.string.low_stock_min, articulo.stockMinimo),
+                        texto = Textos.get("low_stock_min", articulo.stockMinimo),
                         tipo = TipoInsignia.ALERTA,
                         icono = Icons.Filled.Warning,
                         modifier = Modifier.weight(1f, fill = false)
                     )
                 } else {
                     Text(
-                        text = Textos.get(R.string.minimum_stock, articulo.stockMinimo),
+                        text = Textos.get("minimum_stock", articulo.stockMinimo),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario,
                         modifier = Modifier.weight(1f, fill = false)
@@ -303,7 +303,7 @@ fun BotonesCantidad(
     ) {
         BotonIcono(
             icono = Icons.Filled.Remove,
-            descripcion = Textos.get(R.string.remove_one_unit),
+            descripcion = Textos.get("remove_one_unit"),
             onClick = onMenos,
             enabled = cantidad > 0,
             conReflejo = false
@@ -321,7 +321,7 @@ fun BotonesCantidad(
 
         BotonIcono(
             icono = Icons.Filled.Add,
-            descripcion = Textos.get(R.string.add_one_unit),
+            descripcion = Textos.get("add_one_unit"),
             onClick = onMas,
             conReflejo = false
         )
@@ -353,11 +353,11 @@ private fun ModalArticulo(
     val nombreRepetido = nombre.isNotBlank() && existeNombre(nombre, articuloEnEdicion?.id)
 
     DialogoFormulario(
-        titulo = if (enEdicion) Textos.get(R.string.edit_item) else Textos.get(R.string.add_item),
+        titulo = if (enEdicion) Textos.get("edit_item") else Textos.get("add_item"),
         onCerrar = onCerrar,
         pie = {
             BotonPrimario(
-                texto = if (enEdicion) Textos.get(R.string.save_changes) else Textos.get(R.string.add),
+                texto = if (enEdicion) Textos.get("save_changes") else Textos.get("add"),
                 enabled = nombre.isNotBlank() && deporteSeleccionado.isNotBlank() && !nombreRepetido,
                 onClick = {
                     onGuardar(
@@ -371,22 +371,22 @@ private fun ModalArticulo(
             )
         }
     ) {
-        EtiquetaCampo(Textos.get(R.string.item_name))
+        EtiquetaCampo(Textos.get("item_name"))
         CampoTexto(
             value = nombre,
             onValueChange = { nombre = it },
-            placeholder = Textos.get(R.string.e_g_rackets),
+            placeholder = Textos.get("e_g_rackets"),
             capitalizacion = KeyboardCapitalization.Sentences,
             isError = nombreRepetido,
-            mensajeError = if (nombreRepetido) Textos.get(R.string.an_item_with_that_name_already) else null
+            mensajeError = if (nombreRepetido) Textos.get("an_item_with_that_name_already") else null
         )
 
         EspacioCampos()
 
-        EtiquetaCampo(Textos.get(R.string.lbl_deporte))
+        EtiquetaCampo(Textos.get("lbl_deporte"))
         ExposedDropdownMenuBox(expanded = mostrarDropdown, onExpandedChange = { mostrarDropdown = it }) {
             CampoTexto(
-                value = deporteSeleccionado.takeIf { it.isNotBlank() }?.let { "${Deportes.emojiDe(it)} $it" } ?: "",
+                value = deporteSeleccionado.takeIf { it.isNotBlank() }?.let { "${Deportes.emojiDe(it)} ${etiquetaDeporte(it)}" } ?: "",
                 onValueChange = {},
                 readOnly = true,
                 modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
@@ -395,7 +395,7 @@ private fun ModalArticulo(
             ExposedDropdownMenu(expanded = mostrarDropdown, onDismissRequest = { mostrarDropdown = false }) {
                 deportes.forEach { deporte ->
                     DropdownMenuItem(
-                        text = { Text("${Deportes.emojiDe(deporte)} $deporte") },
+                        text = { Text("${Deportes.emojiDe(deporte)} ${etiquetaDeporte(deporte)}") },
                         onClick = {
                             deporteSeleccionado = deporte
                             mostrarDropdown = false
@@ -412,7 +412,7 @@ private fun ModalArticulo(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                EtiquetaCampo(if (enEdicion) Textos.get(R.string.lbl_cantidad) else Textos.get(R.string.initial_quantity))
+                EtiquetaCampo(if (enEdicion) Textos.get("lbl_cantidad") else Textos.get("initial_quantity"))
                 CampoTexto(
                     value = cantidad,
                     onValueChange = { cantidad = it.filter(Char::isDigit).take(5) },
@@ -421,7 +421,7 @@ private fun ModalArticulo(
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                EtiquetaCampo(Textos.get(R.string.minimum_stock_2))
+                EtiquetaCampo(Textos.get("minimum_stock_2"))
                 CampoTexto(
                     value = stockMinimo,
                     onValueChange = { stockMinimo = it.filter(Char::isDigit).take(5) },
