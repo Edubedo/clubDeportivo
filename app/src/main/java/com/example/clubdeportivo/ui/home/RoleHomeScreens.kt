@@ -2,6 +2,9 @@ package com.example.clubdeportivo.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,15 +18,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
@@ -46,6 +51,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.tono
@@ -53,6 +59,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -60,14 +67,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.ui.components.MargenPantalla
+import com.example.clubdeportivo.ui.components.BloqueEsqueleto
 import com.example.clubdeportivo.ui.components.TituloSeccion
 import com.example.clubdeportivo.ui.theme.Borde
 import com.example.clubdeportivo.ui.theme.Exito
@@ -112,16 +124,28 @@ fun MiembroHomeScreen(
     onReservar: () -> Unit,
     onMembresia: () -> Unit
 ) {
-    var indiceNovedad by remember { mutableIntStateOf(0) }
-    var novedadAbierta by remember { mutableStateOf<Novedad?>(null) }
+    val weatherViewModel: WeatherViewModel = viewModel()
+    var novedadAbierta by remember { mutableIntStateOf(-1) }
+    var imagenCompleta by remember { mutableStateOf<String?>(null) }
+    var dedoPresionado by remember { mutableStateOf(false) }
     val reservas by reservasViewModel.reservas.observeAsState(emptyList())
     val reservasActivas = reservas.filter {
         it.estado == EstadoReserva.CONFIRMADA || it.estado == EstadoReserva.PENDIENTE_APROBACION
     }
     val nombre = SesionManager.usuarioActual?.nombre?.substringBefore(" ")?.ifBlank { "Mariana" } ?: "Mariana"
-    val novedades = publicacionesViewModel.visibles
-        .filter { it.imagenUrl.isNotBlank() }
-        .map { it.aNovedad() }
+    val novedades = publicacionesViewModel.visibles.map { it.aNovedad() }
+    val pagerState = rememberPagerState(pageCount = { novedades.size })
+    val scope = rememberCoroutineScope()
+    val clima = weatherViewModel.uiState
+    LaunchedEffect(novedades.size, dedoPresionado, pagerState) {
+        if (novedades.size < 2) return@LaunchedEffect
+        while (true) {
+            delay(4_500)
+            if (!dedoPresionado && !pagerState.isScrollInProgress) {
+                pagerState.animateScrollToPage((pagerState.currentPage + 1) % novedades.size)
+            }
+        }
+    }
     val fechaHoy = remember {
         val formato = if (PreferenciaIdioma.actual == Idioma.EN) {
             SimpleDateFormat("EEEE, MMMM d", Locale.US)
@@ -146,16 +170,7 @@ fun MiembroHomeScreen(
                 Spacer(Modifier.height(4.dp))
                 Text(Textos.get("hello", nombre), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Tinta)
             }
-            Surface(shape = RoundedCornerShape(16.dp), color = AzulClaro) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(Icons.Filled.WbSunny, contentDescription = null, tint = Color(0xFFD38B13), modifier = Modifier.size(18.dp))
-                    Text(Textos.get("n_24_sunny"), style = MaterialTheme.typography.labelMedium, color = Tinta)
-                }
-            }
+            WeatherWidget(state = clima, onRetry = weatherViewModel::reintentar)
         }
 
         Spacer(Modifier.height(24.dp))
@@ -171,46 +186,73 @@ fun MiembroHomeScreen(
                 )
             }
         } else {
-        val destacada = novedades[indiceNovedad.coerceIn(novedades.indices)]
-        Card(
-            onClick = { novedadAbierta = destacada },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = Superficie),
-            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-        ) {
-            Box(modifier = Modifier.fillMaxWidth().height(190.dp)) {
-                AsyncImage(
-                    model = destacada.imagen,
-                    contentDescription = destacada.titulo,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC071426))))
-                )
-                Surface(
-                    modifier = Modifier.align(Alignment.TopStart).padding(14.dp),
-                    shape = RoundedCornerShape(50),
-                    color = Superficie.copy(alpha = 0.94f)
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            dedoPresionado = true
+                            try {
+                                waitForUpOrCancellation()
+                            } finally {
+                                dedoPresionado = false
+                            }
+                        }
+                    },
+                pageSpacing = 12.dp
+            ) { page ->
+                val novedad = novedades[page]
+                Card(
+                    onClick = { novedadAbierta = page },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = Superficie),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                 ) {
-                    Text(destacada.categoria, modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp), color = Tinta, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                }
-                Column(modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)) {
-                    Text(destacada.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text(
-                        destacada.descripcion.substringBefore(".") + ".",
-                        color = Color.White.copy(alpha = 0.9f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(190.dp)
+                            .background(if (novedad.imagen.isBlank()) Tinta else Color.Transparent)
+                    ) {
+                        if (novedad.imagen.isNotBlank()) {
+                            AsyncImage(
+                                model = novedad.imagen,
+                                contentDescription = novedad.titulo,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC071426))))
+                        )
+                        Surface(
+                            modifier = Modifier.align(Alignment.TopStart).padding(14.dp),
+                            shape = RoundedCornerShape(50),
+                            color = Superficie.copy(alpha = 0.94f)
+                        ) {
+                            Text(novedad.categoria, modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp), color = Tinta, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                        }
+                        Column(modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+                            Text(novedad.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text(
+                                novedad.descripcion.substringBefore(".") + ".",
+                                color = Color.White.copy(alpha = 0.9f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
+            val destacada = novedades[pagerState.currentPage.coerceIn(novedades.indices)]
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -218,28 +260,31 @@ fun MiembroHomeScreen(
                     novedades.indices.forEach { index ->
                         Box(
                             modifier = Modifier
-                                .size(if (indiceNovedad == index) 8.dp else 6.dp)
+                                .size(if (pagerState.currentPage == index) 8.dp else 6.dp)
                                 .clip(CircleShape)
-                                .background(if (indiceNovedad == index) Marca else Borde)
-                                .clickable { indiceNovedad = index }
+                                .background(if (pagerState.currentPage == index) Marca else Borde)
+                                .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
                         )
                     }
-                    TextButton(onClick = { indiceNovedad = (indiceNovedad + 1) % novedades.size }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                        Text(Textos.get("next"), color = Marca)
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = Textos.get("next_news_item"), tint = Marca, modifier = Modifier.size(16.dp))
-                    }
                 }
-                FilledTonalButton(
-                    onClick = { novedadAbierta = destacada },
-                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                        containerColor = AzulClaro,
-                        contentColor = Marca
-                    )
+                TextButton(
+                    onClick = { novedadAbierta = pagerState.currentPage },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                 ) {
-                    Text(destacada.accion, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        destacada.accion,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
-        }
         }
 
         Spacer(Modifier.height(22.dp))
@@ -254,10 +299,18 @@ fun MiembroHomeScreen(
         }
     }
 
-    novedadAbierta?.let { novedad ->
+    if (novedadAbierta >= 0 && novedades.isNotEmpty()) {
         NovedadDetalle(
-            novedad = novedad,
-            onCerrar = { novedadAbierta = null }
+            novedades = novedades,
+            paginaInicial = novedadAbierta,
+            onCerrar = { novedadAbierta = -1 },
+            onAbrirImagen = { imagenCompleta = it }
+        )
+    }
+    imagenCompleta?.let { imagen ->
+        ImagenCompleta(
+            imagen = imagen,
+            onCerrar = { imagenCompleta = null }
         )
     }
 }
@@ -318,39 +371,151 @@ private fun MemberBookingCard(reserva: ReservaListada?, onClick: () -> Unit) {
 }
 
 @Composable
-private fun NovedadDetalle(novedad: Novedad, onCerrar: () -> Unit) {
-    Dialog(onDismissRequest = onCerrar, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(modifier = Modifier.fillMaxSize().padding(14.dp), shape = RoundedCornerShape(24.dp), color = Superficie) {
-        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-            Column(
-                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.Top
-            ) {
-            if (novedad.imagen.isNotBlank()) {
-                AsyncImage(
-                    model = novedad.imagen,
-                    contentDescription = novedad.titulo,
-                    modifier = Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.Crop
-                )
+private fun WeatherWidget(state: WeatherUiState, onRetry: () -> Unit) {
+    Surface(shape = RoundedCornerShape(16.dp), color = AzulClaro) {
+        when (state) {
+            WeatherUiState.Loading -> {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    BloqueEsqueleto(Modifier.width(72.dp).height(10.dp), RoundedCornerShape(5.dp))
+                    BloqueEsqueleto(Modifier.width(48.dp).height(10.dp), RoundedCornerShape(5.dp))
+                }
             }
-            Spacer(Modifier.height(18.dp))
-            Text(novedad.categoria, style = MaterialTheme.typography.labelMedium, color = Marca, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            Text(novedad.titulo, style = MaterialTheme.typography.headlineSmall, color = Tinta, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(novedad.descripcion, style = MaterialTheme.typography.bodyLarge, color = TextoSecundario)
+            is WeatherUiState.Success -> {
+                val weatherCode = state.data.weatherCode
+                val condition = when (weatherCode) {
+                    0 -> "weather_clear"
+                    1, 2 -> "weather_partly_cloudy"
+                    3 -> "weather_cloudy"
+                    45, 48 -> "weather_fog"
+                    in 51..67, in 80..82 -> "weather_rain"
+                    in 71..77, 85, 86 -> "weather_snow"
+                    in 95..99 -> "weather_storm"
+                    else -> "weather_cloudy"
+                }
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = if (weatherCode == 0) Icons.Filled.WbSunny else Icons.Filled.Cloud,
+                        contentDescription = null,
+                        tint = if (weatherCode == 0) Color(0xFFD38B13) else Marca,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Column {
+                        Text(
+                            text = Textos.get("weather_temperature", state.data.temperatureCelsius),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Tinta
+                        )
+                        Text(Textos.get(condition), style = MaterialTheme.typography.labelSmall, color = TextoSecundario)
+                    }
+                }
             }
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = onCerrar,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
-            ) {
-                Text(Textos.get("close"))
+            is WeatherUiState.Error -> {
+                Column(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(state.message, style = MaterialTheme.typography.labelSmall, color = Tinta)
+                    TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
+                        Text(Textos.get("reintentar_button"), style = MaterialTheme.typography.labelSmall, color = Marca)
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun NovedadDetalle(
+    novedades: List<Novedad>,
+    paginaInicial: Int,
+    onCerrar: () -> Unit,
+    onAbrirImagen: (String) -> Unit
+) {
+    val pagerState = rememberPagerState(
+        initialPage = paginaInicial.coerceIn(novedades.indices),
+        pageCount = { novedades.size }
+    )
+    Dialog(onDismissRequest = onCerrar, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(modifier = Modifier.fillMaxSize().padding(14.dp), shape = RoundedCornerShape(24.dp), color = Superficie) {
+            Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+                Text(
+                    Textos.get("novedad_pager_page", pagerState.currentPage + 1, novedades.size),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextoSecundario
+                )
+                Spacer(Modifier.height(8.dp))
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f)
+                ) { page ->
+                    val novedad = novedades[page]
+                    Column(
+                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.Top
+                    ) {
+                        if (novedad.imagen.isNotBlank()) {
+                            AsyncImage(
+                                model = novedad.imagen,
+                                contentDescription = novedad.titulo,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .clickable { onAbrirImagen(novedad.imagen) },
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Text(novedad.categoria, style = MaterialTheme.typography.labelMedium, color = Marca, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(6.dp))
+                        Text(novedad.titulo, style = MaterialTheme.typography.headlineSmall, color = Tinta, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Text(novedad.descripcion, style = MaterialTheme.typography.bodyLarge, color = TextoSecundario)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onCerrar,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Peligro)
+                ) {
+                    Text(Textos.get("close"))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImagenCompleta(imagen: String, onCerrar: () -> Unit) {
+    Dialog(
+        onDismissRequest = onCerrar,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = imagen,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+            TextButton(
+                onClick = onCerrar,
+                modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)
+            ) {
+                Text(Textos.get("close"), color = Color.White)
+            }
         }
     }
 }
@@ -361,7 +526,8 @@ fun EncargadoHomeScreen(
     reservasViewModel: ReservasViewModel,
     onReservas: () -> Unit
 ) {
-    var novedadAbierta by remember { mutableStateOf<Novedad?>(null) }
+    var novedadAbierta by remember { mutableIntStateOf(-1) }
+    var imagenCompleta by remember { mutableStateOf<String?>(null) }
     val reservas by reservasViewModel.reservas.observeAsState(emptyList())
     val usuario = SesionManager.usuarioActual
     val nombre = usuario?.nombre?.substringBefore(" ")?.ifBlank { "Esteban" } ?: "Esteban"
@@ -484,9 +650,9 @@ fun EncargadoHomeScreen(
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                novedades.forEach { novedad ->
+                novedades.forEachIndexed { index, novedad ->
                     Card(
-                        onClick = { novedadAbierta = novedad },
+                        onClick = { novedadAbierta = index },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = Superficie),
@@ -507,16 +673,22 @@ fun EncargadoHomeScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End
                             ) {
-                                FilledTonalButton(
-                                    onClick = { novedadAbierta = novedad },
-                                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = AzulClaro,
-                                        contentColor = Marca
-                                    ),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                TextButton(
+                                    onClick = { novedadAbierta = index },
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                                 ) {
-                                    Text(Textos.get("view_details"))
-                                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Marca, modifier = Modifier.size(18.dp))
+                                    Text(
+                                        Textos.get("view_details"),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Icon(
+                                        Icons.Filled.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
                             }
                         }
@@ -526,7 +698,17 @@ fun EncargadoHomeScreen(
         }
     }
 
-    novedadAbierta?.let { NovedadDetalle(it) { novedadAbierta = null } }
+    if (novedadAbierta >= 0 && novedades.isNotEmpty()) {
+        NovedadDetalle(
+            novedades = novedades,
+            paginaInicial = novedadAbierta,
+            onCerrar = { novedadAbierta = -1 },
+            onAbrirImagen = { imagenCompleta = it }
+        )
+    }
+    imagenCompleta?.let { imagen ->
+        ImagenCompleta(imagen = imagen, onCerrar = { imagenCompleta = null })
+    }
 }
 
 @Composable

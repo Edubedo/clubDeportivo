@@ -3,7 +3,9 @@ package com.example.clubdeportivo.ui.perfil
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -33,6 +36,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +55,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import java.io.File
@@ -98,6 +105,7 @@ fun PerfilScreen(
     }
 
     var mostrarOpcionesFoto by remember { mutableStateOf(false) }
+    var mostrarFotoCompleta by remember { mutableStateOf(false) }
     // rememberSaveable: Android puede cerrar la app mientras la cámara está abierta y hay que recordar dónde quedó la foto.
     var uriCamara by rememberSaveable { mutableStateOf<Uri?>(null) }
     val camara = rememberLauncherForActivityResult(
@@ -155,7 +163,7 @@ fun PerfilScreen(
                         modifier = Modifier
                             .size(96.dp)
                             .clip(CircleShape)
-                            .clickable(enabled = !subiendoFoto) { mostrarOpcionesFoto = true },
+                            .clickable(enabled = !subiendoFoto) { mostrarFotoCompleta = true },
                         contentScale = ContentScale.Crop
                     )
                 } else {
@@ -170,7 +178,8 @@ fun PerfilScreen(
 
             Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 TextButton(
-                    onClick = { selectorFoto.launch("image/*") }
+                    enabled = !subiendoFoto,
+                    onClick = { mostrarOpcionesFoto = true }
                 ) {
                     Text(
                         text = if (fotoPerfil == null) tr("agregar_foto") else tr("cambiar_foto"),
@@ -379,6 +388,39 @@ fun PerfilScreen(
                 }
             }
         )
+    }
+
+    if (mostrarFotoCompleta && fotoPerfil != null) {
+        BackHandler(onBack = { mostrarFotoCompleta = false })
+        Dialog(
+            onDismissRequest = { mostrarFotoCompleta = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.92f))
+                    .clickable { mostrarFotoCompleta = false },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = fotoPerfil,
+                    contentDescription = tr("foto_perfil"),
+                    modifier = Modifier.fillMaxSize().padding(24.dp).clickable { },
+                    contentScale = ContentScale.Fit
+                )
+                IconButton(
+                    onClick = { mostrarFotoCompleta = false },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = tr("cerrar"),
+                        tint = Color.White
+                    )
+                }
+            }
+        }
     }
 
     if (confirmandoSalida) {
