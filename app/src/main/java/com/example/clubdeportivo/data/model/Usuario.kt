@@ -1,6 +1,5 @@
 package com.example.clubdeportivo.data.model
 
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /**
@@ -23,11 +22,11 @@ enum class Rol {
 
 fun Rol.nombreLegible(): String = Textos.get(
     when (this) {
-        Rol.SUPERADMIN -> R.string.rol_superadmin
-        Rol.ADMIN -> R.string.rol_admin
-        Rol.ADMIN_AREA, Rol.AYUDANTE_AREA -> R.string.rol_encargado
-        Rol.SOCIO -> R.string.rol_miembro
-        Rol.VISITANTE_EXTERNO -> R.string.rol_visitante
+        Rol.SUPERADMIN -> "rol_superadmin"
+        Rol.ADMIN -> "rol_admin"
+        Rol.ADMIN_AREA, Rol.AYUDANTE_AREA -> "rol_encargado"
+        Rol.SOCIO -> "rol_miembro"
+        Rol.VISITANTE_EXTERNO -> "rol_visitante"
     }
 )
 

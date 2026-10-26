@@ -7,8 +7,16 @@ import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.Deportes
+import com.example.clubdeportivo.data.GestorListaEspera
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Area
+import com.example.clubdeportivo.data.model.EntradaEspera
+import com.example.clubdeportivo.data.model.EstadoEspera
+import com.example.clubdeportivo.data.repository.ListaEsperaRepository
+import com.example.clubdeportivo.util.ReglasListaEspera
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Rol
@@ -24,18 +32,34 @@ import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.ReglasReserva
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
+import com.example.clubdeportivo.data.model.etiquetaMotivoSuspension
+import com.example.clubdeportivo.data.model.etiquetaArea
 
 /** Una hora de la cuadrícula ("hora" = 6 es 06:00-07:00) con su estado de ocupación. */
 data class HoraUi(
     val estado: ReglasReserva.EstadoHora,
     /** El horario ya comenzó o terminó. */
-    val pasada: Boolean
+    val pasada: Boolean,
+    /** La persona está en la lista de espera de esta hora. */
+    val enEspera: Boolean = false
 ) {
     val hora get() = estado.hora
     val seleccionable get() = estado.disponible && !pasada
+    /** Llena por reservas (no por un torneo) y todavía no empieza: se puede pedir lugar en la lista de espera. */
+    val esperable get() = !pasada && estado.torneo == null && estado.lleno
 }
+
+/** Una entrada de la lista de espera de la persona, lista para mostrar. */
+data class EsperaListada(
+    val entrada: EntradaEspera,
+    val titulo: String,
+    val emoji: String,
+    /** Lugar en la fila (1 = la siguiente); null si ya no está en ella. */
+    val posicion: Int?,
+    /** "HH:mm" hasta la que se le guarda el lugar liberado; null si todavía no le toca. */
+    val limite: String?
+)
 
 data class ReservaEspacioUi(
     val cargando: Boolean = true,
@@ -77,7 +101,8 @@ data class ReservaListada(
     val estado: EstadoReserva,
     val deporte: String,
     val carril: Int?,
-    val usuarioNombre: String
+    val usuarioNombre: String,
+    val areaId: String = ""
 )
 
 class ReservasViewModel(
@@ -85,7 +110,8 @@ class ReservasViewModel(
     private val areaRepository: AreaRepository = AppContainer.areaRepository,
     private val torneoRepository: TorneoRepository = AppContainer.torneoRepository,
     private val restriccionHorarioRepository: RestriccionHorarioRepository = AppContainer.restriccionHorarioRepository,
-    private val membresiaRepository: MembresiaRepository = AppContainer.membresiaRepository
+    private val membresiaRepository: MembresiaRepository = AppContainer.membresiaRepository,
+    private val listaEsperaRepository: ListaEsperaRepository = AppContainer.listaEsperaRepository
 ) : ViewModel() {
 
     private val _ui = MutableLiveData(ReservaEspacioUi())
@@ -93,6 +119,13 @@ class ReservasViewModel(
 
     private val _reservas = MutableLiveData<List<ReservaListada>>(emptyList())
     val reservas: LiveData<List<ReservaListada>> = _reservas
+
+    private val _esperas = MutableLiveData<List<EsperaListada>>(emptyList())
+    val esperas: LiveData<List<EsperaListada>> = _esperas
+
+    /** Hora llena que la persona tocó: se le ofrece entrar a la lista de espera. */
+    private val _ofertaEspera = MutableLiveData<Int?>(null)
+    val ofertaEspera: LiveData<Int?> = _ofertaEspera
 
     private val _mensaje = MutableLiveData<String?>()
     val mensaje: LiveData<String?> = _mensaje
@@ -104,6 +137,9 @@ class ReservasViewModel(
     private val estado get() = _ui.value ?: ReservaEspacioUi()
     private val usuario get() = SesionManager.usuarioActual
     val esVisitanteExterno get() = usuario?.rol == Rol.VISITANTE_EXTERNO
+
+    /** Socios y visitantes hacen fila en las horas llenas; el personal reserva sin lista de espera. */
+    private val usaListaEspera get() = usuario?.rol?.esCliente() == true
 
     /** Días que se pueden elegir (hoy + [Catalogos.ANTICIPACION_MAXIMA_DIAS]). */
     val fechas = Fechas.proximosDias(Catalogos.ANTICIPACION_MAXIMA_DIAS + 1)
@@ -118,13 +154,13 @@ class ReservasViewModel(
         val actual = usuario ?: return null
         if (!actual.rol.esCliente()) return null
         val membresia = membresiaRepository.obtenerMembresia(actual.id)
-            ?: return Textos.get(R.string.we_couldn_t_find_a_membership)
+            ?: return Textos.get("we_couldn_t_find_a_membership")
         return when (ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy())) {
             EstadoMembresia.ACTIVA -> null
             EstadoMembresia.VENCIDA ->
-                Textos.get(R.string.your_membership_expired_on_renew_it, Fechas.legible(membresia.fechaVencimiento))
+                Textos.get("your_membership_expired_on_renew_it", Fechas.legible(membresia.fechaVencimiento))
             EstadoMembresia.SUSPENDIDA ->
-                Textos.get(R.string.manual_membresia_suspendida, membresia.motivoSuspension.ifBlank { Textos.get(R.string.no_reason_recorded) })
+                Textos.get("manual_membresia_suspendida", etiquetaMotivoSuspension(membresia.motivoSuspension).ifBlank { Textos.get("no_reason_recorded") })
         }
     }
 
@@ -137,7 +173,7 @@ class ReservasViewModel(
                 cargarLista(areas)
             } catch (e: Exception) {
                 _ui.value = estado.copy(cargando = false)
-                _mensaje.value = Textos.get(R.string.the_areas_could_not_be_loaded)
+                _mensaje.value = Textos.get("the_areas_could_not_be_loaded")
             }
         }
     }
@@ -149,13 +185,15 @@ class ReservasViewModel(
     }
 
     fun elegirArea(area: Area) {
-        viewModelScope.launch {
-            val (apertura, cierre) = rangoDeApertura(area)
-            val texto = Textos.get(R.string.hours_open_max_hours, apertura.take(5), cierre.take(5), Catalogos.MAX_HORAS_POR_RESERVA) +
-                if (esVisitanteExterno) Textos.get(R.string.requires_approval) else ""
-            _ui.value = estado.copy(area = area, horarioTexto = texto, desde = null, hasta = null, personas = 1, carril = null, carrilesDisponibles = emptyList())
-            recalcularHoras(apertura, cierre)
-        }
+        viewModelScope.launch { abrirArea(area) }
+    }
+
+    private suspend fun abrirArea(area: Area) {
+        val (apertura, cierre) = rangoDeApertura(area)
+        val texto = Textos.get("hours_open_max_hours", apertura.take(5), cierre.take(5), Catalogos.MAX_HORAS_POR_RESERVA) +
+            if (esVisitanteExterno) Textos.get("requires_approval") else ""
+        _ui.value = estado.copy(area = area, horarioTexto = texto, desde = null, hasta = null, personas = 1, carril = null, carrilesDisponibles = emptyList())
+        recalcularHoras(apertura, cierre)
     }
 
     fun elegirFecha(fecha: String) {
@@ -180,29 +218,54 @@ class ReservasViewModel(
         try {
             val reservas = reservaRepository.obtenerReservasDeArea(area.id)
             val torneos = torneoRepository.obtenerTorneos()
+            val esperas = filaDelDia(area.id, fecha)
+            val ahora = Date()
             val primera = ReglasReserva.aMinutos(apertura)?.div(60) ?: return
             val ultima = (ReglasReserva.aMinutos(cierre)?.div(60) ?: return) - 1
             val horas = (primera..ultima).map { hora ->
+                val base = ReglasReserva.estadoDeHora(area, reservas, torneos, fecha, hora)
+                // Los lugares liberados que están apartados para quien va antes en la fila se ven ocupados.
+                val fila = ReglasListaEspera.fila(esperas, area.id, fecha, hora, ahora)
+                val apartados = usuario?.let { ReglasListaEspera.apartadosPara(it.id, fila, base.libres) } ?: 0
                 HoraUi(
-                    estado = ReglasReserva.estadoDeHora(area, reservas, torneos, fecha, hora),
-                    pasada = Fechas.horasDesdeAhora(fecha, "%02d:00".format(hora)) < Catalogos.ANTICIPACION_MINIMA_HORAS
+                    estado = base.copy(ocupadas = base.ocupadas + apartados),
+                    pasada = Fechas.horasDesdeAhora(fecha, "%02d:00".format(hora)) < Catalogos.ANTICIPACION_MINIMA_HORAS,
+                    enEspera = usuario?.let { ReglasListaEspera.posicion(it.id, fila) } != null
                 )
             }
             _ui.value = estado.copy(horas = horas, errorDisponibilidad = false)
         } catch (e: Exception) {
             _ui.value = estado.copy(horas = emptyList(), errorDisponibilidad = true)
-            _mensaje.value = Textos.get(R.string.the_availability_could_not_be_checked)
+            _mensaje.value = Textos.get("the_availability_could_not_be_checked")
         }
+    }
+
+    /**
+     * Lista de espera del área ese día (de todas las personas), después de apartar los lugares que se hayan liberado.
+     * Si no se puede leer (sin red o sin permiso), se reserva como si no hubiera fila.
+     */
+    private suspend fun filaDelDia(areaId: String, fecha: String): List<EntradaEspera> {
+        if (!usaListaEspera) return emptyList()
+        runCatching { GestorListaEspera.promover(areaId, fecha) }
+        return runCatching { listaEsperaRepository.obtenerDeArea(areaId, fecha) }.getOrDefault(emptyList())
     }
 
     fun tocarHora(hora: Int) {
         val actual = estado
         val celda = actual.horas.firstOrNull { it.hora == hora } ?: return
+        if (!celda.seleccionable && usaListaEspera && celda.esperable) {
+            when {
+                _restriccion.value != null -> _mensaje.value = _restriccion.value
+                celda.enEspera -> _mensaje.value = Textos.get("espera_ya_estas")
+                else -> _ofertaEspera.value = hora
+            }
+            return
+        }
         if (!celda.seleccionable) {
             _mensaje.value = when {
-                celda.pasada -> Textos.get(R.string.that_hour_has_already_started)
-                celda.estado.torneo != null -> Textos.get(R.string.at_that_time_the_area_is, celda.estado.torneo.nombre)
-                else -> Textos.get(R.string.that_hour_has_reached_its_capacity, celda.estado.capacidad)
+                celda.pasada -> Textos.get("that_hour_has_already_started")
+                celda.estado.torneo != null -> Textos.get("at_that_time_the_area_is", celda.estado.torneo.nombre)
+                else -> Textos.get("that_hour_has_reached_its_capacity", celda.estado.capacidad)
             }
             return
         }
@@ -269,7 +332,7 @@ class ReservasViewModel(
             )
         } catch (e: Exception) {
             _ui.value = actual.copy(errorDisponibilidad = true)
-            _mensaje.value = Textos.get(R.string.the_lane_availability_could_not_be)
+            _mensaje.value = Textos.get("the_lane_availability_could_not_be")
         }
     }
 
@@ -306,10 +369,14 @@ class ReservasViewModel(
                         // Miembros y visitantes quedan en revisión; el personal reserva sin pedir permiso.
                         requiereAprobacion = usuario.rol.esCliente()
                     )
+                    // Quien estaba en la lista de espera de esas horas ya consiguió su lugar: sale de la fila.
+                    if (usaListaEspera) {
+                        runCatching { listaEsperaRepository.marcarAtendidas(usuario.id, area.id, actual.fecha, desde..hasta) }
+                    }
                     _mensaje.value = if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) {
-                        Textos.get(R.string.request_sent_your_booking_is_under)
+                        Textos.get("request_sent_your_booking_is_under")
                     } else {
-                        Textos.get(R.string.booking_confirmed_from_to, Deportes.titulo(area.tipo, area.nombre), actual.fecha, horaInicio, horaFin)
+                        Textos.get("booking_confirmed_from_to", Deportes.titulo(area.tipo, area.nombre), actual.fecha, horaInicio, horaFin)
                     }
                 }
                 // Siempre se vuelve a leer la ocupación real, haya funcionado o no.
@@ -318,7 +385,7 @@ class ReservasViewModel(
                 recalcularHoras(apertura, cierre)
                 cargarLista(estado.areas)
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_booking_could_not_be_completed)
+                _mensaje.value = Textos.get("the_booking_could_not_be_completed")
             }
             _ui.value = estado.copy(enviando = false)
         }
@@ -329,44 +396,62 @@ class ReservasViewModel(
      * así un cupo que se llenó mientras se elegía el horario se detecta antes de guardar.
      */
     private suspend fun validar(area: Area, fecha: String, horaInicio: String, horaFin: String, personas: Int, carril: Int?): String? {
-        val usuario = usuario ?: return Textos.get(R.string.sign_in_to_book)
+        val usuario = usuario ?: return Textos.get("sign_in_to_book")
         motivoDeRestriccion()?.let { return it }
         if (area.carriles > 0) {
-            if (carril == null || carril !in 1..area.carriles) return Textos.get(R.string.select_an_available_lane_2)
+            if (carril == null || carril !in 1..area.carriles) return Textos.get("select_an_available_lane_2")
             val carrilOcupado = reservaRepository.obtenerReservasDeArea(area.id).any {
                 it.fecha == fecha &&
                     it.carril == carril &&
                     it.horaInicio < horaFin &&
                     it.horaFin > horaInicio
             }
-            if (carrilOcupado) return Textos.get(R.string.that_lane_has_just_been_taken)
+            if (carrilOcupado) return Textos.get("that_lane_has_just_been_taken")
         }
 
-        if (esVisitanteExterno && !area.permiteExternos) return Textos.get(R.string.this_area_doesn_t_accept_bookings)
-        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get(R.string.is_under_maintenance, area.nombre)
+        if (esVisitanteExterno && !area.permiteExternos) return Textos.get("this_area_doesn_t_accept_bookings")
+        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get("is_under_maintenance", etiquetaArea(area.nombre))
         if (Fechas.horasDesdeAhora(fecha, horaInicio) < Catalogos.ANTICIPACION_MINIMA_HORAS) {
-            return Textos.get(R.string.that_time_has_already_started)
+            return Textos.get("that_time_has_already_started")
         }
 
         if (!usuario.rol.esPersonal()) {
             if (reservaRepository.estaBloqueadoPorInasistencias(usuario.id)) {
-                return Textos.get(R.string.you_can_t_book_you_have, Catalogos.INASISTENCIAS_PARA_BLOQUEO) +
-                    Textos.get(R.string.and_you_are_blocked_for_days, Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS)
+                return Textos.get("you_can_t_book_you_have", Catalogos.INASISTENCIAS_PARA_BLOQUEO) +
+                    Textos.get("and_you_are_blocked_for_days", Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS)
             }
             if (reservaRepository.contarReservasActivas(usuario.id) >= Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO) {
-                return Textos.get(R.string.you_have_reached_the_maximum_limit, Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO)
+                return Textos.get("you_have_reached_the_maximum_limit", Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO)
             }
         }
 
-        return ReglasReserva.validarReserva(
+        val reservas = reservaRepository.obtenerReservasDeArea(area.id)
+        val torneos = torneoRepository.obtenerTorneos()
+        ReglasReserva.validarReserva(
             area = area,
-            reservas = reservaRepository.obtenerReservasDeArea(area.id),
-            torneos = torneoRepository.obtenerTorneos(),
+            reservas = reservas,
+            torneos = torneos,
             fecha = fecha,
             horaInicio = horaInicio,
             horaFin = horaFin,
             personas = personas
-        )
+        )?.let { return it }
+
+        // Un lugar que se liberó y está apartado para alguien de la lista de espera no se lo puede ganar otra persona.
+        if (usaListaEspera) {
+            val esperas = filaDelDia(area.id, fecha)
+            val ahora = Date()
+            val desde = (ReglasReserva.aMinutos(horaInicio) ?: 0) / 60
+            val hasta = (ReglasReserva.aMinutos(horaFin) ?: 0) / 60
+            for (hora in desde until hasta) {
+                val base = ReglasReserva.estadoDeHora(area, reservas, torneos, fecha, hora)
+                val apartados = ReglasListaEspera.apartadosPara(usuario.id, ReglasListaEspera.fila(esperas, area.id, fecha, hora, ahora), base.libres)
+                if (apartados > 0 && base.libres - apartados < personas) {
+                    return Textos.get("espera_lugar_apartado", ReglasListaEspera.textoHora(hora))
+                }
+            }
+        }
+        return null
     }
 
     private suspend fun cargarLista(areas: List<Area>) {
@@ -386,7 +471,7 @@ class ReservasViewModel(
                 val area = areas.firstOrNull { it.id == reserva.areaId }
                 ReservaListada(
                     id = reserva.id,
-                    titulo = area?.let { Deportes.titulo(it.tipo, it.nombre) } ?: Textos.get(R.string.area_deleted_2),
+                    titulo = area?.let { Deportes.titulo(it.tipo, it.nombre) } ?: Textos.get("area_deleted_2"),
                     emoji = area?.let { Deportes.emojiDe(it.tipo, it.emoji) } ?: "📍",
                     fecha = reserva.fecha,
                     horaInicio = reserva.horaInicio,
@@ -395,9 +480,121 @@ class ReservasViewModel(
                     estado = reserva.estado,
                     deporte = area?.tipo ?: reserva.deporte,
                     carril = reserva.carril,
-                    usuarioNombre = reserva.usuarioNombre
+                    usuarioNombre = reserva.usuarioNombre,
+                    areaId = reserva.areaId
                 )
             }
+        cargarEsperas()
+    }
+
+    /** Vuelve a leer la lista de espera de la persona (al regresar a la pantalla, por si ya le tocó). */
+    fun refrescarEsperas() {
+        if (!usaListaEspera) return
+        viewModelScope.launch {
+            cargarEsperas()
+            // Si tiene abierta el área de alguna de sus esperas, la cuadrícula también cambia.
+            estado.area?.let { area -> rangoDeApertura(area).let { (apertura, cierre) -> recalcularHoras(apertura, cierre) } }
+        }
+    }
+
+    private suspend fun cargarEsperas() {
+        val usuario = usuario ?: return
+        if (!usaListaEspera) return
+        try {
+            val ahora = Date()
+            var mias = listaEsperaRepository.obtenerDeUsuario(usuario.id).filter { ReglasListaEspera.vigente(it, ahora) }
+            val dias = mias.map { it.areaId to it.fecha }.distinct()
+            // Antes de mostrarlas se apartan los lugares que se hayan liberado: así se entera aunque no haya llegado la notificación.
+            dias.forEach { (areaId, fecha) -> runCatching { GestorListaEspera.promover(areaId, fecha, ahora) } }
+            mias = listaEsperaRepository.obtenerDeUsuario(usuario.id).filter { ReglasListaEspera.vigente(it, ahora) }
+            val filas = dias.associateWith { (areaId, fecha) ->
+                runCatching { listaEsperaRepository.obtenerDeArea(areaId, fecha) }.getOrDefault(emptyList())
+            }
+            val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+            _esperas.value = mias.sortedWith(compareBy({ it.fecha }, { it.hora })).map { entrada ->
+                val area = estado.areas.firstOrNull { it.id == entrada.areaId }
+                val fila = ReglasListaEspera.fila(filas[entrada.areaId to entrada.fecha].orEmpty(), entrada.areaId, entrada.fecha, entrada.hora, ahora)
+                EsperaListada(
+                    entrada = entrada,
+                    titulo = area?.let { Deportes.titulo(it.tipo, it.nombre) } ?: Deportes.titulo(entrada.deporte, entrada.areaNombre),
+                    emoji = area?.let { Deportes.emojiDe(it.tipo, it.emoji) } ?: Deportes.emojiDe(entrada.deporte),
+                    posicion = ReglasListaEspera.posicion(usuario.id, fila),
+                    limite = if (entrada.estado == EstadoEspera.AVISADO) {
+                        ReglasListaEspera.limiteMillis(entrada)?.let { formatoHora.format(Date(it)) }
+                    } else {
+                        null
+                    }
+                )
+            }
+        } catch (e: Exception) {
+            // Sin red o sin permiso: se deja la lista que ya se tenía.
+        }
+    }
+
+    fun unirseAEspera(personas: Int) {
+        val hora = _ofertaEspera.value ?: return
+        _ofertaEspera.value = null
+        val area = estado.area ?: return
+        val usuario = usuario ?: return
+        val fecha = estado.fecha
+        viewModelScope.launch {
+            try {
+                listaEsperaRepository.unirse(
+                    EntradaEspera(
+                        id = ReglasListaEspera.idDe(area.id, fecha, hora, usuario.id),
+                        usuarioId = usuario.id,
+                        usuarioNombre = usuario.nombre,
+                        areaId = area.id,
+                        areaNombre = area.nombre,
+                        deporte = area.tipo,
+                        fecha = fecha,
+                        hora = hora,
+                        personas = personas.coerceIn(1, area.capacidad.coerceAtLeast(1)),
+                        estado = EstadoEspera.ESPERANDO,
+                        creadoMillis = System.currentTimeMillis()
+                    )
+                )
+                val fila = ReglasListaEspera.fila(listaEsperaRepository.obtenerDeArea(area.id, fecha), area.id, fecha, hora, Date())
+                _mensaje.value = Textos.get("espera_unido", ReglasListaEspera.posicion(usuario.id, fila) ?: fila.size)
+                val (apertura, cierre) = rangoDeApertura(area)
+                recalcularHoras(apertura, cierre)
+                cargarEsperas()
+            } catch (e: Exception) {
+                _mensaje.value = Textos.get("espera_error")
+            }
+        }
+    }
+
+    fun cerrarOfertaEspera() {
+        _ofertaEspera.value = null
+    }
+
+    fun salirDeEspera(espera: EsperaListada) {
+        viewModelScope.launch {
+            try {
+                listaEsperaRepository.salir(espera.entrada.id)
+                // Si tenía un lugar apartado, ahora le toca al siguiente.
+                runCatching { GestorListaEspera.promover(espera.entrada.areaId, espera.entrada.fecha) }
+                _mensaje.value = Textos.get("espera_salir_ok")
+                cargarEsperas()
+                estado.area?.let { area -> rangoDeApertura(area).let { (apertura, cierre) -> recalcularHoras(apertura, cierre) } }
+            } catch (e: Exception) {
+                _mensaje.value = Textos.get("espera_error")
+            }
+        }
+    }
+
+    /** Lleva a la persona directo a la hora que se le liberó, ya seleccionada, para que solo confirme. */
+    fun reservarDesdeEspera(espera: EsperaListada) {
+        val area = estado.areas.firstOrNull { it.id == espera.entrada.areaId } ?: run {
+            _mensaje.value = Textos.get("area_deleted_2")
+            return
+        }
+        _ui.value = estado.copy(deporte = area.tipo, fecha = espera.entrada.fecha)
+        viewModelScope.launch {
+            abrirArea(area)
+            tocarHora(espera.entrada.hora)
+        }
     }
 
     fun cancelar(reserva: ReservaListada) {
@@ -405,14 +602,16 @@ class ReservasViewModel(
             try {
                 val sinPenalizacion = reservaRepository.cancelarReserva(reserva.id)
                 _mensaje.value = if (sinPenalizacion) {
-                    Textos.get(R.string.booking_cancelled)
+                    Textos.get("booking_cancelled")
                 } else {
-                    Textos.get(R.string.booking_cancelled_less_than_hours_in, Catalogos.CANCELACION_SIN_PENALIZACION_HORAS)
+                    Textos.get("booking_cancelled_less_than_hours_in", Catalogos.CANCELACION_SIN_PENALIZACION_HORAS)
                 }
+                // El lugar que se liberó se aparta para el primero de la lista de espera de esas horas.
+                if (reserva.areaId.isNotBlank()) runCatching { GestorListaEspera.promover(reserva.areaId, reserva.fecha) }
                 estado.area?.let { elegirArea(it) }
                 cargarLista(estado.areas)
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_booking_could_not_be_cancelled)
+                _mensaje.value = Textos.get("the_booking_could_not_be_cancelled")
             }
         }
     }

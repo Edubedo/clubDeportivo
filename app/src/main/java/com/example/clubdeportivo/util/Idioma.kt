@@ -4,8 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import androidx.annotation.StringRes
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /** Idiomas de la app. [bandera] es el emoji de la bandera que se muestra en el selector. */
 enum class Idioma(val codigo: String, val bandera: String, val nombre: String) {
@@ -24,7 +24,7 @@ enum class Idioma(val codigo: String, val bandera: String, val nombre: String) {
  * Idioma elegido por la persona, guardado en el teléfono. Se aplica envolviendo el contexto de la Activity
  * ([envolver], desde `attachBaseContext`); cambiarlo reinicia la app para que todo salga en el idioma nuevo.
  *
- * Los textos que arman los ViewModels y repositorios (que no tienen un Context) se piden con [Textos].
+ * Los textos de la app salen de los archivos JSON de [Textos] según este idioma.
  */
 object PreferenciaIdioma {
     private const val ARCHIVO = "preferencias_club"
@@ -61,7 +61,6 @@ object PreferenciaIdioma {
         runCatching {
             actividad.getSharedPreferences(ARCHIVO, Context.MODE_PRIVATE).edit().putString(CLAVE_IDIOMA, nuevo.codigo).commit()
         }
-        Textos.idiomaCambiado()
         val reinicio = Intent(actividad, actividad.javaClass).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         actividad.startActivity(reinicio)
         actividad.finishAffinity()
@@ -78,30 +77,48 @@ object PreferenciaIdioma {
 }
 
 /**
- * Acceso a los textos traducidos desde código que no vive en una pantalla (ViewModels, repositorios).
- * En una pantalla de Compose se usa `stringResource` directamente.
+ * Textos traducidos de toda la app. Viven en `assets/i18n/<codigo>.json` (un archivo por [Idioma], clave → texto) y
+ * se cargan una vez por proceso con [LectorJson]. Se usan igual desde pantallas, ViewModels y repositorios: [tr] o
+ * [Textos.get] con la clave.
+ *
+ * Si a un idioma le falta una clave se usa el texto en español, y si tampoco está ahí, la clave misma (así se nota en
+ * pantalla en vez de cerrar la app).
  */
 object Textos {
+    private const val CARPETA = "i18n"
+
     private var aplicacion: Context? = null
-    private var contexto: Context? = null
+    private val cargados = ConcurrentHashMap<Idioma, Map<String, String>>()
 
     fun iniciar(app: Context) {
         aplicacion = app.applicationContext
-        contexto = null
     }
 
-    internal fun idiomaCambiado() {
-        contexto = null
-    }
+    /** Solo para pruebas unitarias (JVM), donde no existen los assets de Android: devuelve el texto de [clave] sin ellos. */
+    var resolutorDePrueba: ((String, Array<out Any>) -> String)? = null
 
-    /** Solo para pruebas unitarias (JVM), donde no existen los recursos de Android: devuelve el texto de [id] sin ellos. */
-    var resolutorDePrueba: ((Int, Array<out Any>) -> String)? = null
-
-    fun get(@StringRes id: Int, vararg argumentos: Any): String {
-        resolutorDePrueba?.let { return it(id, argumentos) }
-        val app = checkNotNull(aplicacion) { "Textos.iniciar() no se llamó en ClubApplication." }
-        val localizado = contexto ?: PreferenciaIdioma.conIdioma(app, PreferenciaIdioma.actual).also { contexto = it }
+    fun get(clave: String, vararg argumentos: Any): String {
+        resolutorDePrueba?.let { return it(clave, argumentos) }
+        val texto = textosDe(PreferenciaIdioma.actual)[clave] ?: textosDe(Idioma.ES)[clave] ?: clave
         // Sin argumentos no se formatea: así un texto con "%" (como "%.0f%%") llega tal cual a quien lo formatea después.
-        return if (argumentos.isEmpty()) localizado.getString(id) else localizado.getString(id, *argumentos)
+        return if (argumentos.isEmpty()) texto else String.format(Locale.forLanguageTag(PreferenciaIdioma.actual.codigo), texto, *argumentos)
+    }
+
+    /**
+     * Texto de [clave] en [idioma], sin importar el idioma elegido. Sirve para guardar datos siempre en español y
+     * para reconocer un dato guardado en cualquier idioma.
+     */
+    fun en(idioma: Idioma, clave: String): String {
+        if (idioma == Idioma.ES) resolutorDePrueba?.let { return it(clave, emptyArray()) }
+        if (resolutorDePrueba != null) return clave
+        return textosDe(idioma)[clave] ?: textosDe(Idioma.ES)[clave] ?: clave
+    }
+
+    private fun textosDe(idioma: Idioma): Map<String, String> = cargados.getOrPut(idioma) {
+        val app = checkNotNull(aplicacion) { "Textos.iniciar() no se llamó en ClubApplication." }
+        app.assets.open("$CARPETA/${idioma.codigo}.json").bufferedReader(Charsets.UTF_8).use { LectorJson.leerTextos(it.readText()) }
     }
 }
+
+/** Texto traducido de [clave] en el idioma elegido; los [argumentos] reemplazan los `%1$s`, `%2$d`, etc. del texto. */
+fun tr(clave: String, vararg argumentos: Any): String = Textos.get(clave, *argumentos)

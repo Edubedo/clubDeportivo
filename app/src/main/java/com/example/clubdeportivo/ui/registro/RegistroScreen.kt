@@ -73,7 +73,6 @@ import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 @Composable
@@ -141,7 +140,7 @@ fun RegistroScreen(
                 .imePadding()
         ) {
             EncabezadoAuth(
-                subtitulo = if (paso == PasoRegistro.CODIGO) Textos.get(R.string.member_sign_up) else Textos.get(R.string.create_your_account)
+                subtitulo = if (paso == PasoRegistro.CODIGO) Textos.get("member_sign_up") else Textos.get("create_your_account")
             )
 
             Column(
@@ -152,13 +151,13 @@ fun RegistroScreen(
             ) {
                 if (paso == PasoRegistro.CODIGO) {
                     Text(
-                        text = Textos.get(R.string.enter_the_member_code_you_were),
+                        text = Textos.get("enter_the_member_code_you_were"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoSecundario,
                         modifier = Modifier.padding(bottom = 20.dp)
                     )
 
-                    EtiquetaCampo(Textos.get(R.string.member_code))
+                    EtiquetaCampo(Textos.get("member_code"))
                     CampoTexto(
                         value = codigoTexto,
                         onValueChange = { codigoTexto = it.uppercase() },
@@ -187,13 +186,13 @@ fun RegistroScreen(
                                 )
                                 Column {
                                     Text(
-                                        text = Textos.get(R.string.this_code_already_has_an_account),
+                                        text = Textos.get("this_code_already_has_an_account"),
                                         style = MaterialTheme.typography.titleSmall,
                                         color = TextoPrincipal
                                     )
                                     Text(
-                                        text = Textos.get(R.string.sign_in_with_the_email_and) +
-                                            Textos.get(R.string.if_you_don_t_remember_them),
+                                        text = Textos.get("sign_in_with_the_email_and") +
+                                            Textos.get("if_you_don_t_remember_them"),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = TextoSecundario,
                                         modifier = Modifier.padding(top = 4.dp)
@@ -206,10 +205,10 @@ fun RegistroScreen(
                     Spacer(modifier = Modifier.height(28.dp))
 
                     if (yaRegistrado) {
-                        BotonPrimario(texto = Textos.get(R.string.go_to_sign_in), onClick = onVolverALogin)
+                        BotonPrimario(texto = Textos.get("go_to_sign_in"), onClick = onVolverALogin)
                     } else {
                         BotonPrimario(
-                            texto = Textos.get(R.string.k_continue),
+                            texto = Textos.get("k_continue"),
                             onClick = { viewModel.verificarCodigo(codigoTexto) },
                             cargando = cargando
                         )
@@ -227,7 +226,7 @@ fun RegistroScreen(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = Textos.get(R.string.code_verified, codigo),
+                            text = Textos.get("code_verified", codigo),
                             style = MaterialTheme.typography.titleSmall,
                             color = TextoPrincipal,
                             modifier = Modifier.weight(1f)
@@ -236,17 +235,17 @@ fun RegistroScreen(
                             onClick = { viewModel.cambiarCodigo() },
                             modifier = modifierReflejo(Modifier, enabled = true)
                         ) {
-                            Text(Textos.get(R.string.change), color = Marca, fontWeight = FontWeight.SemiBold)
+                            Text(Textos.get("change"), color = Marca, fontWeight = FontWeight.SemiBold)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    EtiquetaCampo(Textos.get(R.string.full_name))
+                    EtiquetaCampo(Textos.get("full_name"))
                     CampoTexto(
                         value = nombre,
                         onValueChange = { nombre = it },
-                        placeholder = Textos.get(R.string.your_name),
+                        placeholder = Textos.get("your_name"),
                         capitalizacion = KeyboardCapitalization.Words,
                         leadingIcon = { Icon(imageVector = Icons.Outlined.Person, contentDescription = null) },
                         isError = nombreError != null,
@@ -255,11 +254,11 @@ fun RegistroScreen(
 
                     EspacioCampos()
 
-                    EtiquetaCampo(Textos.get(R.string.email))
+                    EtiquetaCampo(Textos.get("email"))
                     CampoTexto(
                         value = email,
                         onValueChange = { email = it },
-                        placeholder = Textos.get(R.string.you_email_com),
+                        placeholder = Textos.get("you_email_com"),
                         tipoTeclado = KeyboardType.Email,
                         leadingIcon = { Icon(imageVector = Icons.Outlined.Email, contentDescription = null) },
                         isError = emailError != null,
@@ -268,11 +267,11 @@ fun RegistroScreen(
 
                     EspacioCampos()
 
-                    EtiquetaCampo(Textos.get(R.string.password))
+                    EtiquetaCampo(Textos.get("password"))
                     CampoTexto(
                         value = password,
                         onValueChange = { password = it },
-                        placeholder = Textos.get(R.string.create_a_strong_password),
+                        placeholder = Textos.get("create_a_strong_password"),
                         esContrasena = !passwordVisible,
                         leadingIcon = { Icon(imageVector = Icons.Outlined.Lock, contentDescription = null) },
                         trailingIcon = {
@@ -281,7 +280,7 @@ fun RegistroScreen(
                             ) {
                                 Icon(
                                     imageVector = if (passwordVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                                    contentDescription = if (passwordVisible) Textos.get(R.string.hide_password) else Textos.get(R.string.show_password)
+                                    contentDescription = if (passwordVisible) Textos.get("hide_password") else Textos.get("show_password")
                                 )
                             }
                         },
@@ -293,11 +292,11 @@ fun RegistroScreen(
 
                     EspacioCampos()
 
-                    EtiquetaCampo(Textos.get(R.string.confirm_password))
+                    EtiquetaCampo(Textos.get("confirm_password"))
                     CampoTexto(
                         value = confirmar,
                         onValueChange = { confirmar = it },
-                        placeholder = Textos.get(R.string.repeat_the_password),
+                        placeholder = Textos.get("repeat_the_password"),
                         esContrasena = !passwordVisible,
                         leadingIcon = { Icon(imageVector = Icons.Outlined.Lock, contentDescription = null) },
                         imeAction = ImeAction.Done,
@@ -321,7 +320,7 @@ fun RegistroScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     BotonPrimario(
-                        texto = Textos.get(R.string.create_account),
+                        texto = Textos.get("create_account"),
                         onClick = { viewModel.registrar(nombre, email, password, confirmar, aceptoTerminos) },
                         enabled = aceptoTerminos,
                         cargando = cargando
@@ -336,7 +335,7 @@ fun RegistroScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = Textos.get(R.string.already_have_an_account),
+                        text = Textos.get("already_have_an_account"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextoSecundario
                     )
@@ -344,7 +343,7 @@ fun RegistroScreen(
                         onClick = onVolverALogin,
                         modifier = modifierReflejo(Modifier, enabled = true)
                     ) {
-                        Text(text = Textos.get(R.string.sign_in), color = Marca, fontWeight = FontWeight.Bold)
+                        Text(text = Textos.get("sign_in"), color = Marca, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -379,15 +378,15 @@ private fun AceptacionDeTerminos(
         style = SpanStyle(color = Marca, fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)
     )
     val texto = buildAnnotatedString {
-        append(Textos.get(R.string.i_have_read_and_accept_the))
+        append(Textos.get("i_have_read_and_accept_the"))
         withLink(LinkAnnotation.Clickable("terminos", styles = estiloEnlace) { onLeer(DocumentoLegal.TERMINOS) }) {
-            append(Textos.get(R.string.terms_and_conditions))
+            append(Textos.get("terms_and_conditions"))
         }
-        append(Textos.get(R.string.and_the))
+        append(Textos.get("and_the"))
         withLink(LinkAnnotation.Clickable("privacidad", styles = estiloEnlace) { onLeer(DocumentoLegal.PRIVACIDAD) }) {
-            append(Textos.get(R.string.privacy_notice))
+            append(Textos.get("privacy_notice"))
         }
-        append(Textos.get(R.string.of_the_club))
+        append(Textos.get("of_the_club"))
     }
 
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
@@ -403,7 +402,7 @@ private fun AceptacionDeTerminos(
         Column(modifier = Modifier.padding(top = 12.dp)) {
             Text(text = texto, style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal)
             Text(
-                text = error ?: if (aceptado) Textos.get(R.string.you_accepted_version, TerminosTexto.VERSION) else Textos.get(R.string.you_must_accept_them_to_create),
+                text = error ?: if (aceptado) Textos.get("you_accepted_version", TerminosTexto.VERSION) else Textos.get("you_must_accept_them_to_create"),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (error != null) Peligro else TextoSecundario,
                 modifier = Modifier.padding(top = 4.dp)

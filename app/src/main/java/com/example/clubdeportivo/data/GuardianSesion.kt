@@ -1,6 +1,5 @@
 package com.example.clubdeportivo.data
 
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.util.Textos
 import com.google.firebase.auth.FirebaseAuth
@@ -33,19 +32,19 @@ object GuardianSesion {
                     // Sin conexión no se saca a nadie; solo si el servidor ya no reconoce la cuenta.
                     val sinAcceso = error.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
                         error.code == FirebaseFirestoreException.Code.UNAUTHENTICATED
-                    if (sinAcceso) expulsar(Textos.get(R.string.sesion_no_valida))
+                    if (sinAcceso) expulsar(Textos.get("sesion_no_valida"))
                     return@addSnapshotListener
                 }
                 if (perfil == null) return@addSnapshotListener
 
                 if (!perfil.exists()) {
                     // Un "no existe" que viene de la caché del teléfono no prueba nada: se espera al servidor.
-                    if (!perfil.metadata.isFromCache) expulsar(Textos.get(R.string.sesion_cuenta_eliminada))
+                    if (!perfil.metadata.isFromCache) expulsar(Textos.get("sesion_cuenta_eliminada"))
                     return@addSnapshotListener
                 }
 
                 if (perfil.getString("estado") == "INACTIVO") {
-                    expulsar(Textos.get(R.string.sesion_cuenta_suspendida))
+                    expulsar(Textos.get("sesion_cuenta_suspendida"))
                     return@addSnapshotListener
                 }
 

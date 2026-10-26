@@ -213,6 +213,29 @@ service cloud.firestore {
       allow delete: if esPersonal();
     }
 
+    // Lista de espera de horas llenas. Se leen todas porque el lugar en la fila depende de quién llegó antes (solo
+    // guardan nombre, área, día y hora). Cada quien entra a su nombre, siempre al final de la fila (ESPERANDO).
+    match /listaEspera/{id} {
+      allow read: if firmado();
+      allow create: if conPerfil() && activo()
+                    && request.resource.data.usuarioId == request.auth.uid
+                    && request.resource.data.estado == 'ESPERANDO'
+                    && id == request.resource.data.areaId + '_' + request.resource.data.fecha + '_'
+                             + string(request.resource.data.hora) + '_' + request.auth.uid;
+      allow update: if esPersonal()
+                    // Volver a entrar (al final de la fila), salir, o marcarla atendida al reservar.
+                    || (firmado() && resource.data.usuarioId == request.auth.uid
+                        && request.resource.data.usuarioId == resource.data.usuarioId
+                        && request.resource.data.estado in ['ESPERANDO', 'CANCELADA', 'ATENDIDA']
+                        && request.resource.data.creadoMillis >= resource.data.creadoMillis)
+                    // Apartar el lugar liberado al primero de la fila: lo hace la app de quien lo libera o de quien lo ve
+                    // (no hay servidor), y solo puede pasar de ESPERANDO a AVISADO.
+                    || (firmado() && resource.data.estado == 'ESPERANDO'
+                        && request.resource.data.estado == 'AVISADO'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'avisadoMillis']));
+      allow delete: if esPersonal();
+    }
+
     match /checkins/{id} {
       allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
       allow write: if esPersonal();

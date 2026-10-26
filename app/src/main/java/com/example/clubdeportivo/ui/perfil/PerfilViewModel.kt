@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.ContentResolver
 import android.net.Uri
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Usuario
@@ -47,7 +46,7 @@ class PerfilViewModel(
         val usuarioActual = _usuario.value ?: return
 
         if (nombre.isBlank()) {
-            _mensaje.value = Textos.get(R.string.perfil_nombre_vacio)
+            _mensaje.value = Textos.get("perfil_nombre_vacio")
             return
         }
 
@@ -72,7 +71,7 @@ class PerfilViewModel(
                         resultado.datos
                     )
 
-                    _mensaje.value = Textos.get(R.string.perfil_actualizado)
+                    _mensaje.value = Textos.get("perfil_actualizado")
                 }
 
                 is Resultado.Error -> {
@@ -96,7 +95,7 @@ class PerfilViewModel(
 
             val jpeg = withContext(Dispatchers.IO) { comprimirFotoPerfil(resolver, uri) }
             if (jpeg == null) {
-                _mensaje.value = Textos.get(R.string.perfil_imagen_error)
+                _mensaje.value = Textos.get("perfil_imagen_error")
             } else {
                 when (val resultado = fotoPerfilRepository.subir(usuarioActual.id, jpeg)) {
                     is Resultado.Exito -> guardarFotoEnSesion(resultado.datos)

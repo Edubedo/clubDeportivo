@@ -1,17 +1,15 @@
 package com.example.clubdeportivo.ui.theme
 
 import android.content.Context
-import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.example.clubdeportivo.R
 
 /** Apariencia de la app: la que tenga el teléfono, siempre clara o siempre oscura. */
-enum class ModoTema(@StringRes val etiqueta: Int) {
-    SISTEMA(R.string.tema_automatico),
-    CLARO(R.string.tema_claro),
-    OSCURO(R.string.tema_oscuro);
+enum class ModoTema(val etiqueta: String) {
+    SISTEMA("tema_automatico"),
+    CLARO("tema_claro"),
+    OSCURO("tema_oscuro");
 
     companion object {
         fun deNombre(nombre: String?): ModoTema = entries.firstOrNull { it.name == nombre } ?: SISTEMA

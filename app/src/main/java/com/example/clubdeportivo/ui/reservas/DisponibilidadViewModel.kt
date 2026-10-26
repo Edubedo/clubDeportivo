@@ -17,7 +17,6 @@ import com.example.clubdeportivo.data.repository.TorneoRepository
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasReserva
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Una hora del día de un área con su ocupación: lo que ve el encargado para saber si le queda lugar. */
@@ -66,7 +65,7 @@ class DisponibilidadViewModel(
                 area = areas.firstOrNull { it.id == area?.id } ?: areas.firstOrNull()
                 recalcular()
             } catch (e: Exception) {
-                error = Textos.get(R.string.the_availability_could_not_be_checked)
+                error = Textos.get("the_availability_could_not_be_checked")
             }
             cargando = false
         }
@@ -89,7 +88,7 @@ class DisponibilidadViewModel(
             try {
                 recalcular()
             } catch (e: Exception) {
-                error = Textos.get(R.string.the_availability_could_not_be_checked)
+                error = Textos.get("the_availability_could_not_be_checked")
             }
             cargando = false
         }

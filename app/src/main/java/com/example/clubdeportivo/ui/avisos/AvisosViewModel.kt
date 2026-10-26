@@ -14,7 +14,6 @@ import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.notificaciones.DestinatarioNotificacion
 import com.example.clubdeportivo.data.notificaciones.Notificacion
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /**
@@ -74,7 +73,7 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             try {
                 todos = repositorio.obtener(esPersonal)
             } catch (e: Exception) {
-                mensaje = Textos.get(R.string.the_notices_could_not_be_loaded)
+                mensaje = Textos.get("the_notices_could_not_be_loaded")
             }
             cargando = false
         }
@@ -126,10 +125,10 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     )
                 )
                 todos = listOf(nuevo) + todos
-                mensaje = Textos.get(R.string.post_saved)
+                mensaje = Textos.get("post_saved")
                 alTerminar()
             } catch (e: Exception) {
-                mensaje = Textos.get(R.string.the_notice_could_not_be_sent)
+                mensaje = Textos.get("the_notice_could_not_be_sent")
             }
             enviando = false
         }
@@ -158,10 +157,10 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
                         destinatario = destinatario
                     ) else it
                 }
-                mensaje = Textos.get(R.string.post_updated)
+                mensaje = Textos.get("post_updated")
                 alTerminar()
             } catch (e: Exception) {
-                mensaje = Textos.get(R.string.the_change_could_not_be_saved)
+                mensaje = Textos.get("the_change_could_not_be_saved")
             }
             enviando = false
         }
@@ -172,9 +171,9 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             try {
                 repositorio.eliminar(id)
                 todos = todos.filterNot { it.id == id }
-                mensaje = Textos.get(R.string.notice_deleted)
+                mensaje = Textos.get("notice_deleted")
             } catch (e: Exception) {
-                mensaje = Textos.get(R.string.the_notice_could_not_be_deleted)
+                mensaje = Textos.get("the_notice_could_not_be_deleted")
             }
         }
     }

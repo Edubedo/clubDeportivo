@@ -41,8 +41,8 @@ import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.BordeCampo
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
+import com.example.clubdeportivo.data.model.etiquetaArea
 
 /** Disponibilidad hora por hora del área: cuánto cupo hay, cuánto está en revisión y qué horas bloquea un torneo. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +58,7 @@ fun DisponibilidadScreen(viewModel: DisponibilidadViewModel = viewModel()) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (viewModel.areas.size > 1) {
                 PestanasPildora(
-                    opciones = viewModel.areas.map { it.nombre },
+                    opciones = viewModel.areas.map { etiquetaArea(it.nombre) },
                     seleccionada = viewModel.areas.indexOfFirst { it.id == area?.id }.coerceAtLeast(0),
                     onSeleccion = { viewModel.elegirArea(viewModel.areas[it]) }
                 )
@@ -93,7 +93,7 @@ fun DisponibilidadScreen(viewModel: DisponibilidadViewModel = viewModel()) {
                 viewModel.cargando && viewModel.filas.isEmpty() -> FullScreenLoading()
                 viewModel.error != null -> EmptyState(mensaje = viewModel.error.orEmpty(), icono = Icons.Outlined.EventBusy)
                 area == null -> EmptyState(
-                    mensaje = Textos.get(R.string.there_are_no_areas_for_your),
+                    mensaje = Textos.get("there_are_no_areas_for_your"),
                     icono = Icons.Outlined.EventBusy
                 )
                 else -> LazyColumn(
@@ -103,7 +103,7 @@ fun DisponibilidadScreen(viewModel: DisponibilidadViewModel = viewModel()) {
                 ) {
                     if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) {
                         item {
-                            Insignia(texto = Textos.get(R.string.is_under_maintenance_it_doesn_t, area.nombre), tipo = TipoInsignia.MANTENIMIENTO)
+                            Insignia(texto = Textos.get("is_under_maintenance_it_doesn_t", etiquetaArea(area.nombre)), tipo = TipoInsignia.MANTENIMIENTO)
                         }
                     }
                     items(viewModel.filas, key = { it.hora }) { fila -> FilaHoraCard(fila, area.capacidad) }
@@ -130,19 +130,19 @@ private fun FilaHoraCard(fila: FilaDisponibilidad, capacidad: Int) {
                 )
                 Text(
                     text = when {
-                        estado.torneo != null -> Textos.get(R.string.tournament, estado.torneo.nombre)
-                        else -> Textos.get(R.string.of_spots_taken, estado.ocupadas, capacidad) +
-                            if (fila.enRevision > 0) Textos.get(R.string.under_review, fila.enRevision) else ""
+                        estado.torneo != null -> Textos.get("tournament", estado.torneo.nombre)
+                        else -> Textos.get("of_spots_taken", estado.ocupadas, capacidad) +
+                            if (fila.enRevision > 0) Textos.get("under_review", fila.enRevision) else ""
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario
                 )
             }
             when {
-                estado.torneo != null -> Insignia(Textos.get(R.string.occupied_tournament), TipoInsignia.NO_DISPONIBLE)
-                estado.lleno -> Insignia(Textos.get(R.string.full_2), TipoInsignia.NO_DISPONIBLE)
-                estado.pocosLugares -> Insignia(Textos.get(R.string.few_spots_free, estado.libres), TipoInsignia.ALERTA)
-                else -> Insignia(Textos.get(R.string.available), TipoInsignia.DISPONIBLE)
+                estado.torneo != null -> Insignia(Textos.get("occupied_tournament"), TipoInsignia.NO_DISPONIBLE)
+                estado.lleno -> Insignia(Textos.get("full_2"), TipoInsignia.NO_DISPONIBLE)
+                estado.pocosLugares -> Insignia(Textos.get("few_spots_free", estado.libres), TipoInsignia.ALERTA)
+                else -> Insignia(Textos.get("available"), TipoInsignia.DISPONIBLE)
             }
         }
     }

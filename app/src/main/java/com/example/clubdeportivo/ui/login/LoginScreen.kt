@@ -51,14 +51,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.ui.components.BanderasIdioma
 import com.example.clubdeportivo.ui.components.CampoTexto
 import com.example.clubdeportivo.ui.components.EtiquetaCampo
@@ -167,13 +166,13 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(44.dp))
                 Text(
-                    text = stringResource(R.string.login_area_privada),
+                    text = tr("login_area_privada"),
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.4.sp),
                     color = SoftBlueSelection,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = stringResource(R.string.login_slogan),
+                    text = tr("login_slogan"),
                     style = MaterialTheme.typography.displaySmall.copy(
                         fontSize = 32.sp,
                         lineHeight = 34.sp,
@@ -183,7 +182,7 @@ fun LoginScreen(
                     modifier = Modifier.padding(top = 10.dp)
                 )
                 Text(
-                    text = stringResource(R.string.login_subtitulo),
+                    text = tr("login_subtitulo"),
                     color = LoginMutedText,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 10.dp)
@@ -198,11 +197,11 @@ fun LoginScreen(
                     }
                 } else {
                     Column(modifier = Modifier.padding(top = 28.dp)) {
-                        EtiquetaCampo(stringResource(R.string.login_correo_etiqueta), color = SoftBlueSelection)
+                        EtiquetaCampo(tr("login_correo_etiqueta"), color = SoftBlueSelection)
                         CampoTexto(
                             value = email,
                             onValueChange = { email = it },
-                            placeholder = stringResource(R.string.login_correo_placeholder),
+                            placeholder = tr("login_correo_placeholder"),
                             tipoTeclado = KeyboardType.Email,
                             leadingIcon = {
                                 Icon(imageVector = Icons.Outlined.Email, contentDescription = null)
@@ -213,11 +212,11 @@ fun LoginScreen(
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
-                        EtiquetaCampo(stringResource(R.string.login_password_etiqueta), color = SoftBlueSelection)
+                        EtiquetaCampo(tr("login_password_etiqueta"), color = SoftBlueSelection)
                         CampoTexto(
                             value = password,
                             onValueChange = { password = it },
-                            placeholder = stringResource(R.string.login_password_placeholder),
+                            placeholder = tr("login_password_placeholder"),
                             esContrasena = !passwordVisible,
                             leadingIcon = {
                                 Icon(imageVector = Icons.Outlined.Lock, contentDescription = null)
@@ -227,8 +226,8 @@ fun LoginScreen(
                                     Icon(
                                         imageVector = if (passwordVisible) Icons.Outlined.Visibility
                                         else Icons.Outlined.VisibilityOff,
-                                        contentDescription = if (passwordVisible) stringResource(R.string.ocultar_contrasena)
-                                        else stringResource(R.string.mostrar_contrasena)
+                                        contentDescription = if (passwordVisible) tr("ocultar_contrasena")
+                                        else tr("mostrar_contrasena")
                                     )
                                 }
                             },
@@ -245,7 +244,7 @@ fun LoginScreen(
                         ) {
                             TextButton(onClick = { viewModel.olvideContrasena(email) }) {
                                 Text(
-                                    text = stringResource(R.string.login_olvide_contrasena),
+                                    text = tr("login_olvide_contrasena"),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = LoginMutedText,
                                     fontWeight = FontWeight.Medium
@@ -279,7 +278,7 @@ fun LoginScreen(
                                     )
                                 } else {
                                     Text(
-                                        text = stringResource(R.string.login_title),
+                                        text = tr("login_title"),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.align(Alignment.Center)
@@ -294,7 +293,7 @@ fun LoginScreen(
                         }
 
                         Text(
-                            text = stringResource(R.string.login_sin_cuenta),
+                            text = tr("login_sin_cuenta"),
                             style = MaterialTheme.typography.bodySmall,
                             color = LoginMutedText,
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -305,7 +304,7 @@ fun LoginScreen(
                             modifier = Modifier.align(Alignment.CenterHorizontally)
                         ) {
                             Text(
-                                text = stringResource(R.string.login_registrate_codigo),
+                                text = tr("login_registrate_codigo"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold

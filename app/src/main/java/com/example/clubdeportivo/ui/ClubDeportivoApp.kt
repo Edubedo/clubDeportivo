@@ -55,7 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.stringResource
+import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,7 +67,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.data.GuardianSesion
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.esEncargado
@@ -199,7 +198,7 @@ fun ClubDeportivoApp(
     }
 
     // Enlace de acceso de un plan familiar: sin sesión abre el registro con el código ya puesto.
-    val avisoCerrarSesionParaEnlace = stringResource(R.string.enlace_cierra_sesion)
+    val avisoCerrarSesionParaEnlace = tr("enlace_cierra_sesion")
     LaunchedEffect(codigoEntrante) {
         if (codigoEntrante != null && SesionManager.usuarioActual == null) {
             navController.navigate(Destinations.REGISTRO) { launchSingleTop = true }
@@ -234,7 +233,7 @@ fun ClubDeportivoApp(
                                 }
                                 Column(modifier = Modifier.padding(start = 12.dp)) {
                                     Text(
-                                        text = stringResource(R.string.app_name),
+                                        text = tr("app_name"),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = TextoPrincipal,
                                         maxLines = 1
@@ -268,7 +267,7 @@ fun ClubDeportivoApp(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Outlined.Notifications,
-                                            contentDescription = if (avisos.sinLeer > 0) stringResource(R.string.avisos_sin_leer, avisos.sinLeer) else stringResource(R.string.avisos),
+                                            contentDescription = if (avisos.sinLeer > 0) tr("avisos_sin_leer", avisos.sinLeer) else tr("avisos"),
                                             tint = TextoSecundario
                                         )
                                     }
@@ -319,7 +318,7 @@ fun ClubDeportivoApp(
                                 },
                                 label = {
                                     Text(
-                                        text = stringResource(item.label),
+                                        text = tr(item.label),
                                         fontSize = if (rol?.esAdministrador() == true) 10.sp else 12.sp,
                                         fontWeight = if (seleccionado) FontWeight.SemiBold else FontWeight.Medium,
                                         maxLines = 1
@@ -443,11 +442,11 @@ fun ClubDeportivoApp(
             onDismissRequest = { SesionManager.onExpulsionMostrada() },
             shape = RoundedCornerShape(20.dp),
             containerColor = Superficie,
-            title = { Text(stringResource(R.string.sesion_cerrada_titulo), style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
+            title = { Text(tr("sesion_cerrada_titulo"), style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
             text = { Text(motivo, style = MaterialTheme.typography.bodyMedium, color = TextoSecundario) },
             confirmButton = {
                 TextButton(onClick = { SesionManager.onExpulsionMostrada() }) {
-                    Text(stringResource(R.string.entendido), color = Marca, fontWeight = FontWeight.SemiBold)
+                    Text(tr("entendido"), color = Marca, fontWeight = FontWeight.SemiBold)
                 }
             }
         )
@@ -464,13 +463,13 @@ private fun AvatarUsuario(nombre: String, onClick: () -> Unit) {
             .size(36.dp)
             .clip(CircleShape)
             .background(MarcaSuave)
-            .clickable(onClickLabel = stringResource(R.string.abrir_perfil), onClick = onClick),
+            .clickable(onClickLabel = tr("abrir_perfil"), onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         if (foto != null) {
             AsyncImage(
                 model = foto,
-                contentDescription = stringResource(R.string.foto_perfil),
+                contentDescription = tr("foto_perfil"),
                 modifier = Modifier.size(36.dp),
                 contentScale = ContentScale.Crop
             )

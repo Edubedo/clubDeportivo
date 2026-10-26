@@ -17,11 +17,10 @@ import com.example.clubdeportivo.util.ReglasContrasena
 import com.example.clubdeportivo.util.Resultado
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Texto con el que empieza el aviso de éxito al cambiar una contraseña (la pantalla lo pinta en verde). */
-val MENSAJE_CONTRASENA_CAMBIADA: String get() = Textos.get(R.string.password_updated_for)
+val MENSAJE_CONTRASENA_CAMBIADA: String get() = Textos.get("password_updated_for")
 
 /** Personal del club: lista, altas (con cuenta de acceso real) y ediciones. Todo sobre la colección `usuarios`. */
 class PersonalViewModel(
@@ -64,13 +63,13 @@ class PersonalViewModel(
                 // Por si es la primera vez tras la fusión de empleados en usuarios (no hace nada si ya está hecha).
                 MigracionEsquema.asegurar(FirebaseFirestore.getInstance())
             } catch (e: Exception) {
-                Log.w("Esquema", Textos.get(R.string.the_database_structure_could_not_be), e)
+                Log.w("Esquema", Textos.get("the_database_structure_could_not_be"), e)
             }
             try {
                 _areas.value = areaRepository.obtenerAreas().map { it.tipo.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
                 _personal.value = personalRepository.obtenerPersonal()
             } catch (e: Exception) {
-                _mensaje.value = Textos.get(R.string.the_staff_could_not_be_loaded)
+                _mensaje.value = Textos.get("the_staff_could_not_be_loaded")
             }
             _cargando.value = false
         }
@@ -80,17 +79,17 @@ class PersonalViewModel(
         val yo = SesionManager.usuarioActual
         _avisoFormulario.value = null
         if (yo?.rol?.esAdministrador() != true) {
-            _avisoFormulario.value = Textos.get(R.string.only_administrators_can_manage_staff)
+            _avisoFormulario.value = Textos.get("only_administrators_can_manage_staff")
             return
         }
         // Evita que un administrador se quite a sí mismo el acceso y deje la sección sin nadie que la controle.
         if (existente?.id == yo.id && (datos.estado != "ACTIVO" || !datos.rol.esAdministrador())) {
-            _avisoFormulario.value = Textos.get(R.string.you_can_t_deactivate_yourself_or)
+            _avisoFormulario.value = Textos.get("you_can_t_deactivate_yourself_or")
             return
         }
         // Un encargado trabaja solo con lo de su área: sin área no vería reservas, áreas ni inventario.
         if (!datos.rol.esAdministrador() && datos.areaTrabajo.isNullOrBlank()) {
-            _avisoFormulario.value = Textos.get(R.string.choose_the_area_they_will_manage)
+            _avisoFormulario.value = Textos.get("choose_the_area_they_will_manage")
             return
         }
         viewModelScope.launch {
@@ -98,7 +97,7 @@ class PersonalViewModel(
             val resultado = if (existente == null) personalRepository.crear(datos) else personalRepository.actualizar(existente.id, datos)
             when (resultado) {
                 is Resultado.Exito -> {
-                    _mensaje.value = if (existente == null) Textos.get(R.string.staff_added, datos.nombre.trim()) else Textos.get(R.string.changes_saved)
+                    _mensaje.value = if (existente == null) Textos.get("staff_added", datos.nombre.trim()) else Textos.get("changes_saved")
                     _guardadoExitoso.value = true
                     cargarDatos()
                 }
@@ -112,7 +111,7 @@ class PersonalViewModel(
     fun cambiarContrasena(persona: Personal, contrasena: String) {
         _avisoFormulario.value = null
         if (SesionManager.usuarioActual?.rol?.esAdministrador() != true) {
-            _avisoFormulario.value = Textos.get(R.string.only_administrators_can_change_staff_p)
+            _avisoFormulario.value = Textos.get("only_administrators_can_change_staff_p")
             return
         }
         ReglasContrasena.primerError(contrasena)?.let {

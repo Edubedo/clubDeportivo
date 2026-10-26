@@ -5,7 +5,6 @@ import com.example.clubdeportivo.util.Resultado
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Tope de la foto ya comprimida; un documento de Firestore admite hasta 1 MB, aquí hay mucho margen. */
@@ -23,7 +22,7 @@ class FirebaseFotoPerfilRepository(
     private val usuarios = db.collection("usuarios")
 
     override suspend fun subir(usuarioId: String, jpeg: ByteArray): Resultado<String> {
-        if (jpeg.size > TAMANO_MAXIMO_BYTES) return Resultado.Error(Textos.get(R.string.the_photo_is_too_large))
+        if (jpeg.size > TAMANO_MAXIMO_BYTES) return Resultado.Error(Textos.get("the_photo_is_too_large"))
 
         return try {
             val dataUri = "data:image/jpeg;base64," + Base64.encodeToString(jpeg, Base64.NO_WRAP)
@@ -34,7 +33,7 @@ class FirebaseFotoPerfilRepository(
 
             Resultado.Exito(dataUri)
         } catch (e: Exception) {
-            Resultado.Error(e.message ?: Textos.get(R.string.the_photo_could_not_be_saved))
+            Resultado.Error(e.message ?: Textos.get("the_photo_could_not_be_saved"))
         }
     }
 
@@ -45,6 +44,6 @@ class FirebaseFotoPerfilRepository(
 
         Resultado.Exito(Unit)
     } catch (e: Exception) {
-        Resultado.Error(e.message ?: Textos.get(R.string.the_photo_could_not_be_removed))
+        Resultado.Error(e.message ?: Textos.get("the_photo_could_not_be_removed"))
     }
 }

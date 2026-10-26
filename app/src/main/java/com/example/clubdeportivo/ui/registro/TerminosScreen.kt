@@ -39,11 +39,10 @@ import com.example.clubdeportivo.ui.theme.Borde
 import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /** Pestañas del documento legal: los términos de uso y el aviso de privacidad. */
-enum class DocumentoLegal(val etiqueta: String) { TERMINOS(Textos.get(R.string.terms)), PRIVACIDAD(Textos.get(R.string.privacy)) }
+enum class DocumentoLegal(val etiqueta: String) { TERMINOS(Textos.get("terms")), PRIVACIDAD(Textos.get("privacy")) }
 
 /**
  * Términos y condiciones a pantalla completa, para leerlos con calma antes de aceptarlos. [onAceptar] muestra el botón
@@ -69,17 +68,17 @@ fun TerminosScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = Textos.get(R.string.terms_and_privacy),
+                        text = Textos.get("terms_and_privacy"),
                         style = MaterialTheme.typography.titleLarge,
                         color = TextoPrincipal,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = onCerrar) {
-                        Icon(Icons.Filled.Close, contentDescription = Textos.get(R.string.close), tint = TextoSecundario)
+                        Icon(Icons.Filled.Close, contentDescription = Textos.get("close"), tint = TextoSecundario)
                     }
                 }
                 Text(
-                    text = Textos.get(R.string.version_updated_on, TerminosTexto.VERSION, TerminosTexto.ULTIMA_ACTUALIZACION),
+                    text = Textos.get("version_updated_on", TerminosTexto.VERSION, TerminosTexto.ULTIMA_ACTUALIZACION),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario,
                     modifier = Modifier.padding(horizontal = 20.dp)
@@ -100,7 +99,7 @@ fun TerminosScreen(
                 ) {
                     item {
                         Text(
-                            text = if (documento == DocumentoLegal.TERMINOS) Textos.get(R.string.terms_and_conditions_of_use) else Textos.get(R.string.privacy_notice),
+                            text = if (documento == DocumentoLegal.TERMINOS) Textos.get("terms_and_conditions_of_use") else Textos.get("privacy_notice"),
                             style = MaterialTheme.typography.headlineSmall,
                             color = TextoPrincipal
                         )
@@ -124,7 +123,7 @@ fun TerminosScreen(
                         .padding(horizontal = 20.dp, vertical = 12.dp)
                 ) {
                     BotonPrimario(
-                        texto = if (onAceptar != null) Textos.get(R.string.i_accept_the_terms_and_the) else Textos.get(R.string.close),
+                        texto = if (onAceptar != null) Textos.get("i_accept_the_terms_and_the") else Textos.get("close"),
                         onClick = { onAceptar?.invoke() ?: onCerrar() }
                     )
                 }

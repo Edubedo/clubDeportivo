@@ -2,7 +2,10 @@ package com.example.clubdeportivo.notificaciones
 
 import android.content.Context
 import com.example.clubdeportivo.data.AppContainer
+import com.example.clubdeportivo.data.GestorListaEspera
+import com.example.clubdeportivo.data.model.EstadoEspera
 import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.util.ReglasListaEspera
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.Usuario
 import com.example.clubdeportivo.data.model.puedeVerDeporte
@@ -66,6 +69,16 @@ object MotorRecordatorios {
                     )
                 }
                 bloque { agregar(ReglasRecordatorios.membresia(AppContainer.membresiaRepository.obtenerMembresia(uid), hoy, nuevo)) }
+                bloque {
+                    // Primero se apartan los lugares que se hayan liberado en las horas donde espera (nadie más lo hace
+                    // si quien canceló no abrió la app), y después se avisa si ya le tocó.
+                    val esperando = AppContainer.listaEsperaRepository.obtenerDeUsuario(uid)
+                        .filter { it.estado == EstadoEspera.ESPERANDO && ReglasListaEspera.vigente(it, ahora) }
+                    esperando.map { it.areaId to it.fecha }.distinct().forEach { (areaId, fecha) ->
+                        runCatching { GestorListaEspera.promover(areaId, fecha, ahora) }
+                    }
+                    agregar(ReglasRecordatorios.listaEspera(AppContainer.listaEsperaRepository.obtenerDeUsuario(uid), ahora, nuevo))
+                }
                 bloque {
                     val inscritos = AppContainer.torneoRepository.torneosInscritos(uid)
                     val torneos = AppContainer.torneoRepository.obtenerTorneos().filter { it.id in inscritos }

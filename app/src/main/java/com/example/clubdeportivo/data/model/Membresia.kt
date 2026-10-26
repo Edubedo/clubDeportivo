@@ -1,24 +1,40 @@
 package com.example.clubdeportivo.data.model
 
-import com.example.clubdeportivo.R
+import com.example.clubdeportivo.util.Idioma
 import com.example.clubdeportivo.util.Textos
 enum class TipoMembresia { INDIVIDUAL, FAMILIAR, VISITA }
 
 enum class EstadoMembresia { ACTIVA, VENCIDA, SUSPENDIDA }
 
-/** Razones por las que el personal puede suspender una membresía. Se guardan con la suspensión y las ve el miembro. */
-enum class MotivoSuspension(val etiqueta: String, val pideDetalle: Boolean = false) {
-    FALTA_DE_PAGO(Textos.get(R.string.missed_payment)),
-    INCUMPLIMIENTO_REGLAMENTO(Textos.get(R.string.rule_violation)),
-    CONDUCTA(Textos.get(R.string.inappropriate_conduct)),
-    SOLICITUD_DEL_MIEMBRO(Textos.get(R.string.at_the_member_s_request)),
-    DOCUMENTACION(Textos.get(R.string.incomplete_documentation)),
-    MOTIVO_MEDICO(Textos.get(R.string.medical_reasons)),
-    OTRO(Textos.get(R.string.other_reason), pideDetalle = true);
+/**
+ * Razones por las que el personal puede suspender una membresía. Se guardan con la suspensión (siempre en español,
+ * como el resto de los datos) y las ve el miembro en su idioma con [etiquetaMotivoSuspension].
+ */
+enum class MotivoSuspension(internal val clave: String, val pideDetalle: Boolean = false) {
+    FALTA_DE_PAGO("missed_payment"),
+    INCUMPLIMIENTO_REGLAMENTO("rule_violation"),
+    CONDUCTA("inappropriate_conduct"),
+    SOLICITUD_DEL_MIEMBRO("at_the_member_s_request"),
+    DOCUMENTACION("incomplete_documentation"),
+    MOTIVO_MEDICO("medical_reasons"),
+    OTRO("other_reason", pideDetalle = true);
 
-    /** Texto que se guarda: la etiqueta, o "Otro: <detalle>" cuando el personal lo escribe. */
-    fun textoGuardado(detalle: String): String =
-        if (pideDetalle) "${etiqueta.substringBefore(" ")}: ${detalle.trim()}" else etiqueta
+    /** Cómo se muestra en el idioma elegido. */
+    val etiqueta: String get() = Textos.get(clave)
+
+    /** Texto que se guarda: la etiqueta en español, o "Otro: <detalle>" cuando el personal lo escribe. */
+    fun textoGuardado(detalle: String): String {
+        val enEspanol = Textos.en(Idioma.ES, clave)
+        return if (pideDetalle) prefijoGuardado(enEspanol) + detalle.trim() else enEspanol
+    }
+
+    /** "Otro motivo" → "Otro: ". */
+    internal fun prefijoGuardado(etiqueta: String): String = "${etiqueta.substringBefore(" ")}: "
+
+    companion object {
+        /** Motivo que se guarda al dar de baja a un miembro desde Membresías. */
+        const val CLAVE_BAJA_MIEMBRO = "miembro_motivo_baja"
+    }
 }
 
 /** Planes de membresía individual (sin paquete familiar). */

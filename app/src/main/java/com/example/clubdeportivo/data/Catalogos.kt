@@ -2,7 +2,6 @@ package com.example.clubdeportivo.data
 
 import com.example.clubdeportivo.data.model.PaqueteFamiliar
 import com.example.clubdeportivo.data.model.PlanIndividual
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 /**
@@ -23,7 +22,7 @@ object Catalogos {
         TIPOS_DE_PERSONAL.firstOrNull { puesto.startsWith(it) } ?: puesto
 
     /** Cómo se cobra: membresías y paquetes se pagan cada mes; la visita se paga una sola vez, por día. */
-    val METODOS_DE_PAGO = listOf(Textos.get(R.string.cash), Textos.get(R.string.card), Textos.get(R.string.bank_transfer))
+    val METODOS_DE_PAGO = listOf(Textos.get("cash"), Textos.get("card"), Textos.get("bank_transfer"))
 
     fun precioPlanIndividual(plan: PlanIndividual): Double = when (plan) {
         PlanIndividual.NINO -> 1500.0
@@ -32,42 +31,42 @@ object Catalogos {
     }
 
     fun beneficiosPlanIndividual(plan: PlanIndividual): List<String> = when (plan) {
-        PlanIndividual.NINO -> listOf(Textos.get(R.string.access_to_all_areas_kids_rate))
-        PlanIndividual.NORMAL -> listOf(Textos.get(R.string.access_to_all_areas))
+        PlanIndividual.NINO -> listOf(Textos.get("access_to_all_areas_kids_rate"))
+        PlanIndividual.NORMAL -> listOf(Textos.get("access_to_all_areas"))
         PlanIndividual.DELUXE -> listOf(
-            Textos.get(R.string.access_to_all_areas),
-            Textos.get(R.string.booking_priority),
-            Textos.get(R.string.personal_training_included),
-            Textos.get(R.string.free_water),
-            Textos.get(R.string.snacks_included)
+            Textos.get("access_to_all_areas"),
+            Textos.get("booking_priority"),
+            Textos.get("personal_training_included"),
+            Textos.get("free_water"),
+            Textos.get("snacks_included")
         )
     }
 
     fun nombrePlanIndividual(plan: PlanIndividual): String = when (plan) {
-        PlanIndividual.NINO -> Textos.get(R.string.individual_kids)
-        PlanIndividual.NORMAL -> Textos.get(R.string.individual_standard)
-        PlanIndividual.DELUXE -> Textos.get(R.string.individual_deluxe)
+        PlanIndividual.NINO -> Textos.get("individual_kids")
+        PlanIndividual.NORMAL -> Textos.get("individual_standard")
+        PlanIndividual.DELUXE -> Textos.get("individual_deluxe")
     }
 
     val paquetesFamiliares = listOf(
         PaqueteFamiliar(
             id = 1,
-            nombre = Textos.get(R.string.family),
-            descripcion = Textos.get(R.string.includes_2_adults_and_3_children),
+            nombre = Textos.get("family"),
+            descripcion = Textos.get("includes_2_adults_and_3_children"),
             maxIntegrantes = 5,
             precioMensual = 7000.0
         ),
         PaqueteFamiliar(
             id = 2,
-            nombre = Textos.get(R.string.couple),
-            descripcion = Textos.get(R.string.includes_2_adults_access_to_all),
+            nombre = Textos.get("couple"),
+            descripcion = Textos.get("includes_2_adults_access_to_all"),
             maxIntegrantes = 2,
             precioMensual = 2999.0
         ),
         PaqueteFamiliar(
             id = 3,
-            nombre = Textos.get(R.string.kids),
-            descripcion = Textos.get(R.string.package_for_siblings_access_to_all),
+            nombre = Textos.get("kids"),
+            descripcion = Textos.get("package_for_siblings_access_to_all"),
             maxIntegrantes = 3,
             precioMensual = 2800.0
         )
@@ -86,6 +85,10 @@ object Catalogos {
     const val HORA_APERTURA_AREAS = "06:00"
     const val HORA_CIERRE_AREAS = "22:00"
     const val LUGARES_PARA_ALERTA_CUPO_BAJO = 2
+
+    // --- Lista de espera de horas llenas ---
+    /** Minutos que se le guarda el lugar liberado a quien le tocó en la fila, antes de pasarlo al siguiente. */
+    const val MINUTOS_PRIORIDAD_LISTA_ESPERA = 30
 
     // --- Reglas de inasistencias (no-show) ---
     const val INASISTENCIAS_PARA_BLOQUEO = 3

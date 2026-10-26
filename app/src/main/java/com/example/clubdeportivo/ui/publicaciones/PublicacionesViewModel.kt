@@ -15,7 +15,6 @@ import com.example.clubdeportivo.data.publicaciones.Publicacion
 import com.example.clubdeportivo.util.Fechas
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 class PublicacionesViewModel : ViewModel() {
@@ -59,15 +58,15 @@ class PublicacionesViewModel : ViewModel() {
             try {
                 publicaciones = repository.obtener(audiencias)
             } catch (e: FirebaseFirestoreException) {
-                Log.e(TAG, Textos.get(R.string.error_loading_posts_from_firestore), e)
+                Log.e(TAG, Textos.get("error_loading_posts_from_firestore"), e)
                 error = if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                    Textos.get(R.string.firebase_rejected_access_publish_the_u)
+                    Textos.get("firebase_rejected_access_publish_the_u")
                 } else {
-                    Textos.get(R.string.the_posts_could_not_be_loaded)
+                    Textos.get("the_posts_could_not_be_loaded")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, Textos.get(R.string.unexpected_error_loading_posts), e)
-                error = Textos.get(R.string.the_posts_could_not_be_loaded)
+                Log.e(TAG, Textos.get("unexpected_error_loading_posts"), e)
+                error = Textos.get("the_posts_could_not_be_loaded")
             } finally {
                 cargando = false
             }
@@ -85,7 +84,7 @@ class PublicacionesViewModel : ViewModel() {
     ) {
         val usuario = SesionManager.usuarioActual ?: return
         if (vigencia.isNotBlank() && vigencia < Fechas.hoy()) {
-            error = Textos.get(R.string.the_end_date_must_be_today)
+            error = Textos.get("the_end_date_must_be_today")
             return
         }
         if (enviando || titulo.isBlank() || descripcion.isBlank() || imagenUrl.isBlank()) return
@@ -112,7 +111,7 @@ class PublicacionesViewModel : ViewModel() {
                 }
                 alTerminar()
             } catch (e: Exception) {
-                error = Textos.get(R.string.the_post_could_not_be_saved)
+                error = Textos.get("the_post_could_not_be_saved")
             } finally {
                 enviando = false
             }
@@ -127,7 +126,7 @@ class PublicacionesViewModel : ViewModel() {
                 publicaciones = publicaciones.filterNot { it.id == publicacion.id }
                 alTerminar()
             } catch (e: Exception) {
-                error = Textos.get(R.string.the_post_could_not_be_deleted)
+                error = Textos.get("the_post_could_not_be_deleted")
             }
         }
     }

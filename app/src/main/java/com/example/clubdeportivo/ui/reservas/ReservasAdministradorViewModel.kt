@@ -10,7 +10,6 @@ import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import kotlinx.coroutines.launch
-import com.example.clubdeportivo.R
 import com.example.clubdeportivo.util.Textos
 
 data class ReservasAdministradorUi(
@@ -51,7 +50,7 @@ class ReservasAdministradorViewModel(
             } catch (e: Exception) {
                 _ui.value = (_ui.value ?: ReservasAdministradorUi()).copy(
                     cargando = false,
-                    error = Textos.get(R.string.the_bookings_could_not_be_loaded)
+                    error = Textos.get("the_bookings_could_not_be_loaded")
                 )
             }
         }
