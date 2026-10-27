@@ -1,22 +1,18 @@
 package com.example.clubdeportivo.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.CardMembership
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.ListAlt
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -56,20 +52,18 @@ val bottomNavItems = listOf(
     BottomNavItem(Destinations.MEMBRESIA, "nav_membres_corto", Icons.Filled.CardMembership, Icons.Outlined.CardMembership)
 )
 
-/** Menú para encargados de área: las reservas, el área y el inventario de su deporte, y su perfil. */
+/** Menú para encargados de área: las reservas, el área y el inventario de su deporte. */
 val bottomNavItemsEncargado = listOf(
     BottomNavItem(Destinations.HOME, "nav_home", Icons.Filled.Home, Icons.Outlined.Home),
     BottomNavItem(Destinations.RESERVAS, "nav_reservar", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.AREAS, "nav_mi_area", Icons.Filled.Place, Icons.Outlined.Place),
-    BottomNavItem(Destinations.PERFIL, "nav_perfil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
+    BottomNavItem(Destinations.AREAS, "nav_mi_area", Icons.Filled.Place, Icons.Outlined.Place)
 )
 
-/** Menú de socios y visitantes: incluye Inicio, Reservar, Membresía y Perfil. */
+/** Menú de socios y visitantes: incluye Inicio, Reservar y Membresía. */
 val bottomNavItemsCliente = listOf(
     BottomNavItem(Destinations.HOME, "nav_home", Icons.Filled.Home, Icons.Outlined.Home),
     BottomNavItem(Destinations.RESERVAS, "nav_reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.MEMBRESIA, "nav_membresia", Icons.Filled.CardMembership, Icons.Outlined.CardMembership),
-    BottomNavItem(Destinations.PERFIL, "nav_perfil", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
+    BottomNavItem(Destinations.MEMBRESIA, "nav_membresia", Icons.Filled.CardMembership, Icons.Outlined.CardMembership)
 )
 
 /** Menú inferior según el rol: administradores, encargados de área o clientes. */
@@ -82,7 +76,7 @@ fun menuPara(rol: Rol?): List<BottomNavItem> = when {
 /** Todos los roles llegan a su inicio, que presenta el panel correspondiente a su perfil. */
 fun rutaInicial(rol: Rol?): String = Destinations.HOME
 
-/** Una ruta solo se abre si está en el menú del rol (o es el perfil). */
+/** Una ruta solo se abre si está en el menú del rol o es una ruta secundaria permitida. */
 fun rutaPermitida(rol: Rol?, ruta: String): Boolean =
     ruta == Destinations.PERFIL ||
         (rol?.esCliente() == true && ruta == Destinations.MIS_RESERVAS) ||

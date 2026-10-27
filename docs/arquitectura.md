@@ -146,6 +146,11 @@ crear su propia instancia. Esto es lo que hace que, por ejemplo, una reserva cre
 pantalla "Reservar" aparezca después en "Mis reservas": ambas pantallas leen del mismo
 `FirebaseReservaRepository`.
 
+El widget de clima usa `OpenMeteoWeatherRepository`, que consulta las condiciones actuales de
+Open-Meteo para las coordenadas del club en Manzanillo (19.110833, -104.327778), sin requerir
+una clave de API. `WeatherViewModel` expone los estados de carga, éxito y error; la pantalla puede
+reintentar si el servicio no está disponible.
+
 ```kotlin
 object AppContainer {
     val authRepository: AuthRepository = FirebaseAuthRepository()

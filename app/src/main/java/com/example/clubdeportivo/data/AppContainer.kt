@@ -34,6 +34,8 @@ import com.example.clubdeportivo.data.repository.FirebaseUsuarioRepository
 import com.example.clubdeportivo.data.repository.FotoPerfilRepository
 import com.example.clubdeportivo.data.repository.PersonalRepository
 import com.example.clubdeportivo.data.repository.UsuarioRepository
+import com.example.clubdeportivo.data.repository.WeatherRepository
+import com.example.clubdeportivo.data.repository.OpenMeteoWeatherRepository
 
 /**
  * Punto único donde viven los repositorios mientras el proyecto no tiene
@@ -62,6 +64,7 @@ object AppContainer {
     val avisosRepository: AvisosRepository = FirebaseAvisosRepository()
     val publicacionesRepository: PublicacionesRepository = FirebasePublicacionesRepository()
     val listaEsperaRepository: ListaEsperaRepository = FirebaseListaEsperaRepository()
+    val weatherRepository: WeatherRepository = OpenMeteoWeatherRepository()
 
     val usuarioRepository: UsuarioRepository = FirebaseUsuarioRepository()
     val fotoPerfilRepository: FotoPerfilRepository = FirebaseFotoPerfilRepository()

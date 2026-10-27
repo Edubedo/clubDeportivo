@@ -80,13 +80,32 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
 
     var titulo by remember { mutableStateOf("") }
     var texto by remember { mutableStateOf("") }
+    var tituloOriginal by remember { mutableStateOf("") }
+    var textoOriginal by remember { mutableStateOf("") }
     val permitidos = remember { viewModel.destinatariosPermitidos() }
     var destinatario by remember { mutableStateOf(permitidos.first()) }
+    var destinatarioOriginal by remember { mutableStateOf(permitidos.first()) }
+    var confirmarSalida by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.cargar() }
 
     val esPersonal = viewModel.esPersonal
     val enLista = modo is ModoAvisos.Lista
+    val hayCambios = when (modo) {
+        is ModoAvisos.Redactar ->
+            titulo.isNotEmpty() || texto.isNotEmpty() || destinatario != destinatarioOriginal
+        is ModoAvisos.Editar -> titulo != tituloOriginal || texto != textoOriginal
+        is ModoAvisos.Lista -> false
+    }
+    val intentarCerrar = {
+        if (enLista) {
+            onCerrar()
+        } else if (esPersonal && hayCambios) {
+            confirmarSalida = true
+        } else {
+            modo = ModoAvisos.Lista
+        }
+    }
 
     DialogoFormulario(
         titulo = when (modo) {
@@ -94,7 +113,8 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
             is ModoAvisos.Redactar -> Textos.get("new_notice")
             is ModoAvisos.Editar -> Textos.get("edit_notice")
         },
-        onCerrar = { if (enLista) onCerrar() else modo = ModoAvisos.Lista },
+        onCerrar = intentarCerrar,
+        confirmarSalida = false,
         pie = when {
             enLista && esPersonal -> {
                 {
@@ -103,7 +123,10 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
                         onClick = {
                             titulo = ""
                             texto = ""
+                            tituloOriginal = ""
+                            textoOriginal = ""
                             destinatario = permitidos.first()
+                            destinatarioOriginal = permitidos.first()
                             modo = ModoAvisos.Redactar
                         }
                     )
@@ -156,6 +179,9 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
                 onModificar = { aviso ->
                     titulo = aviso.titulo
                     texto = aviso.mensaje
+                    tituloOriginal = aviso.titulo
+                    textoOriginal = aviso.mensaje
+                    destinatarioOriginal = aviso.destinatario
                     modo = ModoAvisos.Editar(aviso)
                 },
                 onEliminar = { aEliminar = it }
@@ -197,6 +223,20 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
                 CamposAviso(titulo, { titulo = it.take(MAX_TITULO) }, texto, { texto = it.take(MAX_MENSAJE) })
             }
         }
+    }
+
+    if (confirmarSalida) {
+        DialogoConfirmacion(
+            titulo = Textos.get("salir_formulario_titulo"),
+            mensaje = Textos.get("salir_formulario_mensaje"),
+            textoConfirmar = Textos.get("salir_si"),
+            textoCancelar = Textos.get("seguir_editando"),
+            onConfirmar = {
+                confirmarSalida = false
+                modo = ModoAvisos.Lista
+            },
+            onCancelar = { confirmarSalida = false }
+        )
     }
 
     aEliminar?.let { aviso ->

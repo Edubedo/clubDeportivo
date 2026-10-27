@@ -172,7 +172,9 @@ fun ClubDeportivoApp(
     LaunchedEffect(rutaEntrante, usuario?.id) {
         val ruta = rutaEntrante ?: return@LaunchedEffect
         val actual = SesionManager.usuarioActual ?: return@LaunchedEffect
-        if (rutaPermitida(actual.rol, ruta)) navegarAPestana(navController, ruta, menuPara(actual.rol).first().route)
+        if (ruta != Destinations.PERFIL && rutaPermitida(actual.rol, ruta)) {
+            navegarAPestana(navController, ruta, menuPara(actual.rol).first().route)
+        }
         onRutaUsada()
     }
 
@@ -276,11 +278,7 @@ fun ClubDeportivoApp(
                                     nombre = usuario?.nombre.orEmpty(),
                                     onClick = {
                                         ProcesoEnCurso.intentar {
-                                            if (menu.any { it.route == Destinations.PERFIL }) {
-                                                navegarAPestana(navController, Destinations.PERFIL, menu.first().route)
-                                            } else {
-                                                navController.navigate(Destinations.PERFIL) { launchSingleTop = true }
-                                            }
+                                            navController.navigate(Destinations.PERFIL) { launchSingleTop = true }
                                         }
                                     }
                                 )
