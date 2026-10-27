@@ -63,6 +63,7 @@ object MotorRecordatorios {
                 bloque {
                     val reservas = AppContainer.reservaRepository.obtenerReservasDeUsuario(uid)
                     agregar(ReglasRecordatorios.reservasProximas(reservas, ahora, nuevo))
+                    AlarmasRecordatorio.programar(contexto, reservas, ahora)
                     agregar(ReglasRecordatorios.respuestasDeReserva(reservas, registro.estadosDeReservas()))
                     registro.guardarEstadosDeReservas(
                         reservas.filter { it.fecha >= hoy || it.estado == EstadoReserva.PENDIENTE_APROBACION }.associate { it.id to it.estado.name }

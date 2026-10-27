@@ -25,8 +25,12 @@ import com.example.clubdeportivo.data.model.etiquetaMotivoSuspension
  * probarlas sin Firebase ni Android. [nuevo] dice si una clave todavía no se avisó: así cada cosa se avisa una sola vez.
  */
 object ReglasRecordatorios {
-    /** Una reserva se recuerda cuando falta esto o menos para que empiece. */
-    const val MINUTOS_ANTES_DE_RESERVA = 60
+    /**
+     * Minutos antes del inicio en que se recuerda una reserva (2 h y 1 h). Cada aviso sale una vez, en cuanto falte
+     * eso o menos y todavía no toque el siguiente. Con menos de [MINUTOS_MINIMOS_AVISO] ya no se avisa: llegaría tarde.
+     */
+    val MINUTOS_ANTES_DE_RESERVA = listOf(120, 60)
+    const val MINUTOS_MINIMOS_AVISO = 10
 
     /** La membresía se recuerda cuando faltan estos días o menos (y de nuevo el día que vence). */
     const val DIAS_ANTES_DE_VENCER = 3
@@ -61,15 +65,39 @@ object ReglasRecordatorios {
     fun reservasProximas(reservas: List<Reserva>, ahora: Date, nuevo: (String) -> Boolean): List<Recordatorio> =
         reservas.filter { it.estado == EstadoReserva.CONFIRMADA }.mapNotNull { reserva ->
             val minutos = Fechas.horasDesdeAhora(reserva.fecha, reserva.horaInicio, ahora) * 60
-            val clave = "reserva1h:${reserva.id}"
-            if (minutos <= 0 || minutos > MINUTOS_ANTES_DE_RESERVA || !nuevo(clave)) return@mapNotNull null
+            if (minutos < MINUTOS_MINIMOS_AVISO) return@mapNotNull null
+            // El aviso que toca es el más cercano que ya se alcanzó (con 90 min faltantes, el de 2 h).
+            val umbral = MINUTOS_ANTES_DE_RESERVA.filter { minutos <= it }.minOrNull() ?: return@mapNotNull null
+            val clave = "reserva:${reserva.id}:$umbral"
+            if (!nuevo(clave)) return@mapNotNull null
             Recordatorio(
                 clave, CategoriaNotificacion.RESERVA_PROXIMA,
                 Textos.get("notif_reserva_proxima_titulo"),
-                Textos.get("notif_reserva_proxima_mensaje", nombreDe(reserva), reserva.horaInicio, reserva.horaFin, Math.round(minutos).toInt()),
+                Textos.get("notif_reserva_proxima_mensaje", nombreDe(reserva), reserva.horaInicio, reserva.horaFin, textoFaltante(Math.round(minutos).toInt())),
                 Destinations.RESERVAS
             )
         }
+
+    /** "2 h", "1 h 25 min" o "40 min". */
+    fun textoFaltante(minutos: Int): String {
+        val horas = minutos / 60
+        val resto = minutos % 60
+        return when {
+            horas == 0 -> Textos.get("tiempo_minutos", resto)
+            resto == 0 -> Textos.get("tiempo_horas", horas)
+            else -> Textos.get("tiempo_horas_minutos", horas, resto)
+        }
+    }
+
+    /**
+     * Momentos (en milisegundos) en que conviene despertar para dar los avisos de [reserva] que aún no llegan. Se usan
+     * para programar alarmas, así el aviso sale a su hora aunque la revisión periódica de Android se atrase.
+     */
+    fun momentosDeAviso(reserva: Reserva, ahora: Date): List<Long> {
+        if (reserva.estado != EstadoReserva.CONFIRMADA) return emptyList()
+        val inicio = Fechas.combinar(reserva.fecha, reserva.horaInicio).time
+        return MINUTOS_ANTES_DE_RESERVA.map { inicio - it * 60_000L }.filter { it > ahora.time }
+    }
 
     /**
      * Avisa cuando una solicitud que estaba en revisión se aprobó o se rechazó. [estadosPrevios] son los estados que

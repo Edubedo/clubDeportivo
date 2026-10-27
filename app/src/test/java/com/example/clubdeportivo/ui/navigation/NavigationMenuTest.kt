@@ -13,4 +13,13 @@ class NavigationMenuTest {
             assertTrue(rutaPermitida(rol, Destinations.PERFIL))
         }
     }
+
+    @Test
+    fun `reportes es una pestana solo del administrador`() {
+        Rol.entries.forEach { rol ->
+            val esAdmin = rol == Rol.ADMIN || rol == Rol.SUPERADMIN
+            assertTrue(menuPara(rol).any { it.route == Destinations.REPORTES } == esAdmin)
+            assertTrue(rutaPermitida(rol, Destinations.REPORTES) == esAdmin)
+        }
+    }
 }

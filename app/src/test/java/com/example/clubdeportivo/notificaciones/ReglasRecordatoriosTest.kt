@@ -71,19 +71,44 @@ class ReglasRecordatoriosTest {
     // ---- Reservas
 
     @Test
-    fun `una reserva se recuerda cuando falta una hora o menos`() {
-        val r = ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "11:00")), a("10:20"), todoNuevo)
-        assertEquals(1, r.size)
-        assertEquals(CategoriaNotificacion.RESERVA_PROXIMA, r.first().categoria)
-        assertTrue(r.first().mensaje.contains("40 min"))
+    fun `una reserva se recuerda 2 horas y 1 hora antes`() {
+        val dosHoras = ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "15:00")), a("13:00"), todoNuevo)
+        assertEquals(1, dosHoras.size)
+        assertEquals(CategoriaNotificacion.RESERVA_PROXIMA, dosHoras.first().categoria)
+        assertEquals(listOf("reserva:r1:120"), dosHoras.first().claves)
+        assertTrue(dosHoras.first().mensaje.contains("2 h"))
+
+        val unaHora = ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "15:00")), a("14:00"), todoNuevo)
+        assertEquals(listOf("reserva:r1:60"), unaHora.first().claves)
+        assertTrue(unaHora.first().mensaje.contains("1 h"))
+
+        // Si la revisión cae entre los dos avisos, sale el de 2 h con el tiempo real que falta.
+        val entre = ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "15:00")), a("13:35"), todoNuevo)
+        assertEquals(listOf("reserva:r1:120"), entre.first().claves)
+        assertTrue(entre.first().mensaje.contains("1 h 25 min"))
+
+        val pocoAntes = ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "11:00")), a("10:20"), todoNuevo)
+        assertTrue(pocoAntes.first().mensaje.contains("40 min"))
     }
 
     @Test
-    fun `no se recuerda una reserva lejana, ya empezada, no confirmada o ya avisada`() {
+    fun `no se recuerda una reserva lejana, que ya empieza, no confirmada o ya avisada`() {
         assertTrue(ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "13:00")), a("10:00"), todoNuevo).isEmpty())
         assertTrue(ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "09:00")), a("10:00"), todoNuevo).isEmpty())
+        assertTrue(ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "15:00")), a("14:55"), todoNuevo).isEmpty())
         assertTrue(ReglasRecordatorios.reservasProximas(listOf(reserva(estado = EstadoReserva.PENDIENTE_APROBACION)), a("10:30"), todoNuevo).isEmpty())
         assertTrue(ReglasRecordatorios.reservasProximas(listOf(reserva(inicio = "11:00")), a("10:30")) { false }.isEmpty())
+    }
+
+    @Test
+    fun `se programan alarmas a las 2 horas y a la hora antes de la reserva`() {
+        val inicio = a("15:00").time
+        assertEquals(
+            listOf(inicio - 120 * 60_000L, inicio - 60 * 60_000L),
+            ReglasRecordatorios.momentosDeAviso(reserva(inicio = "15:00"), a("12:00"))
+        )
+        assertEquals(listOf(inicio - 60 * 60_000L), ReglasRecordatorios.momentosDeAviso(reserva(inicio = "15:00"), a("13:30")))
+        assertTrue(ReglasRecordatorios.momentosDeAviso(reserva(estado = EstadoReserva.CANCELADA), a("08:00")).isEmpty())
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.example.clubdeportivo.ui.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EventAvailable
@@ -33,6 +35,7 @@ object Destinations {
     const val MIS_RESERVAS = "mis_reservas" // 🚀 Nueva ruta exclusiva para socios
     const val MEMBRESIA = "membresia"
     const val PERFIL = "perfil"
+    const val REPORTES = "reportes"
 }
 
 /** [label] es la clave del texto traducido de la pestaña (en assets/i18n; se resuelve con `tr` al dibujarla). */
@@ -49,7 +52,8 @@ val bottomNavItems = listOf(
     BottomNavItem(Destinations.PERSONAL, "nav_personal", Icons.Filled.Person, Icons.Outlined.Person),
     BottomNavItem(Destinations.AREAS, "nav_areas", Icons.Filled.Place, Icons.Outlined.Place),
     BottomNavItem(Destinations.RESERVAS, "nav_reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.MEMBRESIA, "nav_membres_corto", Icons.Filled.CardMembership, Icons.Outlined.CardMembership)
+    BottomNavItem(Destinations.MEMBRESIA, "nav_membres_corto", Icons.Filled.CardMembership, Icons.Outlined.CardMembership),
+    BottomNavItem(Destinations.REPORTES, "rep_titulo", Icons.Filled.Assessment, Icons.Outlined.Assessment)
 )
 
 /** Menú para encargados de área: las reservas, el área y el inventario de su deporte. */
@@ -93,5 +97,6 @@ fun tituloPantalla(route: String?): String = when {
     route == Destinations.MIS_RESERVAS -> "reservas_title"
     route == Destinations.MEMBRESIA -> "titulo_membresias"
     route == Destinations.PERFIL -> "perfil_title"
+    route == Destinations.REPORTES -> "rep_titulo"
     else -> "app_name"
 }
