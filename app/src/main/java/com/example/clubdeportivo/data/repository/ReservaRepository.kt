@@ -33,6 +33,10 @@ interface ReservaRepository {
     /** Todas las reservas vigentes del club (confirmadas o pendientes). */
     suspend fun obtenerReservasPorDeporte(deporte: String): List<Reserva>
     suspend fun obtenerReservasVigentes(): List<Reserva>
+    /** Todas las reservas con fecha entre [desde] y [hasta] ("yyyy-MM-dd", inclusive), en cualquier estado. Para reportes. */
+    suspend fun obtenerReservasEntre(desde: String, hasta: String): List<Reserva>
+    /** Asistencia registrada por reserva (id de reserva -> "ASISTIO" / "NO_ASISTIO"). Para reportes. */
+    suspend fun obtenerAsistencias(): Map<String, String>
     suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado>
     /** true si se pudo cancelar sin penalización (fue con 4+ horas de anticipación). */
     suspend fun cancelarReserva(reservaId: String): Boolean
@@ -167,6 +171,11 @@ class FakeReservaRepository : ReservaRepository {
 
     override suspend fun obtenerReservasVigentes(): List<Reserva> =
         reservas.filter { ReglasReserva.esVigente(it) }
+
+    override suspend fun obtenerReservasEntre(desde: String, hasta: String): List<Reserva> =
+        reservas.filter { it.fecha in desde..hasta }
+
+    override suspend fun obtenerAsistencias(): Map<String, String> = asistencias.toMap()
 
     override suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado> {
         delay(200)

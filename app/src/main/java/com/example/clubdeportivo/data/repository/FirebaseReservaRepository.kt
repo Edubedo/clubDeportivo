@@ -204,6 +204,13 @@ class FirebaseReservaRepository(
             .filter { ReglasReserva.esVigente(it) }
     }
 
+    override suspend fun obtenerReservasEntre(desde: String, hasta: String): List<Reserva> =
+        reservas.whereGreaterThanOrEqualTo("fecha", desde).whereLessThanOrEqualTo("fecha", hasta)
+            .get().await().documents.mapNotNull { it.toReserva() }
+
+    override suspend fun obtenerAsistencias(): Map<String, String> =
+        checkins.get().await().documents.mapNotNull { doc -> doc.getString("asistencia")?.let { doc.id to it } }.toMap()
+
     override suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado> {
         return materialAsignado.whereEqualTo("reservaId", reservaId).get().await().documents.map { doc ->
             MaterialAsignado(

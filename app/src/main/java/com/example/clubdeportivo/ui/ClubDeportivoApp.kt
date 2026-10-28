@@ -388,6 +388,11 @@ fun ClubDeportivoApp(
             composable(Destinations.PERSONAL) {
                 RutaProtegida(navController, Destinations.PERSONAL) { PersonalScreen() }
             }
+            composable(Destinations.REPORTES) {
+                RutaProtegida(navController, Destinations.REPORTES) {
+                    com.example.clubdeportivo.ui.admin.reportes.ReportesAdminScreen()
+                }
+            }
             composable(Destinations.AREAS) {
                 RutaProtegida(navController, Destinations.AREAS) {
                     // Un encargado solo ve su área (el inventario tiene su propia pestaña en su menú).

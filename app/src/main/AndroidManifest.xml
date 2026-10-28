@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+: los recordatorios (reservas, membresía, avisos...) son notificaciones y piden este permiso. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Para que el aviso de una reserva (2 h y 1 h antes) salga a su hora. Si no se concede, se usa una alarma aproximada. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <queries>
         <intent>
@@ -46,6 +48,10 @@
                     android:scheme="clubdeportivo" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".notificaciones.AlarmaRecordatorioReceiver"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

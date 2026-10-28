@@ -2,4 +2,6 @@
 <paths>
     <!-- Aquí la cámara del sistema deja la foto de perfil recién tomada, antes de comprimirla y subirla. -->
     <cache-path name="fotos_camara" path="fotos/" />
+    <!-- Reportes PDF / Excel que el administrador genera para compartir. -->
+    <cache-path name="reportes" path="reportes/" />
 </paths>
