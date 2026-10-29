@@ -112,6 +112,9 @@ import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.ui.theme.TextoTenue
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.clubdeportivo.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -219,20 +222,14 @@ fun ClubDeportivoApp(
                     TopAppBar(
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
+                                Image(
+                                    painter = painterResource(id = R.drawable.logo_club),
+                                    contentDescription = "Logo Athletic Club",
                                     modifier = Modifier
                                         .size(38.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(Marca),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.SportsSoccer,
-                                        contentDescription = null,
-                                        tint = SobreMarca,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
+                                        .clip(RoundedCornerShape(10.dp)),
+                                    contentScale = ContentScale.Fit
+                                )
                                 Column(modifier = Modifier.padding(start = 12.dp)) {
                                     Text(
                                         text = tr("app_name"),
