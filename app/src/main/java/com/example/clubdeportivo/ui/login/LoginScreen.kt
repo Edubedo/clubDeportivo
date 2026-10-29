@@ -67,6 +67,10 @@ import com.example.clubdeportivo.ui.theme.LoginBackground
 import com.example.clubdeportivo.ui.theme.LoginMutedText
 import com.example.clubdeportivo.ui.theme.DeepNavy
 import com.example.clubdeportivo.ui.theme.SoftBlueSelection
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.example.clubdeportivo.R
 
 @Composable
 fun LoginScreen(
@@ -140,20 +144,14 @@ fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Box(
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_club),
+                        contentDescription = "Logo Athletic Club",
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SoftBlueSelection.copy(alpha = 0.14f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.SportsSoccer,
-                            contentDescription = null,
-                            tint = SoftBlueSelection,
-                            modifier = Modifier.size(23.dp)
-                        )
-                    }
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Fit
+                    )
                     Text(
                         text = "Athletic\nClub",
                         style = MaterialTheme.typography.labelMedium.copy(lineHeight = 13.sp),
