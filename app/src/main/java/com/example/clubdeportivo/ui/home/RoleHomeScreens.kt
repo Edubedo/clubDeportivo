@@ -129,6 +129,9 @@ fun MiembroHomeScreen(
     var imagenCompleta by remember { mutableStateOf<String?>(null) }
     var dedoPresionado by remember { mutableStateOf(false) }
     val reservas by reservasViewModel.reservas.observeAsState(emptyList())
+    LaunchedEffect(SesionManager.usuarioActual?.id) {
+        if (SesionManager.usuarioActual != null) reservasViewModel.cargar()
+    }
     val reservasActivas = reservas.filter {
         it.estado == EstadoReserva.CONFIRMADA || it.estado == EstadoReserva.PENDIENTE_APROBACION
     }
