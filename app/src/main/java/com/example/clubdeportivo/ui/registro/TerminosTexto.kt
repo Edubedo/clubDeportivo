@@ -15,7 +15,7 @@ data class SeccionLegal(val titulo: String, val parrafos: List<String>)
  * legalmente al club (razón social, domicilio, correo de contacto y datos del responsable de privacidad).
  */
 object TerminosTexto {
-    const val VERSION = "1.0"
+    const val VERSION = "1.2"
     val ULTIMA_ACTUALIZACION: String get() = Textos.get("manual_ultima_actualizacion")
 
     val terminos: List<SeccionLegal> = listOf(
@@ -52,8 +52,10 @@ object TerminosTexto {
             Textos.get("n_5_bookings"),
             listOf(
                 Textos.get("you_can_book_up_to_days", Catalogos.ANTICIPACION_MAXIMA_DIAS, Catalogos.MAX_HORAS_POR_RESERVA, Catalogos.MAX_RESERVAS_ACTIVAS_POR_SOCIO, Catalogos.HORA_APERTURA_AREAS, Catalogos.HORA_CIERRE_AREAS),
+                Textos.get("minimum_booking_advance", Catalogos.ANTICIPACION_MINIMA_HORAS),
                 Textos.get("requests_from_members_and_visitors_rem"),
-                Textos.get("cancelling_less_than_hours_in_advance", Catalogos.CANCELACION_SIN_PENALIZACION_HORAS, Catalogos.INASISTENCIAS_PARA_BLOQUEO, Catalogos.VENTANA_INASISTENCIAS_DIAS, Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS)
+                Textos.get("cancelling_less_than_hours_in_advance", Catalogos.CANCELACION_SIN_PENALIZACION_HORAS, Catalogos.INASISTENCIAS_PARA_BLOQUEO, Catalogos.VENTANA_INASISTENCIAS_DIAS, Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS),
+                Textos.get("club_booking_cancellations")
             )
         ),
         SeccionLegal(
@@ -96,6 +98,14 @@ object TerminosTexto {
             listOf(
                 Textos.get("to_create_and_manage_your_account"),
                 Textos.get("we_do_not_sell_your_data")
+            )
+        ),
+        SeccionLegal(
+            Textos.get("device_permissions"),
+            listOf(
+                Textos.get("device_notifications_use"),
+                Textos.get("device_camera_gallery_use"),
+                Textos.get("device_permissions_limits")
             )
         ),
         SeccionLegal(

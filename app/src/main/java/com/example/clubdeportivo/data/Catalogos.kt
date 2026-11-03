@@ -76,7 +76,7 @@ object Catalogos {
 
     // --- Reglas de reservación ---
     const val MAX_RESERVAS_ACTIVAS_POR_SOCIO = 20
-    const val ANTICIPACION_MINIMA_HORAS = 0
+    const val ANTICIPACION_MINIMA_HORAS = 1
     const val ANTICIPACION_MAXIMA_DIAS = 7
     const val DURACION_RESERVA_HORAS = 1
     const val MAX_HORAS_POR_RESERVA = 4

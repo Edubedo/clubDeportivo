@@ -314,7 +314,7 @@ fun ClubDeportivoApp(
                                 label = {
                                     Text(
                                         text = tr(item.label),
-                                        fontSize = if (rol?.esAdministrador() == true) 10.sp else 12.sp,
+                                        fontSize = 12.sp,
                                         fontWeight = if (seleccionado) FontWeight.SemiBold else FontWeight.Medium,
                                         maxLines = 1
                                     )
@@ -366,7 +366,8 @@ fun ClubDeportivoApp(
                         rol?.esAdministrador() == true -> AdminHomeScreen(
                             publicacionesViewModel = publicaciones,
                             onIrReservas = { navegarAPestana(navController, Destinations.RESERVAS, Destinations.HOME) },
-                            onIrMembresia = { navegarAPestana(navController, Destinations.MEMBRESIA, Destinations.HOME) }
+                            onIrMembresia = { navegarAPestana(navController, Destinations.MEMBRESIA, Destinations.HOME) },
+                            onIrReportes = { navegarAPestana(navController, Destinations.REPORTES, Destinations.HOME) }
                         )
                         rol?.esEncargado() == true -> EncargadoHomeScreen(
                             publicacionesViewModel = publicaciones,

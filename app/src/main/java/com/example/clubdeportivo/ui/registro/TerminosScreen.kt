@@ -29,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.layout.PaddingValues
@@ -46,7 +47,7 @@ enum class DocumentoLegal(val etiqueta: String) { TERMINOS(Textos.get("terms")),
 
 /**
  * Términos y condiciones a pantalla completa, para leerlos con calma antes de aceptarlos. [onAceptar] muestra el botón
- * "Acepto" al pie; sin él (solo lectura) el botón es "Cerrar".
+ * "Aceptar y continuar" al pie; sin ella (solo lectura), el botón es "Cerrar".
  */
 @Composable
 fun TerminosScreen(
@@ -71,6 +72,7 @@ fun TerminosScreen(
                         text = Textos.get("terms_and_privacy"),
                         style = MaterialTheme.typography.titleLarge,
                         color = TextoPrincipal,
+                        textAlign = TextAlign.Start,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = onCerrar) {
@@ -81,6 +83,7 @@ fun TerminosScreen(
                     text = Textos.get("version_updated_on", TerminosTexto.VERSION, TerminosTexto.ULTIMA_ACTUALIZACION),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario,
+                    textAlign = TextAlign.Start,
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -101,14 +104,25 @@ fun TerminosScreen(
                         Text(
                             text = if (documento == DocumentoLegal.TERMINOS) Textos.get("terms_and_conditions_of_use") else Textos.get("privacy_notice"),
                             style = MaterialTheme.typography.headlineSmall,
-                            color = TextoPrincipal
+                            color = TextoPrincipal,
+                            textAlign = TextAlign.Start
                         )
                     }
                     items(secciones, key = { it.titulo }) { seccion ->
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(seccion.titulo, style = MaterialTheme.typography.titleMedium, color = TextoPrincipal)
+                            Text(
+                                seccion.titulo,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = TextoPrincipal,
+                                textAlign = TextAlign.Start
+                            )
                             seccion.parrafos.forEach {
-                                Text(it, style = MaterialTheme.typography.bodyMedium, color = TextoSecundario)
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextoSecundario,
+                                    textAlign = TextAlign.Start
+                                )
                             }
                         }
                     }
@@ -123,7 +137,7 @@ fun TerminosScreen(
                         .padding(horizontal = 20.dp, vertical = 12.dp)
                 ) {
                     BotonPrimario(
-                        texto = if (onAceptar != null) Textos.get("i_accept_the_terms_and_the") else Textos.get("close"),
+                        texto = if (onAceptar != null) Textos.get("accept_and_continue") else Textos.get("close"),
                         onClick = { onAceptar?.invoke() ?: onCerrar() }
                     )
                 }
