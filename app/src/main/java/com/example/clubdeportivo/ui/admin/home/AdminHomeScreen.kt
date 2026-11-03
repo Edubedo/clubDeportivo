@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.ChevronRight
@@ -143,7 +144,8 @@ fun AdminHomeScreen(
     viewModel: AdminHomeViewModel = viewModel(),
     publicacionesViewModel: PublicacionesViewModel = viewModel(),
     onIrReservas: () -> Unit = {},
-    onIrMembresia: () -> Unit = {}
+    onIrMembresia: () -> Unit = {},
+    onIrReportes: () -> Unit = {}
 ) {
     PanelAdmin(
         resumen = viewModel.resumen,
@@ -154,7 +156,8 @@ fun AdminHomeScreen(
         onActualizar = { viewModel.cargar() },
         publicacionesViewModel = publicacionesViewModel,
         onIrReservas = onIrReservas,
-        onIrMembresia = onIrMembresia
+        onIrMembresia = onIrMembresia,
+        onIrReportes = onIrReportes
     )
 }
 
@@ -170,7 +173,8 @@ internal fun PanelAdmin(
     onActualizar: () -> Unit,
     publicacionesViewModel: PublicacionesViewModel = viewModel(),
     onIrReservas: () -> Unit = {},
-    onIrMembresia: () -> Unit = {}
+    onIrMembresia: () -> Unit = {},
+    onIrReportes: () -> Unit = {}
 ) {
     var mostrandoNovedades by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = mostrandoNovedades) { mostrandoNovedades = false }
@@ -219,6 +223,9 @@ internal fun PanelAdmin(
 
                     Spacer(modifier = Modifier.height(12.dp))
                     GraficaIngresos(resumen)
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    AccesoReportes(onClick = onIrReportes)
 
                     Spacer(modifier = Modifier.height(22.dp))
                     AccionesAdmin(
@@ -322,6 +329,46 @@ internal fun PanelAdmin(
                     proximas.forEach { ReservaResumen(it) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AccesoReportes(onClick: () -> Unit) {
+    TarjetaClub(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        fondo = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Assessment,
+                contentDescription = null,
+                tint = Marca,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = Textos.get("rep_titulo"),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextoPrincipal,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = Textos.get("rep_acceso_detalle"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario
+                )
+            }
+            Icon(
+                imageVector = Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = TextoSecundario
+            )
         }
     }
 }

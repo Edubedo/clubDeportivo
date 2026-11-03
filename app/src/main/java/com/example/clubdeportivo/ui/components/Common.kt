@@ -569,6 +569,7 @@ fun ShimmerCTAButton(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     ),
+                    textAlign = TextAlign.Center,
                     maxLines = 1
                 )
             }

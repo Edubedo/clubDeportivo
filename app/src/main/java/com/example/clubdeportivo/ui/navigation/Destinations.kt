@@ -1,8 +1,6 @@
 package com.example.clubdeportivo.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EventAvailable
@@ -52,8 +50,7 @@ val bottomNavItems = listOf(
     BottomNavItem(Destinations.PERSONAL, "nav_personal", Icons.Filled.Person, Icons.Outlined.Person),
     BottomNavItem(Destinations.AREAS, "nav_areas", Icons.Filled.Place, Icons.Outlined.Place),
     BottomNavItem(Destinations.RESERVAS, "nav_reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.MEMBRESIA, "nav_membres_corto", Icons.Filled.CardMembership, Icons.Outlined.CardMembership),
-    BottomNavItem(Destinations.REPORTES, "rep_titulo", Icons.Filled.Assessment, Icons.Outlined.Assessment)
+    BottomNavItem(Destinations.MEMBRESIA, "nav_membres_corto", Icons.Filled.CardMembership, Icons.Outlined.CardMembership)
 )
 
 /** Menú para encargados de área: las reservas, el área y el inventario de su deporte. */
@@ -83,6 +80,7 @@ fun rutaInicial(rol: Rol?): String = Destinations.HOME
 /** Una ruta solo se abre si está en el menú del rol o es una ruta secundaria permitida. */
 fun rutaPermitida(rol: Rol?, ruta: String): Boolean =
     ruta == Destinations.PERFIL ||
+        (rol?.esAdministrador() == true && ruta == Destinations.REPORTES) ||
         (rol?.esCliente() == true && ruta == Destinations.MIS_RESERVAS) ||
         (rol?.let { it.esEncargado() && ruta == Destinations.INVENTARIO } == true) ||
         menuPara(rol).any { it.route == ruta }

@@ -412,7 +412,7 @@ class ReservasViewModel(
         if (esVisitanteExterno && !area.permiteExternos) return Textos.get("this_area_doesn_t_accept_bookings")
         if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get("is_under_maintenance", etiquetaArea(area.nombre))
         if (Fechas.horasDesdeAhora(fecha, horaInicio) < Catalogos.ANTICIPACION_MINIMA_HORAS) {
-            return Textos.get("that_time_has_already_started")
+            return Textos.get("minimum_booking_advance", Catalogos.ANTICIPACION_MINIMA_HORAS)
         }
 
         if (!usuario.rol.esPersonal()) {
