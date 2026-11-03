@@ -46,7 +46,10 @@ interface ReservaRepository {
     suspend fun aprobarReserva(reservaId: String)
 
     /** Rechaza una reserva pendiente de aprobación: queda rechazada y libera su lugar. */
-    suspend fun rechazarReserva(reservaId: String)
+    suspend fun rechazarReserva(
+        reservaId: String,
+        motivo: String = ""
+    )
     suspend fun estaBloqueadoPorInasistencias(usuarioId: String): Boolean
 
 }
@@ -199,8 +202,15 @@ class FakeReservaRepository : ReservaRepository {
         reservas.replaceAll { if (it.id == reservaId) it.copy(estado = EstadoReserva.CONFIRMADA) else it }
     }
 
-    override suspend fun rechazarReserva(reservaId: String) {
-        reservas.replaceAll { if (it.id == reservaId) it.copy(estado = EstadoReserva.RECHAZADA) else it }
+    override suspend fun rechazarReserva(
+        reservaId: String,
+        motivo: String
+    ) {
+        reservas.replaceAll {
+            if (it.id == reservaId)
+                it.copy(estado = EstadoReserva.RECHAZADA)
+            else it
+        }
     }
 
     override suspend fun registrarNoShow(usuarioId: String) {

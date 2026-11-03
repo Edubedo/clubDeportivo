@@ -168,13 +168,21 @@ class FirebaseReservaRepository(
         asignarMaterial(reserva.copy(estado = EstadoReserva.CONFIRMADA))
     }
 
-    override suspend fun rechazarReserva(reservaId: String) {
+    override suspend fun rechazarReserva(
+        reservaId: String,
+        motivo: String
+    ) {
         reservaPorResolver(reservaId)
+
         reservas.document(reservaId).update(
             mapOf(
                 "estado" to EstadoReserva.RECHAZADA.name,
+                "motivoRechazo" to motivo.trim(),
                 "rechazadaEn" to FieldValue.serverTimestamp(),
-                "rechazadaPor" to (com.example.clubdeportivo.data.SesionManager.usuarioActual?.id ?: ""),
+                "rechazadaPor" to (
+                        com.example.clubdeportivo.data.SesionManager
+                            .usuarioActual?.id ?: ""
+                        ),
                 "actualizadoEn" to FieldValue.serverTimestamp()
             )
         ).await()

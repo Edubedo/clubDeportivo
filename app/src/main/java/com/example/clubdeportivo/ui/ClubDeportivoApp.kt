@@ -115,6 +115,13 @@ import com.example.clubdeportivo.ui.theme.TextoTenue
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.example.clubdeportivo.R
+import com.example.clubdeportivo.ui.navigation.menuPara
+import com.example.clubdeportivo.ui.navigation.rutaInicial
+import com.example.clubdeportivo.ui.navigation.rutaPermitida
+import com.example.clubdeportivo.data.model.esSupervisor
+import com.example.clubdeportivo.ui.supervisor.SupervisorHomeScreen
+import com.example.clubdeportivo.data.model.esSupervisor
+import com.example.clubdeportivo.ui.reservas.ReservasSupervisorScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -363,6 +370,32 @@ fun ClubDeportivoApp(
             composable(Destinations.HOME) {
                 RutaProtegida(navController, Destinations.HOME) {
                     when {
+                        rol?.esSupervisor() == true -> SupervisorHomeScreen(
+                            onReservas = {
+                                navegarAPestana(
+                                    navController,
+                                    Destinations.RESERVAS,
+                                    Destinations.HOME
+                                )
+                            },
+                            onAreas = {
+                                navegarAPestana(
+                                    navController,
+                                    Destinations.AREAS,
+                                    Destinations.HOME
+                                )
+                            },
+                            onInventario = {
+                                navegarAPestana(
+                                    navController,
+                                    Destinations.INVENTARIO,
+                                    Destinations.HOME
+                                )
+                            },
+                            onMiembros = {
+                                // Pendiente: conectar el registro de miembros.
+                            }
+                        )
                         rol?.esAdministrador() == true -> AdminHomeScreen(
                             publicacionesViewModel = publicaciones,
                             onIrReservas = { navegarAPestana(navController, Destinations.RESERVAS, Destinations.HOME) },
@@ -401,7 +434,21 @@ fun ClubDeportivoApp(
                 RutaProtegida(navController, Destinations.INVENTARIO) { InventarioScreen() }
             }
             composable(Destinations.RESERVAS) {
-                if (SesionManager.usuarioActual?.rol?.esEncargado() == true) ReservasEncargadoScreen() else ReservasScreen()
+                RutaProtegida(navController, Destinations.RESERVAS) {
+                    when {
+                        rol?.esSupervisor() == true -> {
+                            ReservasSupervisorScreen()
+                        }
+
+                        rol?.esEncargado() == true -> {
+                            ReservasEncargadoScreen()
+                        }
+
+                        else -> {
+                            ReservasScreen()
+                        }
+                    }
+                }
             }
             composable(Destinations.MIS_RESERVAS) {
                 RutaProtegida(navController, Destinations.MIS_RESERVAS) {
