@@ -97,6 +97,10 @@ import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Textos
 import com.example.clubdeportivo.data.model.etiquetaDeporte
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.clubdeportivo.ui.components.imagenDeporte
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -237,11 +241,16 @@ private fun AreaCard(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            BurbujaTexto(
-                texto = Deportes.emojiDe(area.tipo, area.emoji),
-                tamano = 48.dp,
-                tamanoTexto = 24,
-                modifier = Modifier.padding(top = 4.dp)
+            Image(
+                painter = painterResource(
+                    id = imagenDeporte(area.tipo)
+                ),
+                contentDescription = "Imagen de ${area.tipo}",
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .size(width = 90.dp, height = 80.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
