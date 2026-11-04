@@ -26,6 +26,30 @@ object ReglasReserva {
     fun esVigente(reserva: Reserva) =
         reserva.estado == EstadoReserva.CONFIRMADA || reserva.estado == EstadoReserva.PENDIENTE_APROBACION
 
+    /** Reservas vigentes en o antes de [hasta] que aún no tienen asistencia registrada. */
+    fun reservasVisiblesProximamente(
+        reservas: List<Reserva>,
+        asistenciasRegistradas: Set<String>,
+        hasta: String
+    ): List<Reserva> =
+        reservas.filter {
+            esVigente(it) &&
+                it.fecha <= hasta &&
+                it.id !in asistenciasRegistradas
+        }.sortedWith(compareBy({ it.fecha }, { it.horaInicio }))
+
+    /** Vigentes primero, en orden próximo; las que ya terminaron quedan al final, de más reciente a más antigua. */
+    fun ordenarActivasAntesQuePasadas(reservas: List<Reserva>, ahora: Date = Date()): List<Reserva> =
+        reservas.sortedWith(Comparator { a, b ->
+            val aTerminada = Fechas.horasDesdeAhora(a.fecha, a.horaFin, ahora) <= 0
+            val bTerminada = Fechas.horasDesdeAhora(b.fecha, b.horaFin, ahora) <= 0
+            when {
+                aTerminada != bTerminada -> aTerminada.compareTo(bTerminada)
+                aTerminada -> "${b.fecha} ${b.horaInicio}".compareTo("${a.fecha} ${a.horaInicio}")
+                else -> "${a.fecha} ${a.horaInicio}".compareTo("${b.fecha} ${b.horaInicio}")
+            }
+        })
+
     /** Reservas futuras del socio que todavía cuentan para el límite personal. */
     fun contarReservasActivasFuturas(usuarioId: String, reservas: List<Reserva>, ahora: Date = Date()): Int =
         reservas.count {

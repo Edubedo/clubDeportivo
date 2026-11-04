@@ -1,20 +1,22 @@
 package com.example.clubdeportivo.ui.perfil
 
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -24,15 +26,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -48,21 +54,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import java.io.File
 import com.example.clubdeportivo.data.model.nombreLegible
-import com.example.clubdeportivo.ui.components.SelectorIdioma
 import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.BotonSecundario
 import com.example.clubdeportivo.ui.components.CampoTexto
@@ -72,21 +75,25 @@ import com.example.clubdeportivo.ui.components.EtiquetaCampo
 import com.example.clubdeportivo.ui.components.InitialsAvatar
 import com.example.clubdeportivo.ui.components.Insignia
 import com.example.clubdeportivo.ui.components.MargenPantalla
+import com.example.clubdeportivo.ui.components.PestanasPildora
+import com.example.clubdeportivo.ui.components.SelectorIdioma
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
-import com.example.clubdeportivo.ui.components.tipoInsigniaRol
 import com.example.clubdeportivo.ui.components.modifierReflejo
-import com.example.clubdeportivo.ui.components.PestanasPildora
+import com.example.clubdeportivo.ui.components.tipoInsigniaRol
 import com.example.clubdeportivo.ui.theme.FondoApp
-import com.example.clubdeportivo.ui.theme.ModoTema
-import com.example.clubdeportivo.ui.theme.PreferenciaTema
 import com.example.clubdeportivo.ui.theme.Marca
+import com.example.clubdeportivo.ui.theme.ModoTema
 import com.example.clubdeportivo.ui.theme.Peligro
+import com.example.clubdeportivo.ui.theme.PreferenciaTema
 import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.util.tr
+import java.io.File
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun PerfilScreen(
     onCerrarSesion: () -> Unit,
     viewModel: PerfilViewModel = viewModel()
@@ -99,14 +106,10 @@ fun PerfilScreen(
     val fotoPerfil = usuario?.fotoUrl
 
     val selectorFoto = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) viewModel.cambiarFoto(context.contentResolver, uri)
     }
-
-    var mostrarOpcionesFoto by remember { mutableStateOf(false) }
-    var mostrarFotoCompleta by remember { mutableStateOf(false) }
-    // rememberSaveable: Android puede cerrar la app mientras la cámara está abierta y hay que recordar dónde quedó la foto.
     var uriCamara by rememberSaveable { mutableStateOf<Uri?>(null) }
     val camara = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
@@ -114,9 +117,15 @@ fun PerfilScreen(
         val uri = uriCamara
         if (tomada && uri != null) viewModel.cambiarFoto(context.contentResolver, uri)
     }
-    val abrirCamara = {
+
+    var showImageSourceOptions by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var mostrarFotoCompleta by remember { mutableStateOf(false) }
+
+    fun abrirCamara() {
         try {
-            val archivo = File(context.cacheDir, "fotos").apply { mkdirs() }.let { File(it, "perfil_camara.jpg") }
+            val carpeta = File(context.cacheDir, "fotos").apply { mkdirs() }
+            val archivo = File(carpeta, "perfil_camara.jpg")
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
             uriCamara = uri
             camara.launch(uri)
@@ -155,44 +164,13 @@ fun PerfilScreen(
                 .padding(horizontal = MargenPantalla, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (fotoPerfil != null) {
-                    AsyncImage(
-                        model = fotoPerfil,
-                        contentDescription = tr("foto_perfil"),
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape)
-                            .clickable(enabled = !subiendoFoto) { mostrarFotoCompleta = true },
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(modifier = Modifier.clickable(enabled = !subiendoFoto) { mostrarOpcionesFoto = true }) {
-                        InitialsAvatar(nombre = usuario?.nombre ?: "?", size = 96.dp)
-                    }
-                }
-                if (subiendoFoto) {
-                    CircularProgressIndicator(modifier = Modifier.size(32.dp), color = Marca, strokeWidth = 3.dp)
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                TextButton(
-                    enabled = !subiendoFoto,
-                    onClick = { mostrarOpcionesFoto = true }
-                ) {
-                    Text(
-                        text = if (fotoPerfil == null) tr("agregar_foto") else tr("cambiar_foto"),
-                        color = Marca,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                if (fotoPerfil != null) {
-                    TextButton(enabled = !subiendoFoto, onClick = { viewModel.quitarFoto() }) {
-                        Text(text = tr("quitar_foto"), color = Peligro, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
+            AvatarFotoPerfil(
+                fotoUrl = fotoPerfil,
+                nombre = usuario?.nombre ?: "?",
+                cargando = subiendoFoto,
+                onVerFoto = { mostrarFotoCompleta = true },
+                onEditarFoto = { showImageSourceOptions = true }
+            )
 
             Text(
                 text = usuario?.nombre ?: tr("perfil_title"),
@@ -341,53 +319,96 @@ fun PerfilScreen(
         }
     }
 
-    if (mostrarOpcionesFoto) {
-        AlertDialog(
-            onDismissRequest = { mostrarOpcionesFoto = false },
-            shape = RoundedCornerShape(20.dp),
-            containerColor = Superficie,
-            title = { Text(tr("foto_perfil"), style = MaterialTheme.typography.titleLarge, color = TextoPrincipal) },
-            text = {
-                Column {
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            mostrarOpcionesFoto = false
-                            abrirCamara()
-                        }
-                    ) {
-                        Icon(Icons.Outlined.PhotoCamera, contentDescription = null, tint = Marca)
-                        Text(
-                            tr("tomar_foto"),
-                            color = TextoPrincipal,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f).padding(start = 12.dp)
-                        )
-                    }
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            mostrarOpcionesFoto = false
-                            selectorFoto.launch("image/*")
-                        }
-                    ) {
-                        Icon(Icons.Outlined.PhotoLibrary, contentDescription = null, tint = Marca)
-                        Text(
-                            tr("elegir_galeria"),
-                            color = TextoPrincipal,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f).padding(start = 12.dp)
-                        )
-                    }
+    if (showImageSourceOptions) {
+        DialogoTarjetaPerfil(
+            titulo = tr("perfil_foto_dialogo_titulo"),
+            onCerrar = { if (!subiendoFoto) showImageSourceOptions = false }
+        ) {
+            TextButton(
+                enabled = !subiendoFoto,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    showImageSourceOptions = false
+                    abrirCamara()
                 }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { mostrarOpcionesFoto = false }) {
+            ) {
+                Icon(Icons.Outlined.PhotoCamera, contentDescription = null, tint = Marca)
+                Text(
+                    tr("tomar_foto"),
+                    color = TextoPrincipal,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f).padding(start = 12.dp)
+                )
+            }
+            TextButton(
+                enabled = !subiendoFoto,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    showImageSourceOptions = false
+                    selectorFoto.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
+            ) {
+                Icon(Icons.Outlined.PhotoLibrary, contentDescription = null, tint = Marca)
+                Text(
+                    tr("elegir_galeria"),
+                    color = TextoPrincipal,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f).padding(start = 12.dp)
+                )
+            }
+            if (fotoPerfil != null) {
+                TextButton(
+                    enabled = !subiendoFoto,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        showImageSourceOptions = false
+                        showDeleteConfirmDialog = true
+                    }
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null, tint = Peligro)
+                    Text(
+                        tr("quitar_foto"),
+                        color = Peligro,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f).padding(start = 12.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    if (showDeleteConfirmDialog) {
+        DialogoTarjetaPerfil(
+            titulo = tr("perfil_confirmar_eliminar_foto_titulo"),
+            onCerrar = { if (!subiendoFoto) showDeleteConfirmDialog = false },
+            pie = {
+                BotonPrimario(
+                    texto = tr("perfil_confirmar_eliminar_foto"),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !subiendoFoto,
+                    cargando = subiendoFoto,
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        viewModel.quitarFoto()
+                    }
+                )
+                TextButton(
+                    enabled = !subiendoFoto,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { showDeleteConfirmDialog = false }
+                ) {
                     Text(tr("cancelar"), color = TextoSecundario, fontWeight = FontWeight.SemiBold)
                 }
             }
-        )
+        ) {
+            Text(
+                tr("perfil_eliminar_foto_mensaje"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextoSecundario
+            )
+        }
     }
 
     if (mostrarFotoCompleta && fotoPerfil != null) {
@@ -437,5 +458,126 @@ fun PerfilScreen(
             },
             onCancelar = { confirmandoSalida = false }
         )
+    }
+}
+
+@Composable
+private fun DialogoTarjetaPerfil(
+    titulo: String,
+    onCerrar: () -> Unit,
+    pie: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onCerrar,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .heightIn(max = 480.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Superficie
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = titulo,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextoPrincipal,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                    )
+                    IconButton(onClick = onCerrar) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = tr("cerrar"),
+                            tint = TextoSecundario
+                        )
+                    }
+                }
+                HorizontalDivider()
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                ) {
+                    content()
+                }
+                if (pie != null) {
+                    HorizontalDivider()
+                    Column(
+                        modifier = Modifier.padding(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = 12.dp,
+                            bottom = 16.dp
+                        )
+                    ) {
+                        pie()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AvatarFotoPerfil(
+    fotoUrl: String?,
+    nombre: String,
+    cargando: Boolean,
+    onVerFoto: () -> Unit,
+    onEditarFoto: () -> Unit
+) {
+    Box(
+        modifier = Modifier.size(104.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (fotoUrl != null) {
+            AsyncImage(
+                model = fotoUrl,
+                contentDescription = tr("foto_perfil"),
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .clickable(enabled = !cargando, onClick = onVerFoto),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(modifier = Modifier.clickable(enabled = !cargando, onClick = onEditarFoto)) {
+                InitialsAvatar(nombre = nombre, size = 96.dp)
+            }
+        }
+
+        IconButton(
+            onClick = onEditarFoto,
+            enabled = !cargando,
+            modifier = Modifier.align(Alignment.BottomEnd),
+        ) {
+            Surface(shape = CircleShape, color = Marca, shadowElevation = 3.dp) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = tr("cambiar_foto"),
+                    tint = Color.White,
+                    modifier = Modifier.padding(8.dp).size(18.dp)
+                )
+            }
+        }
+
+        if (cargando) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(32.dp),
+                color = Marca,
+                strokeWidth = 3.dp
+            )
+        }
     }
 }

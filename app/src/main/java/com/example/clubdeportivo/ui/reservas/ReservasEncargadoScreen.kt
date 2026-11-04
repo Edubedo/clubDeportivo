@@ -9,19 +9,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.EventBusy
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,13 +30,15 @@ import com.example.clubdeportivo.data.model.EstadoReserva
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.ui.components.BotonTonal
 import com.example.clubdeportivo.ui.components.BurbujaTexto
@@ -55,9 +56,11 @@ import com.example.clubdeportivo.ui.theme.PeligroSuave
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasReserva
 import com.example.clubdeportivo.util.Textos
 import com.example.clubdeportivo.data.model.etiquetaDeporte
 import com.example.clubdeportivo.data.model.etiquetaArea
+import java.util.Date
 
 @Composable
 fun ReservasEncargadoScreen(
@@ -67,12 +70,32 @@ fun ReservasEncargadoScreen(
     val cargando by viewModel.cargando.observeAsState(false)
     val error by viewModel.error.observeAsState()
     val asistencias by viewModel.asistencias.observeAsState(emptyMap())
+    val mensaje by viewModel.mensaje.observeAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var ahora by remember { mutableStateOf(Date()) }
+    val reservasOrdenadas = ReglasReserva.ordenarActivasAntesQuePasadas(reservas, ahora)
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            ahora = Date()
+        }
+    }
+    LaunchedEffect(mensaje) {
+        mensaje?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onMensajeMostrado()
+        }
+    }
 
     val areaTrabajo = viewModel.areaTrabajo
 
     var pestana by rememberSaveable { mutableIntStateOf(0) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { innerPadding ->
+    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         EncabezadoPantalla(
             titulo = Textos.get("bookings_in_my_area"),
             subtitulo = etiquetaDeporte(areaTrabajo).ifBlank { Textos.get("no_area_assigned") },
@@ -104,7 +127,7 @@ fun ReservasEncargadoScreen(
                 contentPadding = PaddingValues(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(reservas.filter { it.estado == EstadoReserva.CONFIRMADA }, key = { it.id }) { reserva ->
+                items(reservasOrdenadas.filter { it.estado == EstadoReserva.CONFIRMADA }, key = { it.id }) { reserva ->
                     val nombre = reserva.usuarioNombre.ifBlank { Textos.get("user") }
 
                     ReservaEncargadoCard(
@@ -115,7 +138,7 @@ fun ReservasEncargadoScreen(
                         area = "${Deportes.emojiDe(reserva.deporte)} ${etiquetaDeporte(reserva.deporte)} — ${etiquetaArea(reserva.areaNombre)}",
                         asistencia = asistencias[reserva.id],
                         // La asistencia se toma cuando la reserva ya empezó, no antes.
-                        yaEmpezo = Fechas.horasDesdeAhora(reserva.fecha, reserva.horaInicio) <= 0,
+                        yaEmpezo = Fechas.yaInicio(reserva.fecha, reserva.horaInicio, ahora),
                         onAsistio = {
                             viewModel.registrarAsistencia(
                                 reservaId = reserva.id,
@@ -131,6 +154,7 @@ fun ReservasEncargadoScreen(
                             )
                         }
                     )
+                }
                 }
             }
         }

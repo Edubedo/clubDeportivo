@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Reserva
+import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasReserva
 import kotlinx.coroutines.launch
 import com.example.clubdeportivo.util.Textos
 
@@ -28,6 +30,9 @@ class ReservasEncargadoViewModel : ViewModel() {
 
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
+
+    private val _mensaje = MutableLiveData<String?>()
+    val mensaje: LiveData<String?> = _mensaje
 
     val areaTrabajo: String
         get() = SesionManager.usuarioActual?.areaTrabajo.orEmpty()
@@ -52,13 +57,9 @@ class ReservasEncargadoViewModel : ViewModel() {
 
             try {
 
-                val lista =
-                    reservaRepository
-                        .obtenerReservasPorDeporte(deporte)
-                        .sortedWith(
-                            compareBy<Reserva> { it.fecha }
-                                .thenBy { it.horaInicio }
-                        )
+                val lista = ReglasReserva.ordenarActivasAntesQuePasadas(
+                    reservaRepository.obtenerReservasPorDeporte(deporte)
+                )
 
                 _reservas.value = lista
 
@@ -97,6 +98,11 @@ class ReservasEncargadoViewModel : ViewModel() {
         usuarioId: String,
         asistencia: String
     ) {
+        val reserva = _reservas.value.orEmpty().firstOrNull { it.id == reservaId }
+        if (reserva == null || !Fechas.yaInicio(reserva.fecha, reserva.horaInicio)) {
+            _mensaje.value = Textos.get("attendance_is_recorded_when_the_bookin")
+            return
+        }
 
         viewModelScope.launch {
 
@@ -126,5 +132,9 @@ class ReservasEncargadoViewModel : ViewModel() {
                 e.printStackTrace()
             }
         }
+    }
+
+    fun onMensajeMostrado() {
+        _mensaje.value = null
     }
 }
