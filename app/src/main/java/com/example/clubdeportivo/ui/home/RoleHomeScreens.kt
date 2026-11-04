@@ -75,6 +75,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.clubdeportivo.data.SesionManager
@@ -92,6 +94,7 @@ import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.ui.reservas.ReservaListada
 import com.example.clubdeportivo.ui.reservas.ReservasViewModel
 import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.data.publicaciones.Publicacion
 import com.example.clubdeportivo.ui.publicaciones.PublicacionesViewModel
@@ -128,12 +131,9 @@ fun MiembroHomeScreen(
     var novedadAbierta by remember { mutableIntStateOf(-1) }
     var imagenCompleta by remember { mutableStateOf<String?>(null) }
     var dedoPresionado by remember { mutableStateOf(false) }
-    val reservas by reservasViewModel.reservas.observeAsState(emptyList())
-    LaunchedEffect(SesionManager.usuarioActual?.id) {
-        if (SesionManager.usuarioActual != null) reservasViewModel.cargar()
-    }
-    val reservasActivas = reservas.filter {
-        it.estado == EstadoReserva.CONFIRMADA || it.estado == EstadoReserva.PENDIENTE_APROBACION
+    val reservasProximas by reservasViewModel.reservasProximas.observeAsState(emptyList())
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        reservasViewModel.cargar()
     }
     val nombre = SesionManager.usuarioActual?.nombre?.substringBefore(" ")?.ifBlank { "Mariana" } ?: "Mariana"
     val novedades = publicacionesViewModel.visibles.map { it.aNovedad() }
@@ -295,7 +295,7 @@ fun MiembroHomeScreen(
             TituloSeccion(Textos.get("your_upcoming_bookings"), modifier = Modifier.weight(1f))
             TextButton(onClick = onReservar) { Text(Textos.get("see_all"), color = Marca) }
         }
-        MemberBookingCard(reserva = reservasActivas.firstOrNull(), onClick = onReservar)
+        MemberBookingCard(reserva = reservasProximas.firstOrNull(), onClick = onReservar)
         Spacer(Modifier.height(14.dp))
         OutlinedButton(onClick = onMembresia, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
             Text(Textos.get("view_my_membership"))
@@ -529,16 +529,16 @@ fun EncargadoHomeScreen(
     reservasViewModel: ReservasViewModel,
     onReservas: () -> Unit
 ) {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        reservasViewModel.cargar()
+    }
     var novedadAbierta by remember { mutableIntStateOf(-1) }
     var imagenCompleta by remember { mutableStateOf<String?>(null) }
     val reservas by reservasViewModel.reservas.observeAsState(emptyList())
     val usuario = SesionManager.usuarioActual
     val nombre = usuario?.nombre?.substringBefore(" ")?.ifBlank { "Esteban" } ?: "Esteban"
     val area = usuario?.areaTrabajo?.ifBlank { "Natación" } ?: "Natación"
-    val areaNormalizada = area.normalizar()
-    val reservasArea = reservas.filter {
-        it.deporte.normalizar() == areaNormalizada || it.titulo.normalizar().contains(areaNormalizada)
-    }
+    val reservasArea = reservas.filter { usuario.puedeVerDeporte(it.deporte) }
     val reservasHoy = reservasArea.filter { it.fecha == Fechas.hoy() }
     val confirmadasHoy = reservasHoy.count { it.estado == EstadoReserva.CONFIRMADA }
     val pendientes = reservasArea.count { it.estado == EstadoReserva.PENDIENTE_APROBACION }
@@ -736,10 +736,3 @@ private fun StatePill(text: String, background: Color, foreground: Color) {
         Text(text, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = MaterialTheme.typography.labelSmall, color = foreground, fontWeight = FontWeight.SemiBold)
     }
 }
-
-private fun String.normalizar(): String = lowercase()
-    .replace("á", "a")
-    .replace("é", "e")
-    .replace("í", "i")
-    .replace("ó", "o")
-    .replace("ú", "u")

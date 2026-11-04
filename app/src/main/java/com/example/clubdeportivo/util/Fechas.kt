@@ -37,6 +37,10 @@ object Fechas {
     fun horasDesdeAhora(fecha: String, hora: String, ahora: Date = Date()): Double =
         (combinar(fecha, hora).time - ahora.time) / 3_600_000.0
 
+    /** true desde el instante exacto en que inicia la reservación. */
+    fun yaInicio(fecha: String, hora: String, ahora: Date = Date()): Boolean =
+        !combinar(fecha, hora).after(ahora)
+
     fun hoy(): String = formatoFecha().format(Date())
 
     /** [fecha] más [meses] meses (31 de enero + 1 mes = 28 o 29 de febrero). */
