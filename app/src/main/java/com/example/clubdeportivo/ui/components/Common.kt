@@ -717,6 +717,7 @@ enum class TipoInsignia(
 
 fun tipoInsigniaRol(rol: Rol): TipoInsignia = when (rol) {
     Rol.ADMIN, Rol.SUPERADMIN -> TipoInsignia.ROL_ADMIN
+    Rol.SUPERVISOR -> TipoInsignia.MARCA
     Rol.ADMIN_AREA, Rol.AYUDANTE_AREA -> TipoInsignia.ROL_ENCARGADO
     Rol.SOCIO -> TipoInsignia.ROL_SOCIO
     Rol.VISITANTE_EXTERNO -> TipoInsignia.NEUTRO

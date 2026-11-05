@@ -20,6 +20,7 @@ import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.model.esEncargado
+import com.example.clubdeportivo.data.model.esSupervisor
 
 /** Rutas equivalentes a los ids de res/navigation/nav_graph.xml. */
 object Destinations {
@@ -60,6 +61,36 @@ val bottomNavItemsEncargado = listOf(
     BottomNavItem(Destinations.AREAS, "nav_mi_area", Icons.Filled.Place, Icons.Outlined.Place)
 )
 
+/** Menú del supervisor: acceso a todas las áreas,
+ * reservas e inventario del club.
+ */
+val bottomNavItemsSupervisor = listOf(
+    BottomNavItem(
+        Destinations.HOME,
+        "nav_home",
+        Icons.Filled.Home,
+        Icons.Outlined.Home
+    ),
+    BottomNavItem(
+        Destinations.RESERVAS,
+        "nav_reservas",
+        Icons.Filled.EventAvailable,
+        Icons.Outlined.EventAvailable
+    ),
+    BottomNavItem(
+        Destinations.AREAS,
+        "nav_areas",
+        Icons.Filled.Place,
+        Icons.Outlined.Place
+    ),
+    BottomNavItem(
+        Destinations.INVENTARIO,
+        "titulo_inventario",
+        Icons.Filled.Inventory2,
+        Icons.Outlined.Inventory2
+    )
+)
+
 /** Menú de socios y visitantes: incluye Inicio, Reservar y Membresía. */
 val bottomNavItemsCliente = listOf(
     BottomNavItem(Destinations.HOME, "nav_home", Icons.Filled.Home, Icons.Outlined.Home),
@@ -70,8 +101,14 @@ val bottomNavItemsCliente = listOf(
 /** Menú inferior según el rol: administradores, encargados de área o clientes. */
 fun menuPara(rol: Rol?): List<BottomNavItem> = when {
     rol == null || rol.esCliente() -> bottomNavItemsCliente
+
     rol.esAdministrador() -> bottomNavItems
-    else -> bottomNavItemsEncargado
+
+    rol.esSupervisor() -> bottomNavItemsSupervisor
+
+    rol.esEncargado() -> bottomNavItemsEncargado
+
+    else -> emptyList()
 }
 
 /** Todos los roles llegan a su inicio, que presenta el panel correspondiente a su perfil. */

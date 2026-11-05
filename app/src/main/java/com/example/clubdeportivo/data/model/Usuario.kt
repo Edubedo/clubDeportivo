@@ -14,21 +14,27 @@ import com.example.clubdeportivo.util.Textos
 enum class Rol {
     SUPERADMIN,
     ADMIN,
+
+    SUPERVISOR,
     ADMIN_AREA,
     AYUDANTE_AREA,
     SOCIO,
     VISITANTE_EXTERNO
 }
 
-fun Rol.nombreLegible(): String = Textos.get(
-    when (this) {
-        Rol.SUPERADMIN -> "rol_superadmin"
-        Rol.ADMIN -> "rol_admin"
-        Rol.ADMIN_AREA, Rol.AYUDANTE_AREA -> "rol_encargado"
-        Rol.SOCIO -> "rol_miembro"
-        Rol.VISITANTE_EXTERNO -> "rol_visitante"
-    }
-)
+fun Rol.nombreLegible(): String = when (this) {
+    Rol.SUPERVISOR -> "Supervisor"
+    else -> Textos.get(
+        when (this) {
+            Rol.SUPERADMIN -> "rol_superadmin"
+            Rol.ADMIN -> "rol_admin"
+            Rol.ADMIN_AREA, Rol.AYUDANTE_AREA -> "rol_encargado"
+            Rol.SOCIO -> "rol_miembro"
+            Rol.VISITANTE_EXTERNO -> "rol_visitante"
+            Rol.SUPERVISOR -> error("Caso ya contemplado")
+        }
+    )
+}
 
 /** Roles del personal del club: no están sujetos a los límites de reservas pensados para socios y visitantes. */
 fun Rol.esPersonal(): Boolean = this != Rol.SOCIO && this != Rol.VISITANTE_EXTERNO
@@ -36,8 +42,10 @@ fun Rol.esPersonal(): Boolean = this != Rol.SOCIO && this != Rol.VISITANTE_EXTER
 /** Solo los administradores entran al dashboard y a Personal, y crean cuentas del personal. */
 fun Rol.esAdministrador(): Boolean = this == Rol.SUPERADMIN || this == Rol.ADMIN
 
+/** Supervisor: gestiona reservas e inventario de todas las áreas y registra miembros. */
+fun Rol.esSupervisor(): Boolean = this == Rol.SUPERVISOR
 /** Roles con los que se puede dar de alta a una persona del personal desde la pantalla Personal. */
-val ROLES_DE_PERSONAL = listOf(Rol.ADMIN, Rol.AYUDANTE_AREA)
+val ROLES_DE_PERSONAL = listOf(Rol.ADMIN, Rol.SUPERVISOR, Rol.AYUDANTE_AREA)
 
 /** Encargado de área: personal que solo ve y gestiona lo de su propia área (reservas, áreas e inventario). */
 fun Rol.esEncargado(): Boolean = this == Rol.AYUDANTE_AREA || this == Rol.ADMIN_AREA
