@@ -21,6 +21,7 @@ import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.EstadoMembresia
+import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.model.esPersonal
 import com.example.clubdeportivo.data.repository.AreaRepository
@@ -119,6 +120,9 @@ class ReservasViewModel(
 
     private val _reservas = MutableLiveData<List<ReservaListada>>(emptyList())
     val reservas: LiveData<List<ReservaListada>> = _reservas
+
+    private val _reservasProximas = MutableLiveData<List<ReservaListada>>(emptyList())
+    val reservasProximas: LiveData<List<ReservaListada>> = _reservasProximas
 
     private val _esperas = MutableLiveData<List<EsperaListada>>(emptyList())
     val esperas: LiveData<List<EsperaListada>> = _esperas
@@ -464,27 +468,41 @@ class ReservasViewModel(
             reservaRepository.obtenerReservasDeUsuario(usuario.id)
                 .filter { ReglasReserva.esVigente(it) || it.estado == EstadoReserva.RECHAZADA }
         }
+        val hasta = Fechas.sumarDias(2)
+        val asistenciasRegistradas = if (usuario.rol.esPersonal()) {
+            emptySet()
+        } else {
+            reservaRepository.obtenerReservasConAsistencia(usuario.id)
+        }
+        _reservasProximas.value = ReglasReserva.reservasVisiblesProximamente(
+            reservas = visibles,
+            asistenciasRegistradas = asistenciasRegistradas,
+            hasta = hasta
+        ).map { it.aLista(areas) }
+
         _reservas.value = visibles
             .filter { it.fecha >= hoy }
             .sortedWith(compareBy({ it.fecha }, { it.horaInicio }))
-            .map { reserva ->
-                val area = areas.firstOrNull { it.id == reserva.areaId }
-                ReservaListada(
-                    id = reserva.id,
-                    titulo = area?.let { Deportes.titulo(it.tipo, it.nombre) } ?: Textos.get("area_deleted_2"),
-                    emoji = area?.let { Deportes.emojiDe(it.tipo, it.emoji) } ?: "📍",
-                    fecha = reserva.fecha,
-                    horaInicio = reserva.horaInicio,
-                    horaFin = reserva.horaFin,
-                    personas = reserva.personas,
-                    estado = reserva.estado,
-                    deporte = area?.tipo ?: reserva.deporte,
-                    carril = reserva.carril,
-                    usuarioNombre = reserva.usuarioNombre,
-                    areaId = reserva.areaId
-                )
-            }
+            .map { it.aLista(areas) }
         cargarEsperas()
+    }
+
+    private fun Reserva.aLista(areas: List<Area>): ReservaListada {
+        val area = areas.firstOrNull { it.id == areaId }
+        return ReservaListada(
+            id = id,
+            titulo = area?.let { Deportes.titulo(it.tipo, it.nombre) } ?: Textos.get("area_deleted_2"),
+            emoji = area?.let { Deportes.emojiDe(it.tipo, it.emoji) } ?: "📍",
+            fecha = fecha,
+            horaInicio = horaInicio,
+            horaFin = horaFin,
+            personas = personas,
+            estado = estado,
+            deporte = area?.tipo ?: deporte,
+            carril = carril,
+            usuarioNombre = usuarioNombre,
+            areaId = areaId
+        )
     }
 
     /** Vuelve a leer la lista de espera de la persona (al regresar a la pantalla, por si ya le tocó). */

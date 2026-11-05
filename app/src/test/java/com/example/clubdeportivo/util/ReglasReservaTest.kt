@@ -65,6 +65,56 @@ class ReglasReservaTest {
     }
 
     @Test
+    fun `las proximas reservas incluyen hasta dos dias y permanecen hasta registrar asistencia`() {
+        val reservas = listOf(
+            reserva(9, dia = "2026-10-08"),
+            reserva(10, dia = "2026-10-10"),
+            reserva(11, dia = "2026-10-12"),
+            reserva(12, dia = "2026-10-13"),
+            reserva(13, dia = "2026-10-10", estado = EstadoReserva.PENDIENTE_APROBACION),
+            reserva(14, dia = "2026-10-10", estado = EstadoReserva.CANCELADA)
+        )
+
+        val visibles = ReglasReserva.reservasVisiblesProximamente(
+            reservas = reservas,
+            asistenciasRegistradas = setOf(reservas[0].id),
+            hasta = "2026-10-12"
+        )
+
+        assertEquals(listOf(reservas[1].id, reservas[4].id, reservas[2].id), visibles.map { it.id })
+    }
+
+    @Test
+    fun `asistencia solo inicia al llegar la fecha y hora de la reserva`() {
+        val antes = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse("2026-10-21 11:59")!!
+        val inicio = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse("2026-10-21 12:00")!!
+        val despues = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse("2026-10-21 12:01")!!
+
+        assertFalse(Fechas.yaInicio("2026-10-21", "12:00", antes))
+        assertTrue(Fechas.yaInicio("2026-10-21", "12:00", inicio))
+        assertTrue(Fechas.yaInicio("2026-10-21", "12:00", despues))
+    }
+
+    @Test
+    fun `las reservas activas y proximas quedan antes que las concluidas`() {
+        val ahora = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse("2026-10-21 12:00")!!
+        val reservas = listOf(
+            reserva(9, dia = "2026-10-21"),
+            reserva(13, dia = "2026-10-21"),
+            reserva(11, horas = 2, dia = "2026-10-21"),
+            reserva(16, dia = "2026-10-22"),
+            reserva(18, dia = "2026-10-20")
+        )
+
+        val ordenadas = ReglasReserva.ordenarActivasAntesQuePasadas(reservas, ahora)
+
+        assertEquals(
+            listOf(reservas[2].id, reservas[1].id, reservas[3].id, reservas[0].id, reservas[4].id),
+            ordenadas.map { it.id }
+        )
+    }
+
+    @Test
     fun `una reserva en un area vacia es valida`() {
         assertNull(ReglasReserva.validarReserva(cancha, emptyList(), emptyList(), fecha, "09:00", "10:00", 1))
     }

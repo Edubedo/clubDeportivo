@@ -219,6 +219,9 @@ class FirebaseReservaRepository(
     override suspend fun obtenerAsistencias(): Map<String, String> =
         checkins.get().await().documents.mapNotNull { doc -> doc.getString("asistencia")?.let { doc.id to it } }.toMap()
 
+    override suspend fun obtenerReservasConAsistencia(usuarioId: String): Set<String> =
+        checkins.whereEqualTo("usuarioId", usuarioId).get().await().documents.map { it.id }.toSet()
+
     override suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado> {
         return materialAsignado.whereEqualTo("reservaId", reservaId).get().await().documents.map { doc ->
             MaterialAsignado(

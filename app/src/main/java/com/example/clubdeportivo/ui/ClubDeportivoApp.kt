@@ -8,6 +8,9 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -343,7 +346,31 @@ fun ClubDeportivoApp(
         NavHost(
             navController = navController,
             startDestination = Destinations.LOGIN,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = {
+                slideIntoContainer(
+                    towards = androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                ) + fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    towards = androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                ) + fadeOut(animationSpec = tween(300))
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    towards = androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                ) + fadeIn(animationSpec = tween(300))
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    towards = androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                ) + fadeOut(animationSpec = tween(300))
+            }
         ) {
             composable(Destinations.LOGIN) {
                 LoginScreen(

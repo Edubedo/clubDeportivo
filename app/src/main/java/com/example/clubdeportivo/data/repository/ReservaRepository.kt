@@ -37,6 +37,8 @@ interface ReservaRepository {
     suspend fun obtenerReservasEntre(desde: String, hasta: String): List<Reserva>
     /** Asistencia registrada por reserva (id de reserva -> "ASISTIO" / "NO_ASISTIO"). Para reportes. */
     suspend fun obtenerAsistencias(): Map<String, String>
+    /** IDs de las reservas del usuario que ya tienen un check-in registrado. */
+    suspend fun obtenerReservasConAsistencia(usuarioId: String): Set<String>
     suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado>
     /** true si se pudo cancelar sin penalización (fue con 4+ horas de anticipación). */
     suspend fun cancelarReserva(reservaId: String): Boolean
@@ -79,6 +81,7 @@ class FakeReservaRepository : ReservaRepository {
     private val noShowsPorUsuario = mutableMapOf<String, MutableList<Long>>()
 
     private val asistencias = mutableMapOf<String, String>()
+    private val usuarioPorAsistencia = mutableMapOf<String, String>()
 
     override suspend fun registrarAsistencia(
         reservaId: String,
@@ -86,6 +89,7 @@ class FakeReservaRepository : ReservaRepository {
         asistencia: String
     ) {
         asistencias[reservaId] = asistencia
+        usuarioPorAsistencia[reservaId] = usuarioId
     }
 
     override suspend fun obtenerAsistencia(
@@ -179,6 +183,9 @@ class FakeReservaRepository : ReservaRepository {
         reservas.filter { it.fecha in desde..hasta }
 
     override suspend fun obtenerAsistencias(): Map<String, String> = asistencias.toMap()
+
+    override suspend fun obtenerReservasConAsistencia(usuarioId: String): Set<String> =
+        usuarioPorAsistencia.filterValues { it == usuarioId }.keys
 
     override suspend fun obtenerMaterialAsignado(reservaId: String): List<MaterialAsignado> {
         delay(200)
