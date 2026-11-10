@@ -11,7 +11,11 @@ data class Area(
     val permiteExternos: Boolean = false,
     /** Emoji propio del deporte cuando se dio de alta uno nuevo; vacío = usar el de [Deportes]. */
     val emoji: String = "",
-    val carriles: Int = 0
+    val carriles: Int = 0,
+
+    // Información que se mostrará al abrir el detalle del área
+    val descripcion: String = "",
+    val entrenadores: List<String> = emptyList()
 )
 
 data class Herramienta(
