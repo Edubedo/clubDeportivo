@@ -60,7 +60,8 @@ data class Membresia(
     val fechaInicio: String,
     val fechaVencimiento: String,
     /** Por qué está suspendida (vacío si no lo está). */
-    val motivoSuspension: String = ""
+    val motivoSuspension: String = "",
+    val comprobanteUrl: String? = null
 )
 
 data class IntegranteFamiliar(

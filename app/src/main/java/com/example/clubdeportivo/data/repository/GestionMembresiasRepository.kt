@@ -18,7 +18,8 @@ interface GestionMembresiasRepository {
         paqueteId: Int?,
         precio: Double,
         personas: List<PersonaForm>,
-        metodoPago: MetodoPago
+        metodoPago: MetodoPago,
+        comprobanteUrl: String? = null
     ): MembresiaDetalle
 
     /**

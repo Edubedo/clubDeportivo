@@ -66,6 +66,8 @@ contraseña propios) con *Regístrate con tu código*. Se dan de alta desde Memb
   Lo que no está ahí usa el precio base de `Catalogos`. Cada membresía guarda el precio con que se registró o renovó.
 - Las membresías creadas antes de los códigos se muestran "sin código (registro anterior)": se pueden renovar,
   suspender y cambiar de plan, pero sus personas no se editan.
+- `membresias/{id}.comprobanteUrl` guarda la URL del recibo de alta (vacía si no se adjuntó); el archivo vive en
+  Firebase Storage bajo `comprobantes_membresias/{UUID}.jpg`.
 
 **Importante (seguridad):** el código funciona como contraseña, así que conviene que los códigos se entreguen en persona
 y que las reglas de Firestore restrinjan la escritura de `miembros`, `membresias` y `precios` al personal del club.

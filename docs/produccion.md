@@ -8,6 +8,8 @@ Marca cada punto. Los marcados con ⚠️ son obligatorios: sin ellos la app **n
       [`firestore.rules`](../firestore.rules) → Publicar. La app nueva usa las colecciones `registroCodigos`, `avisos`,
       `publicaciones` y `pagos`; con las reglas anteriores el registro por código, avisos y publicaciones fallan.
       Antes de publicar corre `tools/pruebas-reglas` (ver su README).
+- [ ] ⚠️ **Habilita Firebase Storage** y publica [`storage.rules`](../storage.rules) en Consola de Firebase → Storage →
+      Reglas. El alta de membresías sube los comprobantes a Storage; solo el personal activo puede acceder a esos archivos.
 - [ ] ⚠️ **Entra una vez como administrador** y abre el Dashboard: ahí corre la migración a la versión 6 que crea el
       registro de códigos de los miembros que ya existían. Hasta que lo hagas, esos miembros verán "No encontramos ese
       código" al registrarse.
@@ -47,6 +49,8 @@ Marca cada punto. Los marcados con ⚠️ son obligatorios: sin ellos la app **n
 
 - **Fotos de perfil**: se guardan solo en el teléfono de quien las sube (no hay Firebase Storage). El personal no ve las
   fotos de otros.
+- **Comprobantes de pago**: se guardan en Firebase Storage y la URL queda en la membresía. Habilita Storage y publica
+  sus reglas antes de registrar miembros con recibos.
 - **Sesión**: la app recuerda la sesión en el teléfono hasta que la persona cierra sesión.
 - **Reservas y membresía**: la app impide reservar con membresía suspendida o vencida, pero la regla del servidor no
   lo comprueba; alguien que manipule la app podría saltársela. Para blindarlo habría que agregar Cloud Functions.

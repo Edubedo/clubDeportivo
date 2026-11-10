@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function esPersonal() {
+      return request.auth != null
+          && firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.get('estado', 'ACTIVO') != 'INACTIVO'
+          && firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.get('rol', '')
+              in ['SUPERADMIN', 'ADMIN', 'ADMIN_AREA', 'AYUDANTE_AREA'];
+    }
+
+    match /comprobantes_membresias/{archivo} {
+      allow read, delete: if esPersonal();
+      allow create, update: if esPersonal()
+          && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
