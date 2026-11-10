@@ -231,6 +231,7 @@ fun AvisosSheet(onCerrar: () -> Unit, viewModel: AvisosViewModel) {
             mensaje = Textos.get("salir_formulario_mensaje"),
             textoConfirmar = Textos.get("salir_si"),
             textoCancelar = Textos.get("seguir_editando"),
+            conReflejo = false,
             onConfirmar = {
                 confirmarSalida = false
                 modo = ModoAvisos.Lista

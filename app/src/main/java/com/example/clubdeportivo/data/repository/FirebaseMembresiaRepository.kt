@@ -21,6 +21,7 @@ internal fun DocumentSnapshot.toMembresia(): Membresia? {
         estado = EstadoMembresia.valueOf(getString("estado") ?: "ACTIVA"),
         fechaInicio = getString("fechaInicio") ?: "",
         fechaVencimiento = getString("fechaVencimiento") ?: "",
+        comprobanteUrl = getString("comprobanteUrl"),
         motivoSuspension = getString("motivoSuspension") ?: ""
     )
 }

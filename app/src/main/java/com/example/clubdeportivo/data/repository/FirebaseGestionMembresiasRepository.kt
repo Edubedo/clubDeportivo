@@ -92,7 +92,8 @@ class FirebaseGestionMembresiasRepository(
         paqueteId: Int?,
         precio: Double,
         personas: List<PersonaForm>,
-        metodoPago: MetodoPago
+        metodoPago: MetodoPago,
+        comprobanteUrl: String?
     ): MembresiaDetalle {
         val cuentas = personas.map { crearCuenta() }
         val hoy = Fechas.hoy()
@@ -111,6 +112,7 @@ class FirebaseGestionMembresiasRepository(
             "fechaInicio" to hoy,
             "fechaVencimiento" to ReglasMembresia.vencimientoInicial(tipo, hoy),
             "renovaciones" to 0L,
+            "comprobanteUrl" to (comprobanteUrl ?: ""),
             "creadoPor" to (SesionManager.usuarioActual?.id ?: ""),
             "creadoEn" to ahora,
             "actualizadoEn" to ahora

@@ -203,11 +203,16 @@ service cloud.firestore {
 }
 ```
 
-**Fotos de perfil.** No usan Firebase Storage (que puede exigir el plan de pago): la foto se reduce a 256 px, se
-comprime a JPEG (~20-40 KB) y se guarda dentro del propio perfil, en `usuarios/{uid}.fotoUrl`, como data URI en base64
-(`data:image/jpeg;base64,...`). Coil lo muestra tal cual y la foto sigue ahí si el usuario cambia de teléfono. Las reglas
-de Firestore de arriba ya la cubren; no hay nada extra que configurar. Si algún día hicieran falta fotos grandes, hay que
-pasar a Storage o a un servicio como Cloudinary (solo cambia `FirebaseFotoPerfilRepository`).
+**Fotos de perfil.** No usan Firebase Storage: la foto se reduce a 256 px, se comprime a JPEG (~20-40 KB) y se guarda
+dentro del propio perfil, en `usuarios/{uid}.fotoUrl`, como data URI en base64 (`data:image/jpeg;base64,...`). Coil lo
+muestra tal cual.
+
+**Comprobantes de membresía.** Las imágenes adjuntas al registrar una membresía se suben a
+`comprobantes_membresias/{UUID}.jpg` en Firebase Storage; la URL de descarga queda en
+`membresias/{id}.comprobanteUrl` (vacía si no se adjuntó recibo). Las reglas de Storage están en
+[`storage.rules`](../storage.rules) y limitan la lectura directa, la subida y la eliminación al personal activo del club.
+La URL de descarga es un enlace con token: quien tenga el enlace puede acceder al archivo. Para producción hay que
+habilitar un bucket de Storage en el proyecto Firebase y publicar sus reglas.
 
 **Datos de catálogo (áreas, torneos, inventario).** Firestore empieza vacío y así debe quedarse en producción: la app
 ya no siembra datos de ejemplo. Las áreas, los torneos y el inventario se dan de alta desde la propia app.
