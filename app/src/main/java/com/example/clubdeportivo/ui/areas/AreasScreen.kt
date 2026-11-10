@@ -101,6 +101,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.example.clubdeportivo.ui.components.imagenDeporte
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +112,7 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
     val mensaje by viewModel.mensaje.observeAsState()
 
     var areaEnEdicion by remember { mutableStateOf<Area?>(null) }
+    var areaSeleccionada by remember { mutableStateOf<Area?>(null) }
     var mostrarFormulario by remember { mutableStateOf(false) }
     var areaAEliminar by remember { mutableStateOf<Area?>(null) }
     var filtroDeporte by remember { mutableStateOf<String?>(null) }
@@ -180,6 +182,9 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                                 area = area,
                                 reservasHoy = reservasHoy[area.id] ?: 0,
                                 soloEstatus = esEncargado,
+                                onVerDetalle = {
+                                    areaSeleccionada = area
+                                },
                                 onEditar = {
                                     areaEnEdicion = area
                                     mostrarFormulario = true
@@ -193,6 +198,31 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
             }
         }
     }
+
+
+    areaSeleccionada?.let { area ->
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = {
+                areaSeleccionada = null
+            },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false
+            )
+        ) {
+            androidx.compose.material3.Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = FondoApp
+            ) {
+                AreaDetalleScreen(
+                    area = area,
+                    onVolver = {
+                        areaSeleccionada = null
+                    }
+                )
+            }
+        }
+    }
+
 
     if (mostrarFormulario) {
         AreaFormDialog(
@@ -228,6 +258,7 @@ private fun AreaCard(
     area: Area,
     reservasHoy: Int,
     soloEstatus: Boolean,
+    onVerDetalle: () -> Unit,
     onEditar: () -> Unit,
     onCambiarEstatus: (DisponibilidadArea) -> Unit,
     onEliminar: () -> Unit
@@ -241,6 +272,7 @@ private fun AreaCard(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+
             Image(
                 painter = painterResource(
                     id = imagenDeporte(area.tipo)
@@ -249,9 +281,13 @@ private fun AreaCard(
                 modifier = Modifier
                     .padding(top = 4.dp)
                     .size(width = 90.dp, height = 80.dp)
-                    .clip(RoundedCornerShape(12.dp)),
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        onVerDetalle()
+                    },
                 contentScale = ContentScale.Crop
             )
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = Deportes.titulo(area.tipo, area.nombre),

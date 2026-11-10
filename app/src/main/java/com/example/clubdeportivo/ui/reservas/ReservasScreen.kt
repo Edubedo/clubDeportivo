@@ -105,6 +105,17 @@ import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.util.Textos
 import com.example.clubdeportivo.data.model.etiquetaDeporte
 import com.example.clubdeportivo.data.model.etiquetaArea
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.clubdeportivo.ui.components.imagenDeporte
+import com.example.clubdeportivo.ui.areas.AreaDetalleScreen
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+
+
 
 @Composable
 fun ReservasScreen(initialTab: Int = 0) {
@@ -146,6 +157,7 @@ fun ReservasScreen(initialTab: Int = 0) {
 @Composable
 private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
     val ui by viewModel.ui.observeAsState(ReservaEspacioUi())
+    var areaDetalle by remember { mutableStateOf<Area?>(null) }
     val reservas by viewModel.reservas.observeAsState(emptyList())
     val mensaje by viewModel.mensaje.observeAsState()
     val restriccion by viewModel.restriccion.observeAsState()
@@ -169,6 +181,28 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
     }
 
     // Con horas ya elegidas hay una reserva a medias: salirse pide confirmación y, si se acepta, la descarta.
+    areaDetalle?.let { area ->
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = {
+                areaDetalle = null
+            },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false
+            )
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = FondoApp
+            ) {
+                AreaDetalleScreen(
+                    area = area,
+                    onVolver = {
+                        areaDetalle = null
+                    }
+                )
+            }
+        }
+    }
     ProtegerSalida(
         activo = ui.desde != null && !ui.enviando,
         mensaje = "salir_reserva_mensaje",
@@ -259,6 +293,9 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             }
 
             // Cuadrícula de deportes: 2 columnas simétricas
+
+
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 maxItemsInEachRow = 2,
@@ -267,18 +304,43 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             ) {
                 deportes.forEach { deporte ->
                     val muestra = ui.areas.first { it.tipo == deporte }
-                    Box(modifier = Modifier.weight(1f)) {
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(0.48f)
+                    ) {
                         TarjetaOpcion(
                             emoji = Deportes.emojiDe(deporte, muestra.emoji),
                             titulo = etiquetaDeporte(deporte),
-                            detalle = ui.areas.count { it.tipo == deporte }.let { if (it == 1) Textos.get("n_1_area") else Textos.get("areas_2", it) },
+                            detalle = ui.areas.count { it.tipo == deporte }.let {
+                                if (it == 1) Textos.get("n_1_area")
+                                else Textos.get("areas_2", it)
+                            },
                             seleccionada = deporte == ui.deporte,
                             habilitada = true,
-                            onClick = { viewModel.elegirDeporte(deporte) }
+                            imagen = imagenDeporte(deporte),
+                            descripcion = when (deporte.lowercase()) {
+                                "fútbol", "futbol" ->
+                                    "Canchas para entrenamientos y partidos."
+                                "básquetbol", "basquetbol", "basquet" ->
+                                    "Espacios para practicar básquetbol."
+                                "natación", "natacion" ->
+                                    "Albercas para entrenar y nadar."
+                                "tenis" ->
+                                    "Canchas para entrenamientos y partidos."
+                                else ->
+                                    "Conoce nuestras instalaciones deportivas."
+                            },
+                            onVerDetalle = {
+                                areaDetalle = ui.areas.firstOrNull { it.tipo == deporte }
+                            },
+                            onClick = {
+                                viewModel.elegirDeporte(deporte)
+                            }
                         )
                     }
                 }
             }
+
 
             if (ui.deporte != null) {
                 Spacer(modifier = Modifier.height(20.dp))
@@ -415,6 +477,7 @@ private fun Pasos(pasoActual: Int) {
     }
 }
 
+
 @Composable
 private fun TarjetaOpcion(
     emoji: String,
@@ -422,13 +485,20 @@ private fun TarjetaOpcion(
     detalle: String,
     seleccionada: Boolean,
     habilitada: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    imagen: Int? = null,
+    descripcion: String = "",
+    onVerDetalle: (() -> Unit)? = null
 ) {
     Surface(
         onClick = onClick,
         enabled = habilitada,
         modifier = if (seleccionada) {
-            modifierReflejo(Modifier.fillMaxWidth(), enabled = true, shape = RoundedCornerShape(16.dp))
+            modifierReflejo(
+                Modifier.fillMaxWidth(),
+                enabled = true,
+                shape = RoundedCornerShape(16.dp)
+            )
         } else {
             Modifier.fillMaxWidth()
         },
@@ -438,26 +508,75 @@ private fun TarjetaOpcion(
             seleccionada -> MarcaSuave
             else -> Superficie
         },
-        border = BorderStroke(if (seleccionada) 2.dp else 1.dp, if (seleccionada) Marca else Borde)
+        border = BorderStroke(
+            if (seleccionada) 2.dp else 1.dp,
+            if (seleccionada) Marca else Borde
+        )
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(emoji, fontSize = 28.sp)
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.titleSmall,
-                color = if (habilitada) TextoPrincipal else TextoTenue,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            Text(
-                text = detalle,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (habilitada) TextoSecundario else TextoTenue
-            )
+        Column {
+            if (imagen != null) {
+                Image(
+                    painter = painterResource(id = imagen),
+                    contentDescription = "Imagen de $titulo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(95.dp)
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = 14.dp,
+                                topEnd = 14.dp
+                            )
+                        ),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                if (imagen == null) {
+                    Text(
+                        text = emoji,
+                        fontSize = 28.sp
+                    )
+                }
+
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (habilitada) TextoPrincipal else TextoTenue,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+
+
+                if (imagen == null) {
+                    Text(
+                        text = detalle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (habilitada) TextoSecundario else TextoTenue,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+                if (onVerDetalle != null) {
+                    TextButton(
+                        onClick = onVerDetalle,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Ver detalles",
+                            color = Marca,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+            }
         }
     }
 }
+
 
 private fun etiquetaHora(hora: Int): Pair<String, String> {
     val doce = if (hora % 12 == 0) 12 else hora % 12
