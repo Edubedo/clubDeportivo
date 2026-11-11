@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.membresia
 
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -15,11 +16,14 @@ import com.example.clubdeportivo.data.model.PlanIndividual
 import com.example.clubdeportivo.data.model.TipoMembresia
 import com.example.clubdeportivo.data.repository.GestionMembresiasRepository
 import com.example.clubdeportivo.data.repository.PreciosRepository
+import com.google.firebase.storage.FirebaseStorage
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.Idioma
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Textos
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 /** Control de las membresías del club: alta de miembros (con su código), edición, renovación y suspensión. */
 class MembresiasAdminViewModel(
@@ -80,7 +84,8 @@ class MembresiasAdminViewModel(
         plan: PlanIndividual?,
         paqueteId: Int?,
         personas: List<PersonaForm>,
-        metodoPago: MetodoPago
+        metodoPago: MetodoPago,
+        comprobanteUri: Uri? = null
     ) {
         val error = ReglasMembresia.validarPersonas(tipo, paqueteId, personas)
         if (error != null) {
@@ -92,7 +97,21 @@ class MembresiasAdminViewModel(
             _errorFormulario.value = null
             try {
                 val precio = ClavesPrecio.deMembresia(tipo, plan, paqueteId, preciosActuales())
-                _registroReciente.value = repositorio.registrar(tipo, plan, paqueteId, precio, personas, metodoPago)
+                val comprobanteUrl = comprobanteUri?.let { uri ->
+                    val referencia = FirebaseStorage.getInstance().reference
+                        .child("comprobantes_membresias/${UUID.randomUUID()}.jpg")
+                    referencia.putFile(uri).await()
+                    referencia.downloadUrl.await().toString()
+                }
+                _registroReciente.value = repositorio.registrar(
+                    tipo,
+                    plan,
+                    paqueteId,
+                    precio,
+                    personas,
+                    metodoPago,
+                    comprobanteUrl
+                )
                 _guardadoExitoso.value = (_guardadoExitoso.value ?: 0) + 1
                 cargar()
             } catch (e: Exception) {

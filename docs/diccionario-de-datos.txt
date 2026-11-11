@@ -255,6 +255,8 @@ Observado: 2 documentos.
   fechaVencimiento   String     S    Fin de la vigencia. Membresías: un mes. Visita: el mismo día.
   renovaciones       Number     S    Cuántas veces se ha renovado.
   ultimaRenovacion   String     N    Fecha de la última renovación.
+  comprobanteUrl    String     N    URL de descarga del recibo de alta (vacía si no se adjuntó); el archivo vive en
+                                     Firebase Storage, en comprobantes_membresias/{UUID}.jpg.
   creadoPor          String     N    uid de quien la registró.
   creadoEn           Timestamp  N    Alta del registro.
   actualizadoEn      Timestamp  N    Última modificación.

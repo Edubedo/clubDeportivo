@@ -858,6 +858,7 @@ fun DialogoFormulario(
             mensaje = tr("salir_formulario_mensaje"),
             textoConfirmar = tr("salir_si"),
             textoCancelar = tr("seguir_editando"),
+            conReflejo = false,
             onConfirmar = {
                 confirmandoSalida = false
                 onCerrar()

@@ -1,7 +1,15 @@
 package com.example.clubdeportivo.ui.membresia
 
 import com.example.clubdeportivo.data.model.etiquetaParentesco
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -19,18 +28,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -42,11 +56,18 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.window.Dialog
 import com.example.clubdeportivo.util.tr
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +78,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import coil3.compose.AsyncImage
+import java.io.File
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.ClavesPrecio
 import com.example.clubdeportivo.data.model.EstadoMembresia
@@ -86,11 +111,13 @@ import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
 import com.example.clubdeportivo.ui.components.botonFlotanteVisible
 import com.example.clubdeportivo.ui.theme.Alerta
+import com.example.clubdeportivo.ui.theme.Borde
 import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
 import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.Superficie
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
@@ -236,9 +263,9 @@ internal fun MiembrosTab(
             precios = precios,
             error = errorFormulario,
             guardando = guardando,
-            onGuardar = { tipo, plan, paqueteId, personas, estado, motivo, metodo ->
+            onGuardar = { tipo, plan, paqueteId, personas, estado, motivo, metodo, comprobanteUri ->
                 val editando = enEdicion
-                if (editando == null) viewModel.registrar(tipo, plan, paqueteId, personas, metodo)
+                if (editando == null) viewModel.registrar(tipo, plan, paqueteId, personas, metodo, comprobanteUri)
                 else viewModel.actualizar(editando, plan, paqueteId, personas, estado, motivo)
             },
             onRestablecerAcceso = { restableciendo = it },
@@ -337,7 +364,7 @@ private fun TarjetaMiembro(
                 Text(
                     titular?.nombre ?: Textos.get("no_name"),
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextoPrincipal,
+                    color = Color(0xFFE8EEF7),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -454,7 +481,7 @@ private fun MembresiaFormDialog(
     precios: Map<String, Double>,
     error: String?,
     guardando: Boolean,
-    onGuardar: (TipoMembresia, PlanIndividual?, Int?, List<PersonaForm>, EstadoMembresia?, String?, MetodoPago) -> Unit,
+    onGuardar: (TipoMembresia, PlanIndividual?, Int?, List<PersonaForm>, EstadoMembresia?, String?, MetodoPago, Uri?) -> Unit,
     onRestablecerAcceso: (MiembroClub) -> Unit,
     onCerrar: () -> Unit
 ) {
@@ -467,6 +494,49 @@ private fun MembresiaFormDialog(
     var paqueteId by remember { mutableStateOf(membresia?.paqueteFamiliarId ?: Catalogos.paquetesFamiliares.first().id) }
     var estado by remember { mutableStateOf(membresia?.estado ?: EstadoMembresia.ACTIVA) }
     var metodoPago by remember { mutableStateOf(MetodoPago.EFECTIVO) }
+    var comprobanteUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var mostrarOpcionesComprobante by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val selectorGaleria = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) comprobanteUri = uri
+    }
+
+    var uriCamara by rememberSaveable { mutableStateOf<Uri?>(null) }
+    val camara = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { tomada ->
+        if (tomada) uriCamara?.let { comprobanteUri = it }
+    }
+
+    fun abrirCamara() {
+        try {
+            val carpeta = File(context.cacheDir, "fotos").apply { mkdirs() }
+            val archivo = File(carpeta, "comprobante_${java.util.UUID.randomUUID()}.jpg")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
+            uriCamara = uri
+            camara.launch(uri)
+        } catch (_: Exception) {
+            Toast.makeText(context, Textos.get("receipt_camera_error"), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val permisoCamara = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        if (concedido) abrirCamara()
+        else Toast.makeText(context, Textos.get("camera_permission_required"), Toast.LENGTH_SHORT).show()
+    }
+
+    fun solicitarCamara() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            abrirCamara()
+        } else {
+            permisoCamara.launch(Manifest.permission.CAMERA)
+        }
+    }
     var motivo by remember { mutableStateOf<MotivoSuspension?>(null) }
     var detalleMotivo by remember { mutableStateOf("") }
 
@@ -512,7 +582,8 @@ private fun MembresiaFormDialog(
                         personas.toList(),
                         if (esEdicion) estado else null,
                         if (suspendiendoAhora) motivo?.textoGuardado(detalleMotivo) else null,
-                        metodoPago
+                        metodoPago,
+                        comprobanteUri
                     )
                 }
             )
@@ -590,6 +661,24 @@ private fun MembresiaFormDialog(
                 style = MaterialTheme.typography.bodySmall,
                 color = TextoSecundario
             )
+            EspacioCampos()
+            EtiquetaCampo(Textos.get("payment_receipt"))
+            if (metodoPago == MetodoPago.EFECTIVO) {
+                Text(
+                    text = Textos.get("cash_receipt_optional"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            ComprobanteAdjunto(
+                uri = comprobanteUri,
+                onAdjuntar = { mostrarOpcionesComprobante = true },
+                onCambiar = { mostrarOpcionesComprobante = true },
+                onEliminar = { comprobanteUri = null }
+            )
         }
 
         EspacioCampos()
@@ -639,6 +728,75 @@ private fun MembresiaFormDialog(
                 }
                 EspacioCampos()
             }
+
+            if (mostrarOpcionesComprobante) {
+                Dialog(onDismissRequest = { mostrarOpcionesComprobante = false }) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(0.92f),
+                        shape = RoundedCornerShape(24.dp),
+                        color = Superficie
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = Textos.get("payment_receipt"),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = TextoPrincipal,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = Textos.get("choose_receipt_image_source"),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextoSecundario
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(
+                                    onClick = {
+                                        mostrarOpcionesComprobante = false
+                                        solicitarCamara()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Outlined.PhotoCamera, contentDescription = null, tint = Marca)
+                                    Text(
+                                        Textos.get("take_photo"),
+                                        color = TextoPrincipal,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.weight(1f).padding(start = 12.dp)
+                                    )
+                                }
+                                TextButton(
+                                    onClick = {
+                                        mostrarOpcionesComprobante = false
+                                        selectorGaleria.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Outlined.PhotoLibrary, contentDescription = null, tint = Marca)
+                                    Text(
+                                        Textos.get("choose_from_gallery"),
+                                        color = TextoPrincipal,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.weight(1f).padding(start = 12.dp)
+                                    )
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { mostrarOpcionesComprobante = false }) {
+                                    Text(Textos.get("cancel"), color = TextoSecundario)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if (esEdicion && membresia != null && ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy()) != EstadoMembresia.VENCIDA) {
@@ -664,6 +822,71 @@ private fun MembresiaFormDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = Alerta
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ComprobanteAdjunto(
+    uri: Uri?,
+    onAdjuntar: () -> Unit,
+    onCambiar: () -> Unit,
+    onEliminar: () -> Unit
+) {
+    val fondo = Superficie
+    val borde = Borde
+    val acento = Color(0xFF10E784)
+    val forma = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+
+    if (uri == null) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(forma)
+                .clickable(role = Role.Button, onClick = onAdjuntar),
+            shape = forma,
+            color = fondo,
+            border = BorderStroke(1.dp, borde)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Outlined.CloudUpload, contentDescription = null, tint = acento, modifier = Modifier.size(24.dp))
+                Text(
+                    text = Textos.get("attach_payment_receipt"),
+                    color = TextoPrincipal,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 12.dp)
+                )
+            }
+        }
+    } else {
+        Surface(
+            shape = forma,
+            color = fondo,
+            border = BorderStroke(1.dp, borde)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = uri,
+                    contentDescription = Textos.get("payment_receipt_preview"),
+                    modifier = Modifier.size(76.dp).clip(forma),
+                    contentScale = ContentScale.Crop
+                )
+                Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                    Text(Textos.get("payment_receipt"), color = TextoPrincipal, style = MaterialTheme.typography.bodyMedium)
+                    TextButton(onClick = onCambiar) {
+                        Text(Textos.get("change_image"), color = acento)
+                    }
+                }
+                IconButton(onClick = onEliminar) {
+                    Icon(Icons.Default.Delete, contentDescription = Textos.get("remove_image"), tint = acento)
+                }
             }
         }
     }

@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <!-- Android 13+: los recordatorios (reservas, membresía, avisos...) son notificaciones y piden este permiso. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Para que el aviso de una reserva (2 h y 1 h antes) salga a su hora. Si no se concede, se usa una alarma aproximada. -->
