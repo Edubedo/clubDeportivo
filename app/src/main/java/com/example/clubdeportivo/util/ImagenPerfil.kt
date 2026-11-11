@@ -16,6 +16,10 @@ import java.io.ByteArrayOutputStream
 fun comprimirFotoPerfil(resolver: ContentResolver, uri: Uri): ByteArray? =
     comprimirImagen(resolver, uri, ladoMaximo = 256, calidad = 75)
 
+/** Imagen compacta para el área, que se guarda en el documento de Firestore. */
+fun comprimirImagenArea(resolver: ContentResolver, uri: Uri): ByteArray? =
+    comprimirImagen(resolver, uri, ladoMaximo = 512, calidad = 65)
+
 /** Portada de publicación con resolución suficiente para mostrarse en una tarjeta ancha. */
 fun comprimirImagenPublicacion(resolver: ContentResolver, uri: Uri): ByteArray? =
     comprimirImagen(resolver, uri, ladoMaximo = 1200, calidad = 72)

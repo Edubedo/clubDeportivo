@@ -15,7 +15,8 @@ data class Area(
 
     // Información que se mostrará al abrir el detalle del área
     val descripcion: String = "",
-    val entrenadores: List<String> = emptyList()
+    val entrenadores: List<String> = emptyList(),
+    val imagenUrl: String = ""
 )
 
 data class Herramienta(

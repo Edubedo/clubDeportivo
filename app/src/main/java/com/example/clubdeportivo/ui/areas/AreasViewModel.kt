@@ -76,7 +76,8 @@ class AreasViewModel(
         capacidad: Int,
         emoji: String,
         disponibilidad: DisponibilidadArea = DisponibilidadArea.DISPONIBLE,
-        carriles: Int = 0
+        carriles: Int = 0,
+        imagenUrl: String = ""
     ) {
         if (nombreRepetido(nombre, tipo, existente?.id)) {
             _mensaje.value = Textos.get("already_exists_in", nombre.trim(), tipo)
@@ -85,7 +86,14 @@ class AreasViewModel(
         viewModelScope.launch {
             try {
                 if (existente == null) {
-                    val creada = areaRepository.crearArea(nombre.trim(), tipo.trim(), capacidad, emoji.trim(), carriles)
+                    val creada = areaRepository.crearArea(
+                        nombre.trim(),
+                        tipo.trim(),
+                        capacidad,
+                        emoji.trim(),
+                        carriles,
+                        imagenUrl
+                    )
                     if (disponibilidad != creada.disponibilidad) {
                         areaRepository.actualizarArea(creada.copy(disponibilidad = disponibilidad))
                     }
@@ -105,7 +113,8 @@ class AreasViewModel(
                             capacidad = capacidad,
                             emoji = emoji.trim(),
                             disponibilidad = disponibilidad,
-                            carriles = carriles
+                            carriles = carriles,
+                            imagenUrl = imagenUrl
                         )
                     )
                     _mensaje.value = Textos.get("area_updated", nombre.trim())

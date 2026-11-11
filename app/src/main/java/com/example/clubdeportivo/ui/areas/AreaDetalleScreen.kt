@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
@@ -46,16 +47,25 @@ fun AreaDetalleScreen(
             style = MaterialTheme.typography.headlineSmall
         )
 
-        Image(
-            painter = painterResource(
-                id = imagenDeporte(area.tipo)
-            ),
-            contentDescription = "Fotografía de ${area.nombre}",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(240.dp),
-            contentScale = ContentScale.Crop
-        )
+        if (area.imagenUrl.isNotBlank()) {
+            AsyncImage(
+                model = area.imagenUrl,
+                contentDescription = "Fotografía de ${area.nombre}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(240.dp),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Image(
+                painter = painterResource(id = imagenDeporte(area.tipo)),
+                contentDescription = "Fotografía de ${area.nombre}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(240.dp),
+                contentScale = ContentScale.Crop
+            )
+        }
 
         Text(
             text = "Descripción del área",

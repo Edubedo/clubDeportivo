@@ -869,7 +869,7 @@ fun DialogoFormulario(
 
     Dialog(
         onDismissRequest = intentarCerrar,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
     ) {
         Surface(
             modifier = Modifier
