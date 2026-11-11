@@ -1,6 +1,11 @@
 package com.example.clubdeportivo.ui.areas
 
+import android.util.Base64
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -42,6 +47,7 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -49,6 +55,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -60,13 +67,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.SesionManager
@@ -93,9 +106,11 @@ import com.example.clubdeportivo.ui.theme.FondoApp
 import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.SobreMarca
+import com.example.clubdeportivo.ui.theme.SobreMarca
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Textos
+import com.example.clubdeportivo.util.comprimirImagenArea
 import com.example.clubdeportivo.data.model.etiquetaDeporte
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
@@ -231,8 +246,17 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                     Deportes.predefinidos.map { it to Deportes.emojiDe(it) }).distinctBy { it.first.lowercase() },
             nombreRepetido = { nombre, tipo -> viewModel.nombreRepetido(nombre, tipo, areaEnEdicion?.id) },
             onCerrar = { mostrarFormulario = false },
-            onGuardar = { nombre, tipo, capacidad, emoji, disponibilidad, carriles ->
-                viewModel.guardarArea(areaEnEdicion, nombre, tipo, capacidad, emoji, disponibilidad, carriles)
+            onGuardar = { nombre, tipo, capacidad, emoji, disponibilidad, carriles, imagenUrl ->
+                viewModel.guardarArea(
+                    areaEnEdicion,
+                    nombre,
+                    tipo,
+                    capacidad,
+                    emoji,
+                    disponibilidad,
+                    carriles,
+                    imagenUrl
+                )
                 mostrarFormulario = false
             }
         )
@@ -273,20 +297,29 @@ private fun AreaCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            Image(
-                painter = painterResource(
-                    id = imagenDeporte(area.tipo)
-                ),
-                contentDescription = "Imagen de ${area.tipo}",
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .size(width = 90.dp, height = 80.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable {
-                        onVerDetalle()
-                    },
-                contentScale = ContentScale.Crop
-            )
+            if (area.imagenUrl.isNotBlank()) {
+                AsyncImage(
+                    model = area.imagenUrl,
+                    contentDescription = "Imagen de ${area.tipo}",
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .size(width = 90.dp, height = 80.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onVerDetalle() },
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = imagenDeporte(area.tipo)),
+                    contentDescription = "Imagen de ${area.tipo}",
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .size(width = 90.dp, height = 80.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onVerDetalle() },
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -364,8 +397,18 @@ private fun AreaFormDialog(
     deportesExistentes: List<Pair<String, String>>,
     nombreRepetido: (nombre: String, tipo: String) -> Boolean,
     onCerrar: () -> Unit,
-    onGuardar: (nombre: String, tipo: String, capacidad: Int, emoji: String, disponibilidad: DisponibilidadArea, carriles: Int) -> Unit
+    onGuardar: (
+        nombre: String,
+        tipo: String,
+        capacidad: Int,
+        emoji: String,
+        disponibilidad: DisponibilidadArea,
+        carriles: Int,
+        imagenUrl: String
+    ) -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val esEdicion = areaExistente != null
     var modoNuevo by remember { mutableStateOf(false) }
     var deporteElegido by remember { mutableStateOf(areaExistente?.tipo ?: "") }
@@ -376,13 +419,36 @@ private fun AreaFormDialog(
     var capacidad by remember { mutableStateOf((areaExistente?.capacidad ?: 10).toString()) }
     var carriles by remember { mutableStateOf((areaExistente?.carriles ?: 0).takeIf { it > 0 }?.toString().orEmpty()) }
     var enMantenimiento by remember { mutableStateOf(areaExistente?.disponibilidad == DisponibilidadArea.MANTENIMIENTO) }
+    var imagenArea by remember { mutableStateOf(areaExistente?.imagenUrl.orEmpty()) }
+    var imagenCargando by remember { mutableStateOf(false) }
+    var errorImagen by remember { mutableStateOf<String?>(null) }
+    val selectorImagen = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                imagenCargando = true
+                errorImagen = null
+                val jpeg = withContext(Dispatchers.IO) {
+                    comprimirImagenArea(context.contentResolver, uri)
+                }
+                if (jpeg == null) {
+                    errorImagen = Textos.get("the_image_could_not_be_read")
+                } else {
+                    imagenArea = "data:image/jpeg;base64," +
+                        Base64.encodeToString(jpeg, Base64.NO_WRAP)
+                }
+                imagenCargando = false
+            }
+        }
+    }
 
     val tipo = if (modoNuevo) deporteNuevo.trim() else deporteElegido
     val repetido = nombre.isNotBlank() && tipo.isNotBlank() && nombreRepetido(nombre, tipo)
     val requiereCarriles = tipo.contains("natación", ignoreCase = true) ||
         tipo.contains("alberca", ignoreCase = true) || tipo.contains("piscina", ignoreCase = true)
     val puedeGuardar = tipo.isNotBlank() && nombre.isNotBlank() && !repetido &&
-            (!modoNuevo || emojiNuevo.isNotBlank()) && (capacidad.toIntOrNull() ?: 0) > 0
+            (!modoNuevo || emojiNuevo.isNotBlank()) && !imagenCargando && (capacidad.toIntOrNull() ?: 0) > 0
             && (!requiereCarriles || (carriles.toIntOrNull() ?: 0) > 0)
 
     DialogoFormulario(
@@ -400,7 +466,8 @@ private fun AreaFormDialog(
                         capacidad.toIntOrNull() ?: 1,
                         emoji,
                         if (enMantenimiento) DisponibilidadArea.MANTENIMIENTO else DisponibilidadArea.DISPONIBLE,
-                        carriles.toIntOrNull() ?: 0
+                        carriles.toIntOrNull() ?: 0,
+                        imagenArea
                     )
                 }
             )
@@ -447,6 +514,48 @@ private fun AreaFormDialog(
 
             EtiquetaCampo("EMOJI")
             SelectorEmoji(seleccionado = emojiNuevo, onSeleccion = { emojiNuevo = it })
+        }
+
+        EspacioCampos()
+
+        EtiquetaCampo(Textos.get("area_image"))
+        OutlinedButton(
+            onClick = {
+                selectorImagen.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            },
+            enabled = !imagenCargando,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Marca,
+                contentColor = SobreMarca,
+                disabledContainerColor = Marca.copy(alpha = 0.12f),
+                disabledContentColor = Marca.copy(alpha = 0.38f)
+            ),
+            border = BorderStroke(1.dp, Marca)
+        ) {
+            Text(
+                when {
+                    imagenCargando -> Textos.get("preparing_image")
+                    imagenArea.isNotBlank() -> Textos.get("change_area_image")
+                    else -> Textos.get("choose_area_image")
+                }
+            )
+        }
+        if (imagenArea.isNotBlank()) {
+            AsyncImage(
+                model = imagenArea,
+                contentDescription = Textos.get("area_image"),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+        errorImagen?.let {
+            Text(it, color = Peligro, style = MaterialTheme.typography.bodySmall)
         }
 
         EspacioCampos()

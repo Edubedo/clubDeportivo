@@ -18,7 +18,8 @@ private fun DocumentSnapshot.toArea(): Area? {
         disponibilidad = DisponibilidadArea.valueOf(getString("disponibilidad") ?: "DISPONIBLE"),
         permiteExternos = getBoolean("permiteExternos") ?: false,
         emoji = getString("emoji") ?: "",
-        carriles = (getLong("carriles") ?: 0L).toInt()
+        carriles = (getLong("carriles") ?: 0L).toInt(),
+        imagenUrl = getString("imagenUrl") ?: ""
     )
 }
 
@@ -36,7 +37,14 @@ class FirebaseAreaRepository(
         return coleccion.document(id).get().await().toArea()
     }
 
-    override suspend fun crearArea(nombre: String, tipo: String, capacidad: Int, emoji: String, carriles: Int): Area {
+    override suspend fun crearArea(
+        nombre: String,
+        tipo: String,
+        capacidad: Int,
+        emoji: String,
+        carriles: Int,
+        imagenUrl: String
+    ): Area {
         val datos = mapOf(
             "nombre" to nombre,
             "tipo" to tipo,
@@ -45,11 +53,22 @@ class FirebaseAreaRepository(
             "permiteExternos" to false,
             "emoji" to emoji,
             "carriles" to carriles.toLong(),
+            "imagenUrl" to imagenUrl,
             "creadoEn" to FieldValue.serverTimestamp(),
             "actualizadoEn" to FieldValue.serverTimestamp()
         )
         val documento = coleccion.add(datos).await()
-        return Area(documento.id, nombre, tipo, capacidad, DisponibilidadArea.DISPONIBLE, false, emoji, carriles)
+        return Area(
+            documento.id,
+            nombre,
+            tipo,
+            capacidad,
+            DisponibilidadArea.DISPONIBLE,
+            false,
+            emoji,
+            carriles,
+            imagenUrl = imagenUrl
+        )
     }
 
     override suspend fun actualizarArea(area: Area): Area {
@@ -61,6 +80,7 @@ class FirebaseAreaRepository(
                 "disponibilidad" to area.disponibilidad.name,
                 "emoji" to area.emoji,
                 "carriles" to area.carriles.toLong(),
+                "imagenUrl" to area.imagenUrl,
                 "actualizadoEn" to FieldValue.serverTimestamp()
             )
         ).await()
