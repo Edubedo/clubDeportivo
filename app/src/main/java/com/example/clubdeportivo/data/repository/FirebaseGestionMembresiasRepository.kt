@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.data.repository
 
+import com.example.clubdeportivo.data.correo.CorreoBienvenida
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.ConceptoPago
 import com.example.clubdeportivo.data.model.EstadoMembresia
@@ -144,6 +145,7 @@ class FirebaseGestionMembresiasRepository(
             )
         )
         batch.commit().await()
+        CorreoBienvenida.enviarEnSegundoPlano(registradas)
 
         val membresia = membresias.document(membresiaId).get().await().toMembresia() ?: error(Textos.get("the_created_membership_could_not_be"))
         return MembresiaDetalle(membresia, registradas)
@@ -247,6 +249,11 @@ class FirebaseGestionMembresiasRepository(
             batch.set(registroCodigos.document(cuenta.codigo), datosRegistro(cuenta.uid))
         }
         batch.commit().await()
+        CorreoBienvenida.enviarEnSegundoPlano(
+            nuevas.map { (persona, cuenta) ->
+                MiembroClub(cuenta.codigo, persona.nombre.trim(), persona.telefono.trim(), persona.correo.trim(), membresiaId, persona.parentesco.ifBlank { "Integrante" }, cuenta.uid)
+            }
+        )
     }
 
     override suspend fun cambiarPlan(membresiaId: String, plan: PlanIndividual?, paqueteId: Int?, precio: Double) {
