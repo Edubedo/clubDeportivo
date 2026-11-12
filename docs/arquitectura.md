@@ -214,6 +214,14 @@ muestra tal cual.
 La URL de descarga es un enlace con token: quien tenga el enlace puede acceder al archivo. Para producción hay que
 habilitar un bucket de Storage en el proyecto Firebase y publicar sus reglas.
 
+**Renovaciones por transferencia.** El socio crea un documento en `solicitudes_renovacion` con estado `PENDIENTE`;
+su comprobante se redimensiona a un máximo de 800 px, se comprime a menos de 200 KiB y se guarda como data URI JPEG
+Base64 en `comprobanteUrl` dentro del mismo documento de Firestore. Esta ruta no usa Firebase Storage. El personal
+activo puede consultar y resolver las solicitudes. La aprobación actualiza en una transacción el estado de la solicitud,
+la membresía, los accesos de sus integrantes y el pago, usando la regla existente `ReglasMembresia.fechasDeRenovacion`.
+El formulario solo permite renovar el plan asignado y toma el precio directamente de la membresía vigente.
+Las reglas de Firestore y Storage deben publicarse desde `firestore.rules` y `storage.rules`.
+
 **Datos de catálogo (áreas, torneos, inventario).** Firestore empieza vacío y así debe quedarse en producción: la app
 ya no siembra datos de ejemplo. Las áreas, los torneos y el inventario se dan de alta desde la propia app.
 

@@ -9,6 +9,7 @@ import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.IntegranteFamiliar
+import com.example.clubdeportivo.data.model.Membresia
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.TipoMembresia
 import com.example.clubdeportivo.data.repository.MembresiaRepository
@@ -36,6 +37,9 @@ class MembresiaViewModel(
 
     private val _integrantes = MutableLiveData<List<IntegranteFamiliar>>(emptyList())
     val integrantes: LiveData<List<IntegranteFamiliar>> = _integrantes
+
+    private val _membresia = MutableLiveData<Membresia?>(null)
+    val membresia: LiveData<Membresia?> = _membresia
 
     private val _cargando = MutableLiveData(false)
     val cargando: LiveData<Boolean> = _cargando
@@ -72,6 +76,7 @@ class MembresiaViewModel(
                 _cargando.value = false
                 return@launch
             }
+            _membresia.value = membresia
 
             when (membresia.tipo) {
                 TipoMembresia.FAMILIAR -> {

@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
@@ -53,3 +54,65 @@ exports.cambiarContrasenaPersonal = onCall({ region: 'us-central1', maxInstances
   );
   return { ok: true };
 });
+
+async function guardarNotificacion(usuarioId, id, titulo, mensaje, tipo) {
+  const db = getFirestore();
+  const referencia = db.collection('notificaciones').doc(id);
+  await db.runTransaction(async (tx) => {
+    const existente = await tx.get(referencia);
+    if (existente.exists) return;
+    tx.create(referencia, {
+      id,
+      usuarioId,
+      titulo,
+      mensaje,
+      tipo,
+      leida: false,
+      createdAt: Date.now(),
+      ruta: 'membresia'
+    });
+  });
+}
+
+exports.notificarNuevaRenovacion = onDocumentCreated(
+  { document: 'solicitudes_renovacion/{solicitudId}', region: 'us-central1' },
+  async (event) => {
+    const solicitud = event.data?.data();
+    if (!solicitud || solicitud.status !== 'PENDIENTE') return;
+
+    const db = getFirestore();
+    const administradores = await db.collection('usuarios')
+      .where('rol', 'in', ROLES_ADMINISTRADOR)
+      .get();
+    await Promise.all(administradores.docs
+      .filter((admin) => (admin.get('estado') || 'ACTIVO') !== 'INACTIVO')
+      .map((admin) => guardarNotificacion(
+        admin.id,
+        `renovacion_${event.params.solicitudId}_${admin.id}`,
+        'Nueva solicitud de renovación',
+        `${solicitud.socioNombre || 'Un socio'} envió una renovación por $${Number(solicitud.monto || 0).toFixed(2)}. Revisa la pestaña Renovaciones.`,
+        'RENOVACION'
+      )));
+  }
+);
+
+exports.notificarResolucionRenovacion = onDocumentUpdated(
+  { document: 'solicitudes_renovacion/{solicitudId}', region: 'us-central1' },
+  async (event) => {
+    const anterior = event.data?.before.data();
+    const actual = event.data?.after.data();
+    if (!anterior || !actual || anterior.status !== 'PENDIENTE' ||
+        !['APROBADO', 'RECHAZADO'].includes(actual.status) || !actual.socioId) return;
+
+    const aprobado = actual.status === 'APROBADO';
+    await guardarNotificacion(
+      actual.socioId,
+      `renovacion_${event.params.solicitudId}_${actual.status.toLowerCase()}`,
+      aprobado ? 'Renovación aprobada' : 'Renovación rechazada',
+      aprobado
+        ? 'Tu renovación de membresía fue aprobada. Tu vigencia ya está actualizada.'
+        : 'Tu solicitud de renovación fue rechazada. Comunícate con el personal del club para más información.',
+      'RENOVACION'
+    );
+  }
+);

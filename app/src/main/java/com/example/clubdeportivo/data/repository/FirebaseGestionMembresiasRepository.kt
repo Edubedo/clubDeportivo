@@ -302,7 +302,16 @@ class FirebaseGestionMembresiasRepository(
         return (deMiembros + listOfNotNull(titular)).toSet()
     }
 
-    override suspend fun renovar(membresiaId: String, precio: Double, metodoPago: MetodoPago) {
+    override suspend fun renovar(
+        membresiaId: String,
+        precio: Double,
+        metodoPago: MetodoPago,
+        solicitudId: String?
+    ) {
+        if (solicitudId != null) {
+            renovarPorSolicitud(membresiaId, precio, metodoPago, solicitudId)
+            return
+        }
         val documento = membresias.document(membresiaId).get().await()
         val membresia = documento.toMembresia() ?: error(Textos.get("the_membership_no_longer_exists"))
         val hoy = Fechas.hoy()
@@ -336,6 +345,83 @@ class FirebaseGestionMembresiasRepository(
             )
         )
         batch.commit().await()
+    }
+
+    private suspend fun renovarPorSolicitud(
+        membresiaId: String,
+        precio: Double,
+        metodoPago: MetodoPago,
+        solicitudId: String
+    ) {
+        val membresiaRef = membresias.document(membresiaId)
+        val solicitudRef = db.collection("solicitudes_renovacion").document(solicitudId)
+        val usuariosRefs = cuentasDeLaMembresia(membresiaId).map(usuarios::document)
+        val pagoRef = pagos.document()
+        val uidRevisor = SesionManager.usuarioActual?.id.orEmpty()
+
+        db.runTransaction { transaction ->
+            val solicitud = transaction.get(solicitudRef)
+            check(solicitud.getString("status") == "PENDIENTE") {
+                "La solicitud ya fue atendida."
+            }
+            val documento = transaction.get(membresiaRef)
+            val membresia = documento.toMembresia()
+                ?: error(Textos.get("the_membership_no_longer_exists"))
+            check(solicitud.getString("membresiaId") == membresiaId) {
+                Textos.get("renewal_request_invalid")
+            }
+            check(solicitud.getString("planId") == membresia.planIdRenovacion()) {
+                Textos.get("renewal_request_stale")
+            }
+            check(solicitud.getDouble("monto") == membresia.precio && precio == membresia.precio) {
+                Textos.get("renewal_request_stale")
+            }
+            val perfiles = usuariosRefs.map { referencia -> referencia to transaction.get(referencia) }
+            val hoy = Fechas.hoy()
+            val (inicio, vence) = ReglasMembresia.fechasDeRenovacion(membresia, hoy)
+            transaction.update(
+                membresiaRef,
+                mapOf(
+                    "estado" to EstadoMembresia.ACTIVA.name,
+                    "fechaInicio" to inicio,
+                    "fechaVencimiento" to vence,
+                    "precio" to precio,
+                    "renovaciones" to FieldValue.increment(1),
+                    "ultimaRenovacion" to hoy,
+                    "motivoSuspension" to FieldValue.delete(),
+                    "actualizadoEn" to FieldValue.serverTimestamp()
+                )
+            )
+            perfiles.filter { it.second.exists() }.forEach { (referencia, _) ->
+                transaction.update(referencia, cambiosDeAcceso("ACTIVO"))
+            }
+            transaction.set(
+                pagoRef,
+                datosPago(
+                    membresiaId = membresiaId,
+                    uid = membresia.usuarioId,
+                    titular = documento.getString("titularNombre") ?: "",
+                    concepto = ConceptoPago.MENSUALIDAD,
+                    monto = precio,
+                    metodo = metodoPago,
+                    hoy = hoy
+                )
+            )
+            transaction.update(
+                solicitudRef,
+                mapOf(
+                    "status" to "APROBADO",
+                    "reviewedBy" to uidRevisor,
+                    "reviewedAt" to FieldValue.serverTimestamp()
+                )
+            )
+        }.await()
+    }
+
+    private fun Membresia.planIdRenovacion(): String? = when (tipo) {
+        TipoMembresia.INDIVIDUAL -> plan?.let { "INDIVIDUAL_${it.name}" }
+        TipoMembresia.FAMILIAR -> paqueteFamiliarId?.let { "FAMILIAR_$it" }
+        TipoMembresia.VISITA -> null
     }
 
     override suspend fun restablecerAcceso(codigo: String) {

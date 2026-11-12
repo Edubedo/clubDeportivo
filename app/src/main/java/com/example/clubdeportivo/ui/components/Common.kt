@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -1039,16 +1040,17 @@ fun PestanasPildora(
     seleccionada: Int,
     onSeleccion: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    margenHorizontal: Dp = MargenPantalla
+    margenHorizontal: Dp = MargenPantalla,
+    desplazable: Boolean = false
 ) {
-    val repartir = opciones.size <= 3
+    val repartir = opciones.size <= 3 && !desplazable
     val fila: @Composable RowScope.() -> Unit = {
         opciones.forEachIndexed { indice, texto ->
             val activa = indice == seleccionada
             val itemModifier = if (repartir) {
                 Modifier.weight(1f).height(44.dp)
             } else {
-                Modifier.height(44.dp)
+                Modifier.height(44.dp).wrapContentWidth()
             }
             Surface(
                 onClick = { onSeleccion(indice) },
@@ -1070,29 +1072,20 @@ fun PestanasPildora(
                         fontSize = if (repartir && texto.length > 9) 12.sp else 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (activa) SobreMarca else TextoSecundario,
-                        maxLines = 1
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
         }
     }
 
-    if (repartir) {
-        Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = margenHorizontal, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            content = fila
-        )
-    } else {
-        Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = margenHorizontal, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            content = fila
-        )
-    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (repartir) Modifier else Modifier.horizontalScroll(rememberScrollState()))
+            .padding(horizontal = margenHorizontal, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        content = fila
+    )
 }

@@ -69,6 +69,13 @@ contraseña propios) con *Regístrate con tu código*. Se dan de alta desde Memb
 - `membresias/{id}.comprobanteUrl` guarda la URL del recibo de alta (vacía si no se adjuntó); el archivo vive en
   Firebase Storage bajo `comprobantes_membresias/{UUID}.jpg`.
 
+### Solicitudes de renovación
+
+`solicitudes_renovacion/{id}` guarda `socioId`, `socioNombre`, `membresiaId`, `planId`, `monto`, `concepto`,
+`comprobanteUrl`, `status` (`PENDIENTE`, `APROBADO` o `RECHAZADO`) y `createdAt` (milisegundos desde epoch).
+`comprobanteUrl` contiene el data URI JPEG Base64 del comprobante, comprimido a menos de 200 KiB; no requiere Firebase
+Storage. La aprobación renueva la membresía con el cálculo existente y registra el pago por transferencia en `pagos`.
+
 **Importante (seguridad):** el código funciona como contraseña, así que conviene que los códigos se entreguen en persona
 y que las reglas de Firestore restrinjan la escritura de `miembros`, `membresias` y `precios` al personal del club.
 

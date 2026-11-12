@@ -324,9 +324,9 @@ fun ClubDeportivoApp(
                                 label = {
                                     Text(
                                         text = tr(item.label),
-                                        fontSize = 12.sp,
-                                        fontWeight = if (seleccionado) FontWeight.SemiBold else FontWeight.Medium,
-                                        maxLines = 1
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(

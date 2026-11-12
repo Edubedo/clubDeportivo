@@ -2,6 +2,7 @@ package com.example.clubdeportivo.ui.avisos
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -13,6 +14,7 @@ import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.notificaciones.DestinatarioNotificacion
 import com.example.clubdeportivo.data.notificaciones.Notificacion
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.launch
 import com.example.clubdeportivo.util.Textos
 
@@ -73,9 +75,19 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             try {
                 todos = repositorio.obtener(esPersonal)
             } catch (e: Exception) {
-                mensaje = Textos.get("the_notices_could_not_be_loaded")
+                Log.e(TAG, "No se pudieron cargar los avisos para ${yo.id} (personal=$esPersonal)", e)
+                mensaje = when ((e as? FirebaseFirestoreException)?.code) {
+                    FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+                        Textos.get("notices_permission_denied")
+                    FirebaseFirestoreException.Code.FAILED_PRECONDITION ->
+                        Textos.get("notices_index_required")
+                    FirebaseFirestoreException.Code.UNAVAILABLE ->
+                        Textos.get("notices_connection_error")
+                    else -> Textos.get("the_notices_could_not_be_loaded")
+                }
+            } finally {
+                cargando = false
             }
-            cargando = false
         }
     }
 
@@ -183,4 +195,8 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
     }
 
     private fun claveLeidas(uid: String) = "leidas_$uid"
+
+    private companion object {
+        const val TAG = "AvisosViewModel"
+    }
 }
