@@ -40,6 +40,7 @@ import com.example.clubdeportivo.data.model.DatosPersonal
 import com.example.clubdeportivo.data.model.Personal
 import com.example.clubdeportivo.data.model.ROLES_DE_PERSONAL
 import com.example.clubdeportivo.data.model.Rol
+import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.model.nombreLegible
 import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.BotonSecundario
@@ -272,7 +273,7 @@ fun FormularioPersonalDialog(
                     val error = when {
                         nombre.isBlank() -> Textos.get("enter_the_name")
                         telefono.isNotBlank() && telefono.count { it.isDigit() } < 10 -> Textos.get("the_phone_must_have_at_least")
-                        rol != Rol.ADMIN && area == SIN_AREA -> Textos.get("choose_the_area_they_will_manage")
+                        rol.esEncargado() && area == SIN_AREA -> Textos.get("choose_the_area_they_will_manage")
                         !esEdicion && !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() -> Textos.get("enter_a_valid_email")
                         !esEdicion && ReglasContrasena.primerError(contrasena) != null -> ReglasContrasena.primerError(contrasena)
                         !esEdicion && contrasena != confirmarContrasena -> Textos.get("the_passwords_don_t_match")
@@ -374,8 +375,11 @@ fun FormularioPersonalDialog(
             margenHorizontal = 0.dp
         )
         Text(
-            text = if (rol == Rol.ADMIN) Textos.get("full_access_dashboard_staff_areas_book")
-            else Textos.get("only_sees_their_own_area_its"),
+            text = when (rol) {
+                Rol.ADMIN -> Textos.get("full_access_dashboard_staff_areas_book")
+                Rol.SUPERVISOR -> Textos.get("supervisor_all_areas_description")
+                else -> Textos.get("only_sees_their_own_area_its")
+            },
             style = MaterialTheme.typography.bodySmall,
             color = TextoSecundario
         )
@@ -412,7 +416,7 @@ fun FormularioPersonalDialog(
 
         EspacioCampos()
 
-        EtiquetaCampo(if (rol == Rol.ADMIN) Textos.get("work_area_optional") else Textos.get("area_in_charge"))
+        EtiquetaCampo(if (!rol.esEncargado()) Textos.get("work_area_optional") else Textos.get("area_in_charge"))
         ExposedDropdownMenuBox(expanded = areaExpandida, onExpandedChange = { areaExpandida = it }) {
             CampoTexto(
                 value = etiquetaDeporte(area),

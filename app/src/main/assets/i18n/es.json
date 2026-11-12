@@ -7,6 +7,7 @@
   "area_cancha": "Cancha%1$s",
   "area_cancha_de": "Cancha de %1$s%2$s",
   "area_alberca": "Alberca%1$s",
+  "supervisor_all_areas_description": "Gestiona reservas, inventario y áreas de todo el club, y registra miembros. El área es opcional.",
   "tipo_personal_instructor": "Instructor",
   "espera_titulo_dialogo": "Esta hora está llena",
   "espera_mensaje_dialogo": "%1$s ya no tiene lugar el %2$s de %3$s a %4$s. Entra a la lista de espera y te avisamos si se libera un lugar. Cuando te toque, te lo guardamos %5$d minutos para que lo reserves.",

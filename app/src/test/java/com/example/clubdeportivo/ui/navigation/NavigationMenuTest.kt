@@ -22,4 +22,18 @@ class NavigationMenuTest {
             assertTrue(rutaPermitida(rol, Destinations.REPORTES) == esAdmin)
         }
     }
+
+    @Test
+    fun `el encargado llega al inventario desde su menu`() {
+        assertTrue(menuPara(Rol.AYUDANTE_AREA).any { it.route == Destinations.INVENTARIO })
+        assertTrue(rutaPermitida(Rol.AYUDANTE_AREA, Destinations.INVENTARIO))
+        assertFalse(rutaPermitida(Rol.SOCIO, Destinations.INVENTARIO))
+    }
+
+    @Test
+    fun `el supervisor registra miembros desde membresias sin tenerla como pestana`() {
+        assertFalse(menuPara(Rol.SUPERVISOR).any { it.route == Destinations.MEMBRESIA })
+        assertTrue(rutaPermitida(Rol.SUPERVISOR, Destinations.MEMBRESIA))
+        assertFalse(rutaPermitida(Rol.AYUDANTE_AREA, Destinations.MEMBRESIA))
+    }
 }

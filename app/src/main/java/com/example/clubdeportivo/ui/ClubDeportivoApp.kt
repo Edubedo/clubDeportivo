@@ -420,7 +420,11 @@ fun ClubDeportivoApp(
                                 )
                             },
                             onMiembros = {
-                                // Pendiente: conectar el registro de miembros.
+                                navegarAPestana(
+                                    navController,
+                                    Destinations.MEMBRESIA,
+                                    Destinations.HOME
+                                )
                             }
                         )
                         rol?.esAdministrador() == true -> AdminHomeScreen(

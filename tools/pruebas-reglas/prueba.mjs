@@ -18,6 +18,8 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(db, 'usuarios/ayudante1'), { nombre: 'Ayu', rol: 'AYUDANTE_AREA', estado: 'ACTIVO', areaTrabajo: 'Fútbol' });
   await setDoc(doc(db, 'usuarios/ayudante2'), { nombre: 'Ayu2', rol: 'AYUDANTE_AREA', estado: 'ACTIVO', areaTrabajo: 'Tenis' });
   await setDoc(doc(db, 'usuarios/ayudante3'), { nombre: 'Ayu3', rol: 'AYUDANTE_AREA', estado: 'ACTIVO', areaTrabajo: '' });
+  await setDoc(doc(db, 'usuarios/supervisor1'), { nombre: 'Sup', rol: 'SUPERVISOR', estado: 'ACTIVO' });
+  await setDoc(doc(db, 'usuarios/supervisor2'), { nombre: 'Sup2', rol: 'SUPERVISOR', estado: 'ACTIVO', areaTrabajo: 'Fútbol' });
   await setDoc(doc(db, 'usuarios/interno1'), { nombre: 'Ana', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-AAAAAA' });
   await setDoc(doc(db, 'usuarios/interno2'), { nombre: 'Visita', rol: 'VISITANTE_EXTERNO', estado: 'ACTIVO', codigoMiembro: 'CLB-BBBBBB' });
   await setDoc(doc(db, 'miembros/CLB-AAAAAA'), { nombre: 'Ana', usuarioId: 'interno1', membresiaId: 'm1', parentesco: 'Titular' });
@@ -37,6 +39,8 @@ const admin = env.authenticatedContext('admin1').firestore();
 const ayudante = env.authenticatedContext('ayudante1').firestore();
 const ayudanteTenis = env.authenticatedContext('ayudante2').firestore();
 const ayudanteSinArea = env.authenticatedContext('ayudante3').firestore();
+const supervisor = env.authenticatedContext('supervisor1').firestore();
+const supervisorConArea = env.authenticatedContext('supervisor2').firestore();
 
 // ---- consulta del código antes de iniciar sesión
 await prueba('sin sesión se puede consultar UN código', () => assertSucceeds(getDoc(doc(anonimo, 'registroCodigos/CLB-AAAAAA'))));
@@ -202,6 +206,9 @@ await env.withSecurityRulesDisabled(async ctx => {
   for (const id of ['rA', 'rB', 'rC', 'rD']) {
     await setDoc(doc(db, 'reservas/' + id), { usuarioId: 'miembroX', areaId: 'a1', deporte: 'Fútbol', estado: 'PENDIENTE_APROBACION' });
   }
+  for (const id of ['rS1', 'rS2', 'rS3']) {
+    await setDoc(doc(db, 'reservas/' + id), { usuarioId: 'miembroX', areaId: 'a2', deporte: 'Tenis', estado: 'PENDIENTE_APROBACION' });
+  }
 });
 const miembroX = env.authenticatedContext('miembroX').firestore();
 await prueba('el miembro NO puede aprobar su propia reserva', () => assertFails(updateDoc(doc(miembroX, 'reservas/rA'), { estado: 'CONFIRMADA' })));
@@ -212,6 +219,33 @@ await prueba('un encargado sin área NO aprueba nada', () => assertFails(updateD
 await prueba('el encargado del área (Fútbol) aprueba', () => assertSucceeds(updateDoc(doc(ayudante, 'reservas/rA'), { estado: 'CONFIRMADA' })));
 await prueba('el encargado del área (Fútbol) rechaza', () => assertSucceeds(updateDoc(doc(ayudante, 'reservas/rB'), { estado: 'RECHAZADA' })));
 await prueba('el administrador aprueba cualquier reserva', () => assertSucceeds(updateDoc(doc(admin, 'reservas/rC'), { estado: 'CONFIRMADA' })));
+
+// ---- supervisor: opera todas las áreas y registra miembros, pero no administra personal ni precios
+await prueba('el supervisor aprueba una reserva de cualquier área (Tenis)', () =>
+  assertSucceeds(updateDoc(doc(supervisor, 'reservas/rS1'), { estado: 'CONFIRMADA' })));
+await prueba('el supervisor rechaza una reserva de cualquier área (Tenis)', () =>
+  assertSucceeds(updateDoc(doc(supervisor, 'reservas/rS2'), { estado: 'RECHAZADA' })));
+await prueba('un supervisor con área asignada también aprueba las de otra área (Tenis)', () =>
+  assertSucceeds(updateDoc(doc(supervisorConArea, 'reservas/rS3'), { estado: 'CONFIRMADA' })));
+await prueba('el supervisor ajusta el inventario y las áreas', async () => {
+  await assertSucceeds(setDoc(doc(supervisor, 'areas/a9'), { nombre: 'Cancha 9' }));
+  await assertSucceeds(setDoc(doc(supervisor, 'herramientas/h9'), { nombre: 'Balones', cantidad: 3 }));
+});
+await prueba('el supervisor registra miembros (miembro, código, membresía y cobro)', async () => {
+  await assertSucceeds(setDoc(doc(supervisor, 'usuarios/internoS'), { nombre: 'N', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-SUP001' }));
+  await assertSucceeds(setDoc(doc(supervisor, 'miembros/CLB-SUP001'), { nombre: 'N', usuarioId: 'internoS', membresiaId: 'mS' }));
+  await assertSucceeds(setDoc(doc(supervisor, 'registroCodigos/CLB-SUP001'), { usuarioId: 'internoS', cuentaCreada: false }));
+  await assertSucceeds(setDoc(doc(supervisor, 'membresias/mS'), { usuarioId: 'internoS', estado: 'ACTIVA', tipo: 'INDIVIDUAL' }));
+  await assertSucceeds(addDoc(collection(supervisor, 'pagos'), { membresiaId: 'mS', monto: 1800 }));
+});
+await prueba('el supervisor NO crea personal ni cambia precios', async () => {
+  await assertFails(setDoc(doc(supervisor, 'usuarios/emp2'), { nombre: 'E', rol: 'ADMIN', estado: 'ACTIVO' }));
+  await assertFails(setDoc(doc(supervisor, 'precios/individual-normal'), { monto: 1 }));
+});
+await prueba('un supervisor desactivado pierde el acceso', async () => {
+  await assertSucceeds(updateDoc(doc(admin, 'usuarios/supervisor1'), { estado: 'INACTIVO' }));
+  await assertFails(updateDoc(doc(supervisor, 'reservas/rS1'), { estado: 'CANCELADA' }));
+});
 
 // ---- precios: solo el administrador (ni el encargado ni un socio ni el titular de un plan)
 await prueba('un encargado NO cambia precios aunque sea personal', () =>

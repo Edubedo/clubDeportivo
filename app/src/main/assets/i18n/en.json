@@ -7,6 +7,7 @@
   "area_cancha": "Court%1$s",
   "area_cancha_de": "%1$s court%2$s",
   "area_alberca": "Pool%1$s",
+  "supervisor_all_areas_description": "Manages bookings, inventory and areas for the whole club, and registers members. The area is optional.",
   "tipo_personal_instructor": "Instructor",
   "espera_titulo_dialogo": "This hour is full",
   "espera_mensaje_dialogo": "%1$s has no spots left on %2$s from %3$s to %4$s. Join the waitlist and we'll let you know if a spot opens up. When it's your turn, we'll hold it for %5$d minutes so you can book it.",
