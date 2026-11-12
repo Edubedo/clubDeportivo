@@ -58,7 +58,8 @@ val bottomNavItems = listOf(
 val bottomNavItemsEncargado = listOf(
     BottomNavItem(Destinations.HOME, "nav_home", Icons.Filled.Home, Icons.Outlined.Home),
     BottomNavItem(Destinations.RESERVAS, "nav_reservar", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
-    BottomNavItem(Destinations.AREAS, "nav_mi_area", Icons.Filled.Place, Icons.Outlined.Place)
+    BottomNavItem(Destinations.AREAS, "nav_mi_area", Icons.Filled.Place, Icons.Outlined.Place),
+    BottomNavItem(Destinations.INVENTARIO, "titulo_inventario", Icons.Filled.Inventory2, Icons.Outlined.Inventory2)
 )
 
 /** Menú del supervisor: acceso a todas las áreas,
@@ -119,7 +120,7 @@ fun rutaPermitida(rol: Rol?, ruta: String): Boolean =
     ruta == Destinations.PERFIL ||
         (rol?.esAdministrador() == true && ruta == Destinations.REPORTES) ||
         (rol?.esCliente() == true && ruta == Destinations.MIS_RESERVAS) ||
-        (rol?.let { it.esEncargado() && ruta == Destinations.INVENTARIO } == true) ||
+        (rol?.esSupervisor() == true && ruta == Destinations.MEMBRESIA) ||
         menuPara(rol).any { it.route == ruta }
 
 /** Clave del título de la pantalla en assets/i18n. */

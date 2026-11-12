@@ -15,6 +15,7 @@ reservas de áreas, membresías y cobros, torneos, inventario, personal y avisos
 |---|---|
 | `SUPERADMIN` / `ADMIN` | **Administrador.** Dashboard (ingresos y membresías), Personal, Áreas e inventario, Reservas (con torneos y aprobaciones) y Membresías (incluye cambiar precios). Es el único que crea cuentas de personal y avisa a empleados. |
 | `AYUDANTE_AREA` (y `ADMIN_AREA`, heredado) | **Encargado.** Solo ve lo de su área de trabajo (obligatoria al darlo de alta): Reservas (aprueba o rechaza las solicitudes, ve la disponibilidad por hora y toma asistencia), Mi área (la puede poner en mantenimiento), Inventario de su deporte y Perfil. No ve Membresías, precios ni Personal. |
+| `SUPERVISOR` | **Supervisor.** Opera todo el club sin ser de un área: Reservas (aprueba o rechaza las de cualquier área), Áreas, Inventario y registrar miembros (Membresías). No ve Personal ni el dashboard, y no cambia precios. El área al darlo de alta es opcional. |
 | `SOCIO` | Reserva espacios, ve sus reservas, su membresía y los avisos del club. |
 | `VISITANTE_EXTERNO` | Igual que el miembro, y solo puede reservar en áreas que admiten visitantes. |
 

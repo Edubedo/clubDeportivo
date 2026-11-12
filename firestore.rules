@@ -25,9 +25,13 @@ service cloud.firestore {
     function esAdmin() {
       return conPerfil() && activo() && rolActual() in ['SUPERADMIN', 'ADMIN'];
     }
-    // Personal del club: administradores y encargados de área (ADMIN_AREA es el nombre heredado).
+    // Supervisor: opera las reservas, el inventario y las áreas de TODO el club y registra miembros (no es de un área).
+    function esSupervisor() {
+      return conPerfil() && activo() && rolActual() == 'SUPERVISOR';
+    }
+    // Personal del club: administradores, supervisores y encargados de área (ADMIN_AREA es el nombre heredado).
     function esPersonal() {
-      return conPerfil() && activo() && rolActual() in ['SUPERADMIN', 'ADMIN', 'ADMIN_AREA', 'AYUDANTE_AREA'];
+      return conPerfil() && activo() && rolActual() in ['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'ADMIN_AREA', 'AYUDANTE_AREA'];
     }
     function esDeCliente(rol) {
       return rol in ['SOCIO', 'VISITANTE_EXTERNO'];
@@ -255,8 +259,9 @@ service cloud.firestore {
                         && request.resource.data.estado == 'PENDIENTE_APROBACION');
 
       // Quien reserva solo puede cancelar la suya. Aprobar, rechazar o finalizar es del administrador o del
-      // encargado del área de la reserva (el deporte de la reserva debe ser el suyo).
+      // encargado del área de la reserva (el deporte de la reserva debe ser el suyo). El supervisor lo hace en cualquier área.
       allow update: if esAdmin()
+                    || esSupervisor()
                     || (esPersonal()
                         && get(rutaPerfil()).data.get('areaTrabajo', '') != ''
                         && resource.data.get('deporte', '') == get(rutaPerfil()).data.get('areaTrabajo', ''))

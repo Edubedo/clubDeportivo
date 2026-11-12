@@ -11,6 +11,7 @@ import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.DatosPersonal
 import com.example.clubdeportivo.data.model.Personal
 import com.example.clubdeportivo.data.model.esAdministrador
+import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.PersonalRepository
 import com.example.clubdeportivo.util.ReglasContrasena
@@ -88,7 +89,8 @@ class PersonalViewModel(
             return
         }
         // Un encargado trabaja solo con lo de su área: sin área no vería reservas, áreas ni inventario.
-        if (!datos.rol.esAdministrador() && datos.areaTrabajo.isNullOrBlank()) {
+        // El supervisor y el administrador ven todas las áreas, así que para ellos el área es opcional.
+        if (datos.rol.esEncargado() && datos.areaTrabajo.isNullOrBlank()) {
             _avisoFormulario.value = Textos.get("choose_the_area_they_will_manage")
             return
         }
