@@ -166,7 +166,10 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
     val permiteEspera = SesionManager.usuarioActual?.rol?.esCliente() == true
 
     // Al volver a la pantalla (por ejemplo, desde la notificación) se revisa si ya le tocó en la lista de espera.
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refrescarEsperas() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.refrescarEsperas()
+        viewModel.refrescarRestriccion()
+    }
 
     ofertaEspera?.let { hora ->
         ui.area?.let { area ->

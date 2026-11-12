@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.Deportes
@@ -150,7 +151,18 @@ class ReservasViewModel(
 
     init {
         cargar()
-        viewModelScope.launch { _restriccion.value = runCatching { motivoDeRestriccion() }.getOrNull() }
+    }
+
+    fun refrescarRestriccion() {
+        viewModelScope.launch {
+            try {
+                _restriccion.value = motivoDeRestriccion()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _mensaje.value = Textos.get("the_memberships_could_not_be_loaded")
+            }
+        }
     }
 
     /** Solo socios y visitantes con una membresía activa y vigente pueden reservar; el personal siempre puede. */
