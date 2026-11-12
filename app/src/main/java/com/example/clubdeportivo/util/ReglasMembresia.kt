@@ -84,11 +84,19 @@ object ReglasMembresia {
     /** Enlace de acceso que el titular comparte con su familiar: al abrirlo la app abre el registro con el código ya escrito. */
     fun enlaceDeAcceso(codigo: String) = "$ESQUEMA_ENLACE://$DESTINO_ENLACE?codigo=${normalizarCodigo(codigo)}"
 
-    /** El código que trae un enlace de acceso, o null si el texto no es uno de nuestros enlaces o el código no es válido. */
+    /** Dominio de la página de Firebase Hosting a la que apunta el enlace del correo (App Link verificado en el manifiesto). */
+    const val HOST_ENLACE_WEB = "clubdeportivoudc.web.app"
+    private const val RUTA_ENLACE_WEB = "unirse"
+
+    /**
+     * El código que trae un enlace de acceso (clubdeportivo://registro?codigo=... o https://[HOST_ENLACE_WEB]/unirse?codigo=...),
+     * o null si el texto no es uno de nuestros enlaces o el código no es válido.
+     */
     fun codigoDeEnlace(enlace: String?): String? {
         val texto = enlace?.trim().orEmpty()
         val prefijo = "$ESQUEMA_ENLACE://$DESTINO_ENLACE"
-        if (!texto.startsWith(prefijo, ignoreCase = true)) return null
+        val prefijoWeb = "https://$HOST_ENLACE_WEB/$RUTA_ENLACE_WEB"
+        if (!texto.startsWith(prefijo, ignoreCase = true) && !texto.startsWith(prefijoWeb, ignoreCase = true)) return null
         val codigo = texto.substringAfter("codigo=", "").substringBefore("&")
         return normalizarCodigo(codigo).takeIf { esCodigo(it) }
     }

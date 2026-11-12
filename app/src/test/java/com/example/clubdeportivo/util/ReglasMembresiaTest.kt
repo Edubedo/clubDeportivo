@@ -160,6 +160,14 @@ class ReglasMembresiaTest {
     }
 
     @Test
+    fun `el enlace https del correo tambien se lee`() {
+        assertEquals("CLB-7K3M9Q", ReglasMembresia.codigoDeEnlace("https://clubdeportivoudc.web.app/unirse?codigo=CLB-7K3M9Q"))
+        assertEquals("CLB-7K3M9Q", ReglasMembresia.codigoDeEnlace("https://clubdeportivoudc.web.app/unirse?codigo=clb-7k3m9q"))
+        assertNull(ReglasMembresia.codigoDeEnlace("https://clubdeportivoudc.web.app.malo.com/unirse?codigo=CLB-7K3M9Q"))
+        assertNull(ReglasMembresia.codigoDeEnlace("https://clubdeportivoudc.web.app/otra?codigo=CLB-7K3M9Q"))
+    }
+
+    @Test
     fun `enlaces ajenos o con codigos invalidos no se aceptan`() {
         assertNull(ReglasMembresia.codigoDeEnlace(null))
         assertNull(ReglasMembresia.codigoDeEnlace("https://ejemplo.com/registro?codigo=CLB-7K3M9Q"))

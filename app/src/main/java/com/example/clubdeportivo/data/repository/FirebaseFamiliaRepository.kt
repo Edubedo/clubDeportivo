@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.data.repository
 
+import com.example.clubdeportivo.data.correo.CorreoBienvenida
 import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.Familia
 import com.example.clubdeportivo.data.model.MiembroClub
@@ -84,6 +85,8 @@ class FirebaseFamiliaRepository(
         )
         lote.commit().await()
 
-        return MiembroClub(cuenta.codigo, persona.nombre.trim(), persona.telefono.trim(), persona.correo.trim(), membresia.id, parentesco, cuenta.uid)
+        val nuevo = MiembroClub(cuenta.codigo, persona.nombre.trim(), persona.telefono.trim(), persona.correo.trim(), membresia.id, parentesco, cuenta.uid)
+        CorreoBienvenida.enviarEnSegundoPlano(listOf(nuevo))
+        return nuevo
     }
 }
