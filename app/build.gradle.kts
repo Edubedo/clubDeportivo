@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -9,6 +11,13 @@ plugins {
 if (file("google-services.json").exists()) {
     apply(plugin = libs.plugins.google.services.get().pluginId)
 }
+
+// Correo de bienvenida (Resend). Los valores viven en local.properties, que no va a git:
+//   resend.apiKey=re_xxx   resend.from=Athletic Club <no-reply@tudominio.com>   enlace.bienvenida=https://clubdeportivoudc.web.app/unirse
+val propiedadesLocales = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+fun propiedadLocal(nombre: String, defecto: String = "") = (propiedadesLocales.getProperty(nombre) ?: defecto).replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "com.example.clubdeportivo"
@@ -26,6 +35,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Para probar contra los emuladores de Firebase: ./gradlew installDebug -PfirebaseEmulador=10.0.2.2
+        buildConfigField("String", "RESEND_API_KEY", "\"${propiedadLocal("resend.apiKey")}\"")
+        buildConfigField("String", "RESEND_FROM", "\"${propiedadLocal("resend.from", "Athletic Club <onboarding@resend.dev>")}\"")
+        buildConfigField("String", "ENLACE_BIENVENIDA", "\"${propiedadLocal("enlace.bienvenida", "https://clubdeportivoudc.web.app/unirse")}\"")
         buildConfigField("String", "EMULADOR_FIREBASE", "\"${project.findProperty("firebaseEmulador") ?: ""}\"")
     }
 

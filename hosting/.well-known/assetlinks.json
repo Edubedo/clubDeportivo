@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.clubdeportivo",
+      "sha256_cert_fingerprints": [
+        "D6:4B:D7:62:BE:11:EC:29:46:F7:06:5A:83:3E:DC:D6:A0:53:33:D3:F5:19:01:4B:BB:CF:C0:34:65:03:70:8E"
+      ]
+    }
+  }
+]

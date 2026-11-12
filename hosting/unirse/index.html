@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Únete a Athletic Club</title>
+<style>
+  :root { --naranja:#e8590c; --texto:#2b2622; --suave:#6b625a; --fondo:#f5f3f0; --tarjeta:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --texto:#f1ece6; --suave:#b3a99f; --fondo:#1c1916; --tarjeta:#2a2622; } }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;
+         background:var(--fondo); color:var(--texto); font-family:system-ui,Arial,sans-serif; }
+  main { width:100%; max-width:420px; background:var(--tarjeta); border-radius:14px; padding:28px; box-sizing:border-box; text-align:center; }
+  h1 { margin:0 0 8px; font-size:22px; color:var(--naranja); }
+  p { margin:0 0 14px; color:var(--suave); font-size:14px; line-height:1.5; }
+  .codigo { font:bold 28px Menlo,Consolas,monospace; letter-spacing:3px; color:var(--texto); margin:6px 0 18px; word-break:break-all; }
+  a.boton { display:block; background:var(--naranja); color:#fff; text-decoration:none; font-weight:bold; padding:14px; border-radius:10px; margin-bottom:14px; }
+  a.secundario { background:transparent; color:var(--naranja); border:2px solid var(--naranja); }
+  .pasos { text-align:left; color:var(--suave); font-size:14px; line-height:1.5; padding-left:20px; margin:0 0 14px; }
+  [hidden] { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Athletic Club</h1>
+  <div id="con-codigo" hidden>
+    <p>Tu código de acceso</p>
+    <div class="codigo" id="codigo"></div>
+    <a class="boton" id="abrir" href="#">Abrir la app y crear mi cuenta</a>
+    <p id="ayuda">¿Aún no tienes la app?</p>
+    <a class="boton secundario" id="descargar" href="#" hidden>Descargar la app (Android)</a>
+    <ol class="pasos">
+      <li>Descarga e instala la app. Si Android lo pide, permite instalar desde este navegador.</li>
+      <li>Vuelve a este enlace (el del correo) y toca <b>Abrir la app y crear mi cuenta</b>.</li>
+      <li>Tu código ya estará escrito: solo pon tu nombre, correo y contraseña.</li>
+    </ol>
+    <p>Si la app no se abre sola, entra a <b>Regístrate con tu código</b> y escribe el código de arriba.</p>
+  </div>
+  <div id="sin-codigo" hidden>
+    <p>Este enlace no trae un código válido. Pide al personal del club que te lo reenvíe o escribe tu código en la app, en <b>Regístrate con tu código</b>.</p>
+  </div>
+</main>
+<script>
+  // Dirección del instalador (APK). Firebase Hosting gratis no admite .apk: súbelo a GitHub Releases / Drive y pega aquí su enlace.
+  var URL_APK = 'https://github.com/Edubedo/clubDeportivo/releases/download/club/app-debug.apk';
+  if (URL_APK) { var d = document.getElementById('descargar'); d.href = URL_APK; d.hidden = false; }
+  // Mismo alfabeto que la app (sin 0/O ni 1/I/L).
+  var codigo = (new URLSearchParams(location.search).get('codigo') || '').trim().toUpperCase();
+  if (/^CLB-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/.test(codigo)) {
+    var destino = 'clubdeportivo://registro?codigo=' + codigo;
+    document.getElementById('codigo').textContent = codigo;
+    document.getElementById('abrir').href = destino;
+    document.getElementById('con-codigo').hidden = false;
+    // En Android intenta abrir la app sola; si el navegador lo bloquea queda el botón.
+    if (/android/i.test(navigator.userAgent)) setTimeout(function () { location.href = destino; }, 400);
+  } else {
+    document.getElementById('sin-codigo').hidden = false;
+  }
+</script>
+</body>
+</html>
