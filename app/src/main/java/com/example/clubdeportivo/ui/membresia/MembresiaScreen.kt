@@ -102,14 +102,20 @@ private fun MembresiasAdmin() {
 
     Column(modifier = Modifier.fillMaxSize()) {
         PestanasPildora(
-            opciones = listOf(Textos.get("members"), Textos.get("plans_and_prices")),
+            opciones = listOf(
+                Textos.get("members"),
+                Textos.get("plans_short"),
+                Textos.get("renewal_requests")
+            ),
             seleccionada = pestana,
-            onSeleccion = { pestana = it }
+            onSeleccion = { pestana = it },
+            desplazable = true
         )
         when (pestana) {
             0 -> MiembrosTab()
             // Los precios los cambia solo un administrador; el resto del personal los consulta.
             1 -> PlanesTab(editable = SesionManager.usuarioActual?.rol?.esAdministrador() == true, conTuMembresia = false)
+            2 -> ValidarRenovacionesScreen()
         }
     }
 }
@@ -380,6 +386,7 @@ private fun TuMembresia(viewModel: MembresiaViewModel = viewModel(), familiaView
     val mensaje by viewModel.mensaje.observeAsState()
     val detalle by viewModel.detalle.observeAsState()
     val integrantes by viewModel.integrantes.observeAsState(emptyList())
+    val membresia by viewModel.membresia.observeAsState()
 
     TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = MarcaSuave) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -412,6 +419,7 @@ private fun TuMembresia(viewModel: MembresiaViewModel = viewModel(), familiaView
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
+            MembresiaSocioSection(membresia = membresia)
             // Con el paquete familiar cargado se muestra "Tu familia" (más abajo); la lista anterior solo sirve de respaldo.
             if (familia == null) integrantes.forEach { integrante ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {

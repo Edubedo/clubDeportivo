@@ -31,6 +31,7 @@ import com.example.clubdeportivo.data.repository.TorneoRepository
 import com.example.clubdeportivo.data.repository.FirebasePersonalRepository
 import com.example.clubdeportivo.data.repository.FirebaseFotoPerfilRepository
 import com.example.clubdeportivo.data.repository.FirebaseUsuarioRepository
+import com.example.clubdeportivo.data.repository.RenovacionRepository
 import com.example.clubdeportivo.data.repository.FotoPerfilRepository
 import com.example.clubdeportivo.data.repository.PersonalRepository
 import com.example.clubdeportivo.data.repository.UsuarioRepository
@@ -68,4 +69,7 @@ object AppContainer {
 
     val usuarioRepository: UsuarioRepository = FirebaseUsuarioRepository()
     val fotoPerfilRepository: FotoPerfilRepository = FirebaseFotoPerfilRepository()
+    val renovacionRepository: RenovacionRepository = RenovacionRepository(
+        gestionMembresiasRepository = gestionMembresiasRepository
+    )
 }

@@ -148,6 +148,70 @@ service cloud.firestore {
                         && request.resource.data.get('totalPersonas', 1) == resource.data.get('totalPersonas', 1) + 1);
     }
 
+    function puedeRenovar(membresiaId) {
+      return exists(/databases/$(database)/documents/membresias/$(membresiaId))
+          && (
+            get(/databases/$(database)/documents/membresias/$(membresiaId)).data.usuarioId == request.auth.uid
+            || (codigoPropio() != ''
+                && exists(/databases/$(database)/documents/miembros/$(codigoPropio()))
+                && get(/databases/$(database)/documents/miembros/$(codigoPropio())).data.membresiaId == membresiaId)
+          );
+    }
+
+    function planYMontoDeRenovacionCoinciden(membresiaId) {
+      let membresia = get(/databases/$(database)/documents/membresias/$(membresiaId)).data;
+      return membresia.get('precio', -1) == request.resource.data.monto
+          && (
+            (membresia.get('tipo', '') == 'INDIVIDUAL'
+              && (
+                (membresia.get('plan', '') == 'NINO' && request.resource.data.planId == 'INDIVIDUAL_NINO')
+                || (membresia.get('plan', '') == 'NORMAL' && request.resource.data.planId == 'INDIVIDUAL_NORMAL')
+                || (membresia.get('plan', '') == 'DELUXE' && request.resource.data.planId == 'INDIVIDUAL_DELUXE')
+              ))
+            || (membresia.get('tipo', '') == 'FAMILIAR'
+              && (
+                (membresia.get('paqueteFamiliarId', 0) == 1 && request.resource.data.planId == 'FAMILIAR_1')
+                || (membresia.get('paqueteFamiliarId', 0) == 2 && request.resource.data.planId == 'FAMILIAR_2')
+                || (membresia.get('paqueteFamiliarId', 0) == 3 && request.resource.data.planId == 'FAMILIAR_3')
+              ))
+          );
+    }
+
+    match /solicitudes_renovacion/{id} {
+      allow read: if esPersonal()
+                  || (firmado() && resource.data.socioId == request.auth.uid);
+      allow create: if conPerfil()
+                    && activo()
+                    && rolActual() == 'SOCIO'
+                    && request.resource.data.keys().hasOnly([
+                      'id', 'socioId', 'socioNombre', 'membresiaId', 'planId', 'monto',
+                      'concepto', 'comprobanteUrl', 'status', 'createdAt'
+                    ])
+                    && request.resource.data.id == id
+                    && request.resource.data.socioId == request.auth.uid
+                    && request.resource.data.membresiaId is string
+                    && puedeRenovar(request.resource.data.membresiaId)
+                    && planYMontoDeRenovacionCoinciden(request.resource.data.membresiaId)
+                    && request.resource.data.planId in [
+                      'INDIVIDUAL_NINO', 'INDIVIDUAL_NORMAL', 'INDIVIDUAL_DELUXE',
+                      'FAMILIAR_1', 'FAMILIAR_2', 'FAMILIAR_3'
+                    ]
+                    && request.resource.data.monto is number
+                    && request.resource.data.monto > 0
+                    && request.resource.data.concepto is string
+                    && request.resource.data.comprobanteUrl is string
+                    && request.resource.data.comprobanteUrl.matches('data:image/jpeg;base64,.*')
+                    && request.resource.data.comprobanteUrl.size() <= 280000
+                    && request.resource.data.status == 'PENDIENTE'
+                    && request.resource.data.createdAt is int;
+      allow update: if esPersonal()
+                    && resource.data.status == 'PENDIENTE'
+                    && request.resource.data.status in ['APROBADO', 'RECHAZADO']
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status', 'reviewedBy', 'reviewedAt']);
+      allow delete: if false;
+    }
+
     match /integrantesFamiliares/{id} {
       allow read: if firmado();
       allow write: if esPersonal();
@@ -265,7 +329,29 @@ service cloud.firestore {
 
     match /notificaciones/{id} {
       allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
-      allow write: if esPersonal();
+      allow create: if (esPersonal()
+                        || (firmado() && request.resource.data.usuarioId == request.auth.uid))
+                    && request.resource.data.keys().hasOnly([
+                         'id', 'usuarioId', 'titulo', 'mensaje', 'tipo', 'leida', 'createdAt', 'ruta'
+                       ])
+                    && request.resource.data.keys().hasAll([
+                         'id', 'usuarioId', 'titulo', 'mensaje', 'tipo', 'leida', 'createdAt'
+                       ])
+                    && request.resource.data.id == id
+                    && request.resource.data.usuarioId is string
+                    && request.resource.data.titulo is string
+                    && request.resource.data.mensaje is string
+                    && request.resource.data.tipo in ['SISTEMA', 'ADMIN', 'RENOVACION', 'RESERVA']
+                    && request.resource.data.get('leida', false) == false
+                    && request.resource.data.createdAt is int
+                    && request.resource.data.get('ruta', '') is string;
+      allow update: if esPersonal()
+                    || (firmado()
+                        && resource.data.usuarioId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['leida', 'leidaEn'])
+                        && request.resource.data.leida == true);
+      allow delete: if esPersonal();
     }
 
     // ---------- Torneos ----------

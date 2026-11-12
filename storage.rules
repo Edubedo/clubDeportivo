@@ -14,5 +14,6 @@ service firebase.storage {
       allow create, update: if esPersonal()
           && request.resource.contentType.matches('image/.*');
     }
+
   }
 }

@@ -234,7 +234,7 @@ internal fun MiembrosTab(
                 else -> LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 80.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(visibles, key = { it.membresia.id }) { detalle ->
@@ -364,7 +364,8 @@ private fun TarjetaMiembro(
                 Text(
                     titular?.nombre ?: Textos.get("no_name"),
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFFE8EEF7),
+                    color = Color(0xFF0F172A),
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

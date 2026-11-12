@@ -24,6 +24,19 @@ fun comprimirImagenArea(resolver: ContentResolver, uri: Uri): ByteArray? =
 fun comprimirImagenPublicacion(resolver: ContentResolver, uri: Uri): ByteArray? =
     comprimirImagen(resolver, uri, ladoMaximo = 1200, calidad = 72)
 
+/** Comprobante para Firestore: máximo 800 px y 200 KiB ya comprimido. Bloquea; llamar fuera del hilo principal. */
+fun comprimirComprobanteRenovacion(resolver: ContentResolver, uri: Uri): ByteArray? {
+    val lados = listOf(800, 640, 512, 400, 320)
+    val calidades = listOf(68, 58, 48)
+    for (lado in lados) {
+        for (calidad in calidades) {
+            val jpeg = comprimirImagen(resolver, uri, ladoMaximo = lado, calidad = calidad)
+            if (jpeg != null && jpeg.size <= 200 * 1024) return jpeg
+        }
+    }
+    return null
+}
+
 private fun comprimirImagen(resolver: ContentResolver, uri: Uri, ladoMaximo: Int, calidad: Int): ByteArray? = try {
     val medidas = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, medidas) }

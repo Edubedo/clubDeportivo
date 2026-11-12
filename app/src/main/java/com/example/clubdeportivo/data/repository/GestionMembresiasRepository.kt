@@ -50,7 +50,7 @@ interface GestionMembresiasRepository {
     suspend fun darDeBaja(membresiaId: String, motivo: String)
 
     /** Suma un mes y registra el cobro con su [metodoPago]. */
-    suspend fun renovar(membresiaId: String, precio: Double, metodoPago: MetodoPago)
+    suspend fun renovar(membresiaId: String, precio: Double, metodoPago: MetodoPago, solicitudId: String? = null)
 
     /**
      * Libera el código de un miembro que ya se había registrado (por ejemplo, si escribió mal su correo): su cuenta

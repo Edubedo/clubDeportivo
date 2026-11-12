@@ -1,8 +1,8 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { defineString, defineSecret } = require('firebase-functions/params');
 const { primerError } = require('./contrasena');
 const { crearTransporte, enviarBienvenida } = require('./bienvenida');
@@ -57,6 +57,68 @@ exports.cambiarContrasenaPersonal = onCall({ region: 'us-central1', maxInstances
   return { ok: true };
 });
 
+async function guardarNotificacion(usuarioId, id, titulo, mensaje, tipo) {
+  const db = getFirestore();
+  const referencia = db.collection('notificaciones').doc(id);
+  await db.runTransaction(async (tx) => {
+    const existente = await tx.get(referencia);
+    if (existente.exists) return;
+    tx.create(referencia, {
+      id,
+      usuarioId,
+      titulo,
+      mensaje,
+      tipo,
+      leida: false,
+      createdAt: Date.now(),
+      ruta: 'membresia'
+    });
+  });
+}
+
+exports.notificarNuevaRenovacion = onDocumentCreated(
+  { document: 'solicitudes_renovacion/{solicitudId}', region: 'us-central1' },
+  async (event) => {
+    const solicitud = event.data?.data();
+    if (!solicitud || solicitud.status !== 'PENDIENTE') return;
+
+    const db = getFirestore();
+    const administradores = await db.collection('usuarios')
+      .where('rol', 'in', ROLES_ADMINISTRADOR)
+      .get();
+    await Promise.all(administradores.docs
+      .filter((admin) => (admin.get('estado') || 'ACTIVO') !== 'INACTIVO')
+      .map((admin) => guardarNotificacion(
+        admin.id,
+        `renovacion_${event.params.solicitudId}_${admin.id}`,
+        'Nueva solicitud de renovación',
+        `${solicitud.socioNombre || 'Un socio'} envió una renovación por $${Number(solicitud.monto || 0).toFixed(2)}. Revisa la pestaña Renovaciones.`,
+        'RENOVACION'
+      )));
+  }
+);
+
+exports.notificarResolucionRenovacion = onDocumentUpdated(
+  { document: 'solicitudes_renovacion/{solicitudId}', region: 'us-central1' },
+  async (event) => {
+    const anterior = event.data?.before.data();
+    const actual = event.data?.after.data();
+    if (!anterior || !actual || anterior.status !== 'PENDIENTE' ||
+        !['APROBADO', 'RECHAZADO'].includes(actual.status) || !actual.socioId) return;
+
+    const aprobado = actual.status === 'APROBADO';
+    await guardarNotificacion(
+      actual.socioId,
+      `renovacion_${event.params.solicitudId}_${actual.status.toLowerCase()}`,
+      aprobado ? 'Renovación aprobada' : 'Renovación rechazada',
+      aprobado
+        ? 'Tu renovación de membresía fue aprobada. Tu vigencia ya está actualizada.'
+        : 'Tu solicitud de renovación fue rechazada. Comunícate con el personal del club para más información.',
+      'RENOVACION'
+    );
+ }
+);
+
 // ---------- Correo de bienvenida ----------
 // Servicio de correo: cualquier SMTP gratuito (Gmail con contraseña de aplicación, Brevo...). Ver docs/correo-de-bienvenida.md.
 const SMTP_HOST = defineString('SMTP_HOST', { default: 'smtp.gmail.com' });
@@ -67,37 +129,37 @@ const ENLACE_BASE = defineString('ENLACE_BASE', { default: '' }); // vacío = ht
 const SMTP_PASS = defineSecret('SMTP_PASS');
 
 /**
- * Cuando el personal registra a un miembro (o el titular agrega a un familiar) nace su documento `miembros/{codigo}`:
- * se le manda por correo su código de acceso y un enlace que abre la app para crear su cuenta.
- * Se manda una sola vez (queda `bienvenidaEnviadaEn`); si falla, queda `bienvenidaError` y no se reintenta solo.
- */
+* Cuando el personal registra a un miembro (o el titular agrega a un familiar) nace su documento `miembros/{codigo}`:
+* se le manda por correo su código de acceso y un enlace que abre la app para crear su cuenta.
+* Se manda una sola vez (queda `bienvenidaEnviadaEn`); si falla, queda `bienvenidaError` y no se reintenta solo.
+*/
 exports.enviarBienvenidaMiembro = onDocumentCreated(
-  { document: 'miembros/{codigo}', region: 'us-central1', maxInstances: 5, secrets: [SMTP_PASS] },
-  async (event) => {
-    const snap = event.data;
-    if (!snap) return;
-    const codigo = event.params.codigo;
-    const miembro = snap.data();
-    if (miembro.bienvenidaEnviadaEn) return;
+ { document: 'miembros/{codigo}', region: 'us-central1', maxInstances: 5, secrets: [SMTP_PASS] },
+ async (event) => {
+   const snap = event.data;
+   if (!snap) return;
+   const codigo = event.params.codigo;
+   const miembro = snap.data();
+   if (miembro.bienvenidaEnviadaEn) return;
 
-    const proyecto = process.env.GCLOUD_PROJECT || '';
-    const baseEnlace = ENLACE_BASE.value() || `https://${proyecto}.web.app/unirse`;
-    const usuario = SMTP_USER.value();
-    const transporte = crearTransporte({ host: SMTP_HOST.value(), port: SMTP_PORT.value(), user: usuario, pass: SMTP_PASS.value() });
+   const proyecto = process.env.GCLOUD_PROJECT || '';
+   const baseEnlace = ENLACE_BASE.value() || `https://${proyecto}.web.app/unirse`;
+   const usuario = SMTP_USER.value();
+   const transporte = crearTransporte({ host: SMTP_HOST.value(), port: SMTP_PORT.value(), user: usuario, pass: SMTP_PASS.value() });
 
-    try {
-      const r = await enviarBienvenida({
-        transporte, de: SMTP_REMITENTE.value() || usuario, baseEnlace, miembro, codigo
-      });
-      if (r.enviado) {
-        await snap.ref.set({ bienvenidaEnviadaEn: FieldValue.serverTimestamp(), bienvenidaError: FieldValue.delete() }, { merge: true });
-      } else if (r.motivo !== 'sin-correo') {
-        // Sin correo no es un error: el personal le da el código en persona. Cualquier otro motivo sí se deja anotado.
-        await snap.ref.set({ bienvenidaError: r.motivo }, { merge: true });
-      }
-    } catch (e) {
-      console.error('No se pudo enviar la bienvenida', codigo, e.code || e.message);
-      await snap.ref.set({ bienvenidaError: `smtp:${e.code || 'error'}` }, { merge: true });
-    }
-  }
+   try {
+     const r = await enviarBienvenida({
+       transporte, de: SMTP_REMITENTE.value() || usuario, baseEnlace, miembro, codigo
+     });
+     if (r.enviado) {
+       await snap.ref.set({ bienvenidaEnviadaEn: FieldValue.serverTimestamp(), bienvenidaError: FieldValue.delete() }, { merge: true });
+     } else if (r.motivo !== 'sin-correo') {
+       // Sin correo no es un error: el personal le da el código en persona. Cualquier otro motivo sí se deja anotado.
+       await snap.ref.set({ bienvenidaError: r.motivo }, { merge: true });
+     }
+   } catch (e) {
+     console.error('No se pudo enviar la bienvenida', codigo, e.code || e.message);
+     await snap.ref.set({ bienvenidaError: `smtp:${e.code || 'error'}` }, { merge: true });
+   }
+ }
 );

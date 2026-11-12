@@ -47,7 +47,7 @@ data class BottomNavItem(
 
 /** Pestañas del menú inferior para Administradores. */
 val bottomNavItems = listOf(
-    BottomNavItem(Destinations.HOME, "nav_dashboard", Icons.Filled.Home, Icons.Outlined.Home),
+    BottomNavItem(Destinations.HOME, "nav_home", Icons.Filled.Home, Icons.Outlined.Home),
     BottomNavItem(Destinations.PERSONAL, "nav_personal", Icons.Filled.Person, Icons.Outlined.Person),
     BottomNavItem(Destinations.AREAS, "nav_areas", Icons.Filled.Place, Icons.Outlined.Place),
     BottomNavItem(Destinations.RESERVAS, "nav_reservas", Icons.Filled.EventAvailable, Icons.Outlined.EventAvailable),
