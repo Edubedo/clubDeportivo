@@ -158,6 +158,10 @@ internal fun MiembrosTab(
     val listState = rememberLazyListState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(viewModel) {
+        viewModel.cargar()
+    }
+
     LaunchedEffect(mensaje) {
         mensaje?.let {
             snackbarHostState.showSnackbar(it)

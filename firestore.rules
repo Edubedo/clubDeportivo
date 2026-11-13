@@ -121,6 +121,7 @@ service cloud.firestore {
     match /miembros/{codigo} {
       // El titular también ve a las personas de su paquete familiar.
       allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid)
+                  || (conPerfil() && get(rutaPerfil()).data.get('codigoMiembro', '') == codigo)
                   || esTitularDe(resource.data.membresiaId);
       allow delete: if esPersonal();
       allow create: if esPersonal()
@@ -205,7 +206,7 @@ service cloud.firestore {
                     && rolActual() == 'SOCIO'
                     && request.resource.data.keys().hasOnly([
                       'id', 'socioId', 'socioNombre', 'membresiaId', 'planId', 'monto',
-                      'concepto', 'comprobanteUrl', 'status', 'createdAt'
+                      'concepto', 'comprobanteUrl', 'status', 'createdAt', 'motivoRechazo'
                     ])
                     && request.resource.data.id == id
                     && request.resource.data.socioId == request.auth.uid
@@ -228,7 +229,10 @@ service cloud.firestore {
                     && resource.data.status == 'PENDIENTE'
                     && request.resource.data.status in ['APROBADO', 'RECHAZADO']
                     && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['status', 'reviewedBy', 'reviewedAt']);
+                         .hasOnly(['status', 'reviewedBy', 'reviewedAt', 'reviewedDate', 'renewedUntil', 'motivoRechazo'])
+                    && (request.resource.data.status != 'RECHAZADO'
+                        || (request.resource.data.get('motivoRechazo', '') is string
+                            && request.resource.data.get('motivoRechazo', '').size() > 0));
       allow delete: if false;
     }
 

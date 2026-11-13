@@ -43,6 +43,14 @@ object Fechas {
 
     fun hoy(): String = formatoFecha().format(Date())
 
+    fun fechaLocal(millis: Long): String = formatoFecha().format(Date(millis))
+
+    /** Fecha de vigencia con día y mes explícitos, sin etiquetas relativas como "Hoy". */
+    fun fechaVigencia(fecha: String): String {
+        val base = runCatching { formatoFecha().parse(fecha) }.getOrNull() ?: return fecha
+        return SimpleDateFormat("EEE'.' d MMM", Locale.forLanguageTag("es-MX")).format(base)
+    }
+
     /** [fecha] más [meses] meses (31 de enero + 1 mes = 28 o 29 de febrero). */
     fun sumarMeses(fecha: String, meses: Int): String {
         val base = runCatching { formatoFecha().parse(fecha) }.getOrNull() ?: return fecha

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -28,8 +29,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
@@ -47,9 +50,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.ClavesPrecio
 import com.example.clubdeportivo.data.SesionManager
+import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.PlanIndividual
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esPersonal
+import com.example.clubdeportivo.data.model.SolicitudRenovacion
 import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.CampoTexto
 import com.example.clubdeportivo.ui.components.DialogoFormulario
@@ -82,6 +87,9 @@ import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.MarcaSuave
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
+import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasMembresia
+import com.example.clubdeportivo.util.reconciliarRenovacionAprobada
 import com.example.clubdeportivo.util.Textos
 
 internal fun dinero(monto: Double) = "$%,.0f".format(monto)
@@ -287,14 +295,18 @@ private fun Seccion(texto: String) {
 @Composable
 private fun Incluye(texto: String, accent: androidx.compose.ui.graphics.Color = Marca) {
     Row(verticalAlignment = Alignment.Top) {
-        Icon(
-            imageVector = Icons.Filled.CheckCircle,
-            contentDescription = null,
-            tint = accent,
-            modifier = Modifier
-                .padding(end = 8.dp, top = 2.dp)
-                .size(18.dp)
-        )
+        Box(
+            modifier = Modifier.width(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.padding(top = 2.dp).size(18.dp)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
         Text(texto, style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal)
     }
 }
@@ -337,12 +349,11 @@ private fun TarjetaPlan(
             ) {
                 Row(
                     modifier = Modifier.weight(1f).padding(end = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(32.dp)
                             .background(accentContainer, CircleShape)
                             .border(1.dp, accentBorder, CircleShape),
                         contentAlignment = Alignment.Center
@@ -354,6 +365,7 @@ private fun TarjetaPlan(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                    Spacer(Modifier.width(12.dp))
                     Text(
                         text = titulo,
                         style = MaterialTheme.typography.titleMedium,
@@ -380,13 +392,52 @@ private fun TarjetaPlan(
 
 /** La membresía propia de un socio o visitante. */
 @Composable
-private fun TuMembresia(viewModel: MembresiaViewModel = viewModel(), familiaViewModel: FamiliaViewModel = viewModel()) {
+private fun TuMembresia(
+    viewModel: MembresiaViewModel = viewModel(),
+    familiaViewModel: FamiliaViewModel = viewModel(),
+    renovacionViewModel: RenovacionViewModel = viewModel()
+) {
     val familia by familiaViewModel.familia.observeAsState()
-    val titulo by viewModel.titulo.observeAsState("")
-    val mensaje by viewModel.mensaje.observeAsState()
-    val detalle by viewModel.detalle.observeAsState()
-    val integrantes by viewModel.integrantes.observeAsState(emptyList())
-    val membresia by viewModel.membresia.observeAsState()
+    val ui by viewModel.uiState.collectAsState()
+    val usuarioId = SesionManager.usuarioActual?.id
+    val renovacion by renovacionViewModel.uiState.collectAsState()
+    val titulo = ui.titulo
+    val integrantes = ui.integrantes
+    val membresia = ui.membresia
+    val solicitudAprobada = renovacion.solicitudSocio?.takeIf {
+        it.status == SolicitudRenovacion.APROBADO && it.membresiaId == membresia?.id
+    }
+    val estadoVisual = reconciliarRenovacionAprobada(membresia, solicitudAprobada)
+    val membresiaVisual = estadoVisual.membresia
+    val estado = membresiaVisual?.let { ReglasMembresia.estadoEfectivo(it, Fechas.hoy()) }
+    val membresiaActiva = estado == EstadoMembresia.ACTIVA
+    val etiquetaEstado = when (estado) {
+        EstadoMembresia.ACTIVA -> Textos.get("active_2")
+        EstadoMembresia.VENCIDA -> Textos.get("expired")
+        EstadoMembresia.SUSPENDIDA -> Textos.get("suspended")
+        null -> null
+    }
+    val mensaje = if (membresiaVisual != null && etiquetaEstado != null) {
+        Textos.get("per_month_2", etiquetaEstado, dinero(membresiaVisual.precio))
+    } else {
+        ui.mensaje
+    }
+    val detalle = when (estado) {
+        EstadoMembresia.ACTIVA -> membresiaVisual?.let {
+            Textos.get("valid_from_to", Fechas.fechaVigencia(it.fechaInicio), Fechas.fechaVigencia(it.fechaVencimiento))
+        }
+        EstadoMembresia.VENCIDA -> membresiaVisual?.let {
+            Textos.get("expired_on_renew_it_at_the", Fechas.legible(it.fechaVencimiento))
+        }
+        EstadoMembresia.SUSPENDIDA ->
+            ui.detalle
+        null -> ui.detalle
+    }
+
+    LaunchedEffect(usuarioId) {
+        viewModel.observarMembresia(usuarioId)
+        usuarioId?.let(renovacionViewModel::observarSolicitudSocio)
+    }
 
     TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = MarcaSuave) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -419,7 +470,18 @@ private fun TuMembresia(viewModel: MembresiaViewModel = viewModel(), familiaView
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
-            MembresiaSocioSection(membresia = membresia)
+            if (!membresiaActiva) ui.error?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = viewModel::reintentar) {
+                    Text(Textos.get("retry"))
+                }
+            }
+            MembresiaSocioSection(
+                membresia = membresiaVisual,
+                renovacion = renovacion,
+                renovacionAprobadaVigente = estadoVisual.renovacionAprobadaVigente,
+                viewModel = renovacionViewModel
+            )
             // Con el paquete familiar cargado se muestra "Tu familia" (más abajo); la lista anterior solo sirve de respaldo.
             if (familia == null) integrantes.forEach { integrante ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {

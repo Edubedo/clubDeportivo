@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, writeBa
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-athletic',
-  firestore: { rules: readFileSync('../../firestore.rules', 'utf8'), host: '127.0.0.1', port: 8089 }
+  firestore: { rules: readFileSync('../../firestore.rules', 'utf8'), host: '127.0.0.1', port: 8080 }
 });
 
 let fallos = 0;
@@ -23,6 +23,7 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(db, 'usuarios/interno1'), { nombre: 'Ana', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-AAAAAA' });
   await setDoc(doc(db, 'usuarios/interno2'), { nombre: 'Visita', rol: 'VISITANTE_EXTERNO', estado: 'ACTIVO', codigoMiembro: 'CLB-BBBBBB' });
   await setDoc(doc(db, 'usuarios/mario'), { nombre: 'Mario', rol: 'SOCIO', estado: 'INACTIVO', codigoMiembro: 'CLB-MARIO1' });
+  await setDoc(doc(db, 'usuarios/mario-nuevo'), { nombre: 'Mario', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-MARIO1' });
   await setDoc(doc(db, 'usuarios/socio-suspendido'), { nombre: 'Suspendido', rol: 'SOCIO', estado: 'INACTIVO', codigoMiembro: 'CLB-SUSPEN' });
   await setDoc(doc(db, 'miembros/CLB-AAAAAA'), { nombre: 'Ana', usuarioId: 'interno1', membresiaId: 'm1', parentesco: 'Titular' });
   await setDoc(doc(db, 'miembros/CLB-BBBBBB'), { nombre: 'Visita', usuarioId: 'interno2', membresiaId: 'm2', parentesco: 'Titular' });
@@ -33,6 +34,12 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(db, 'membresias/m1'), { usuarioId: 'interno1', estado: 'ACTIVA', tipo: 'INDIVIDUAL' });
   await setDoc(doc(db, 'membresias/m-mario'), { usuarioId: 'mario', estado: 'ACTIVA', tipo: 'INDIVIDUAL' });
   await setDoc(doc(db, 'membresias/m-suspendido'), { usuarioId: 'socio-suspendido', estado: 'SUSPENDIDA', tipo: 'INDIVIDUAL' });
+  await setDoc(doc(db, 'solicitudes_renovacion/sol-rechazo'), {
+    id: 'sol-rechazo', socioId: 'interno1', status: 'PENDIENTE'
+  });
+  await setDoc(doc(db, 'solicitudes_renovacion/sol-aprobacion'), {
+    id: 'sol-aprobacion', socioId: 'interno1', status: 'PENDIENTE'
+  });
   await setDoc(doc(db, 'areas/a1'), { nombre: 'Cancha' });
 });
 
@@ -86,6 +93,10 @@ await prueba('la cuenta nueva SÍ crea su perfil con el código reclamado', () =
   assertSucceeds(setDoc(doc(nuevo1, 'usuarios/nuevo1'), { nombre: 'Ana', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-AAAAAA', email: 'ana@correo.com' })));
 await prueba('la cuenta nueva lee su miembro (usuarioId ya es el suyo)', () => assertSucceeds(getDoc(doc(nuevo1, 'miembros/CLB-AAAAAA'))));
 await prueba('la cuenta nueva lee su membresía por el código', () => assertSucceeds(getDoc(doc(nuevo1, 'membresias/m1'))));
+await prueba('una cuenta reactivada puede leer su miembro por el código aunque el uid del miembro esté desactualizado', () =>
+  assertSucceeds(getDoc(doc(env.authenticatedContext('mario-nuevo').firestore(), 'miembros/CLB-MARIO1'))));
+await prueba('una cuenta reactivada puede leer la membresía enlazada a su código', () =>
+  assertSucceeds(getDoc(doc(env.authenticatedContext('mario-nuevo').firestore(), 'membresias/m-mario'))));
 await prueba('la cuenta nueva NO puede cambiarse el rol', () => assertFails(updateDoc(doc(nuevo1, 'usuarios/nuevo1'), { rol: 'ADMIN' })));
 await prueba('la cuenta nueva lee las áreas y puede reservar a su nombre', async () => {
   await assertSucceeds(getDoc(doc(nuevo1, 'areas/a1')));
@@ -190,6 +201,18 @@ await prueba('el personal da de alta un miembro y su código', async () => {
 });
 await prueba('el personal desactiva la cuenta anterior de un miembro (restablecer acceso)', () =>
   assertSucceeds(updateDoc(doc(ayudante, 'usuarios/nuevo1'), { estado: 'INACTIVO' })));
+await prueba('al rechazar una renovación, el admin debe guardar el motivo para el socio', async () => {
+  const solicitud = doc(admin, 'solicitudes_renovacion/sol-rechazo');
+  await assertFails(updateDoc(solicitud, { status: 'RECHAZADO', motivoRechazo: '' }));
+  await assertSucceeds(updateDoc(solicitud, { status: 'RECHAZADO', motivoRechazo: 'Comprobante ilegible' }));
+  const resultado = await assertSucceeds(getDoc(doc(interno1, 'solicitudes_renovacion/sol-rechazo')));
+  if (resultado.data().motivoRechazo !== 'Comprobante ilegible') throw new Error('el motivo no quedó guardado');
+});
+await prueba('al aprobar una renovación se puede guardar la fecha de aprobación', () =>
+  assertSucceeds(updateDoc(doc(admin, 'solicitudes_renovacion/sol-aprobacion'), {
+    status: 'APROBADO', reviewedBy: 'admin1', reviewedAt: new Date(), reviewedDate: '2026-11-12',
+    renewedUntil: '2026-12-12'
+  })));
 await prueba('un miembro con membresía activa puede restaurar solo su estado de acceso', async () => {
   await assertSucceeds(updateDoc(doc(mario, 'usuarios/mario'), { estado: 'ACTIVO' }));
   await assertSucceeds(getDoc(doc(mario, 'membresias/m-mario')));

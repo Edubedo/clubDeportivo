@@ -6,9 +6,12 @@ import com.example.clubdeportivo.data.model.IntegranteFamiliar
 import com.example.clubdeportivo.data.model.Membresia
 import com.example.clubdeportivo.data.model.TipoMembresia
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 interface MembresiaRepository {
     suspend fun obtenerMembresia(usuarioId: String): Membresia?
+    fun observarMembresia(usuarioId: String): Flow<Membresia?>
     suspend fun obtenerIntegrantes(membresiaId: String): List<IntegranteFamiliar>
 }
 
@@ -44,6 +47,10 @@ class FakeMembresiaRepository : MembresiaRepository {
     override suspend fun obtenerMembresia(usuarioId: String): Membresia? {
         delay(400)
         return membresias[usuarioId]
+    }
+
+    override fun observarMembresia(usuarioId: String): Flow<Membresia?> = flow {
+        emit(obtenerMembresia(usuarioId))
     }
 
     override suspend fun obtenerIntegrantes(membresiaId: String): List<IntegranteFamiliar> {

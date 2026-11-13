@@ -35,7 +35,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +49,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
@@ -75,21 +73,23 @@ private const val CLABE_TRANSFERENCIA = "4152314495752563"
 @Composable
 fun MembresiaSocioSection(
     membresia: Membresia?,
+    renovacion: RenovacionUiState,
+    renovacionAprobadaVigente: Boolean,
     modifier: Modifier = Modifier,
-    viewModel: RenovacionViewModel = viewModel()
+    viewModel: RenovacionViewModel
 ) {
     val usuario = SesionManager.usuarioActual ?: return
-    val pendiente by viewModel.solicitudPendiente.collectAsState()
-    val guardando by viewModel.guardando.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val enviado by viewModel.enviado.collectAsState()
+    val solicitud = renovacion.solicitudSocio
+    val pendiente = solicitud?.status == SolicitudRenovacion.PENDIENTE
+    val guardando = renovacion.enviando
+    val error = renovacion.error
+    val enviado = renovacion.enviado
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
 
     var mostrarSheet by remember { mutableStateOf(false) }
     var comprobante by remember(membresia?.id) { mutableStateOf<Uri?>(null) }
 
-    LaunchedEffect(usuario.id) { viewModel.observarSolicitudSocio(usuario.id) }
     LaunchedEffect(error) {
         error?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
@@ -109,7 +109,8 @@ fun MembresiaSocioSection(
     ) { uri -> comprobante = uri }
 
     val estado = membresia?.let { ReglasMembresia.estadoEfectivo(it, Fechas.hoy()) }
-    val puedeRenovar = membresia != null && when (estado) {
+    val membresiaActiva = estado == EstadoMembresia.ACTIVA
+    val puedeRenovar = renovacion.solicitudLista && membresia != null && when (estado) {
         EstadoMembresia.VENCIDA -> true
         EstadoMembresia.ACTIVA ->
             membresia.fechaVencimiento >= Fechas.hoy() &&
@@ -118,7 +119,30 @@ fun MembresiaSocioSection(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        if (pendiente != null) {
+        if (!membresiaActiva && !renovacion.solicitudLista && !renovacion.errorConsultaSolicitud) {
+            Text(
+                Textos.get("renewal_checking_status"),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextoSecundario,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        }
+        if (!membresiaActiva && renovacion.errorConsultaSolicitud) {
+            Text(
+                Textos.get("renewal_status_unavailable"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+            TextButton(
+                onClick = { viewModel.observarSolicitudSocio(usuario.id) },
+                enabled = !guardando
+            ) {
+                Text(Textos.get("retry"))
+            }
+        }
+        when (solicitud?.status) {
+            SolicitudRenovacion.PENDIENTE -> {
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(12.dp),
@@ -137,7 +161,31 @@ fun MembresiaSocioSection(
                     )
                 }
             }
-        } else if (puedeRenovar) {
+            }
+            SolicitudRenovacion.RECHAZADO -> {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            Textos.get("renewal_rejected"),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            solicitud.motivoRechazo.ifBlank { Textos.get("renewal_rejection_default_reason") },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+            SolicitudRenovacion.APROBADO -> Unit
+        }
+
+        if (!pendiente && !renovacionAprobadaVigente && puedeRenovar) {
             Button(
                 onClick = {
                     comprobante = null
@@ -288,7 +336,7 @@ fun MembresiaSocioSection(
                             context.contentResolver
                         )
                     },
-                    enabled = !guardando && pendiente == null && planIdActual != null && comprobante != null,
+                    enabled = !guardando && !pendiente && planIdActual != null && comprobante != null,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(

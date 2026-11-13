@@ -27,11 +27,13 @@ import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.model.esPersonal
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.MembresiaRepository
+import com.example.clubdeportivo.data.repository.RenovacionRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
 import com.example.clubdeportivo.data.repository.RestriccionHorarioRepository
 import com.example.clubdeportivo.data.repository.TorneoRepository
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
+import com.example.clubdeportivo.util.reconciliarRenovacionAprobada
 import com.example.clubdeportivo.util.ReglasReserva
 import kotlinx.coroutines.launch
 import com.example.clubdeportivo.util.Textos
@@ -113,7 +115,8 @@ class ReservasViewModel(
     private val torneoRepository: TorneoRepository = AppContainer.torneoRepository,
     private val restriccionHorarioRepository: RestriccionHorarioRepository = AppContainer.restriccionHorarioRepository,
     private val membresiaRepository: MembresiaRepository = AppContainer.membresiaRepository,
-    private val listaEsperaRepository: ListaEsperaRepository = AppContainer.listaEsperaRepository
+    private val listaEsperaRepository: ListaEsperaRepository = AppContainer.listaEsperaRepository,
+    private val renovacionRepository: RenovacionRepository = AppContainer.renovacionRepository
 ) : ViewModel() {
 
     private val _ui = MutableLiveData(ReservaEspacioUi())
@@ -171,12 +174,17 @@ class ReservasViewModel(
         if (!actual.rol.esCliente()) return null
         val membresia = membresiaRepository.obtenerMembresia(actual.id)
             ?: return Textos.get("we_couldn_t_find_a_membership")
-        return when (ReglasMembresia.estadoEfectivo(membresia, Fechas.hoy())) {
+        val solicitud = renovacionRepository.obtenerUltimaSolicitud(actual.id)
+        val membresiaCoherente = reconciliarRenovacionAprobada(
+            membresia = membresia,
+            solicitud = solicitud
+        ).membresia ?: membresia
+        return when (ReglasMembresia.estadoEfectivo(membresiaCoherente, Fechas.hoy())) {
             EstadoMembresia.ACTIVA -> null
             EstadoMembresia.VENCIDA ->
-                Textos.get("your_membership_expired_on_renew_it", Fechas.legible(membresia.fechaVencimiento))
+                Textos.get("your_membership_expired_on_renew_it", Fechas.legible(membresiaCoherente.fechaVencimiento))
             EstadoMembresia.SUSPENDIDA ->
-                Textos.get("manual_membresia_suspendida", etiquetaMotivoSuspension(membresia.motivoSuspension).ifBlank { Textos.get("no_reason_recorded") })
+                Textos.get("manual_membresia_suspendida", etiquetaMotivoSuspension(membresiaCoherente.motivoSuspension).ifBlank { Textos.get("no_reason_recorded") })
         }
     }
 
