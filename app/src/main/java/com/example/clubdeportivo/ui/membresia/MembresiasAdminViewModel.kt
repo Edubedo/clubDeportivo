@@ -55,10 +55,6 @@ class MembresiasAdminViewModel(
     private val _registroReciente = MutableLiveData<MembresiaDetalle?>()
     val registroReciente: LiveData<MembresiaDetalle?> = _registroReciente
 
-    init {
-        cargar()
-    }
-
     fun cargar() {
         viewModelScope.launch {
             _cargando.value = true
@@ -66,8 +62,9 @@ class MembresiasAdminViewModel(
                 _membresias.value = repositorio.obtenerTodas()
             } catch (e: Exception) {
                 _mensaje.value = Textos.get("the_memberships_could_not_be_loaded")
+            } finally {
+                _cargando.value = false
             }
-            _cargando.value = false
         }
     }
 

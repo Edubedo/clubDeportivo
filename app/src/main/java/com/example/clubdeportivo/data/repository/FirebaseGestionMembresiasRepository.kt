@@ -10,9 +10,11 @@ import com.example.clubdeportivo.data.model.Membresia
 import com.example.clubdeportivo.data.model.MiembroClub
 import com.example.clubdeportivo.data.model.PersonaForm
 import com.example.clubdeportivo.data.model.PlanIndividual
+import com.example.clubdeportivo.data.model.SolicitudRenovacion
 import com.example.clubdeportivo.data.model.TipoMembresia
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasMembresia
+import com.example.clubdeportivo.util.reconciliarRenovacionAprobada
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.DocumentSnapshot
@@ -57,12 +59,45 @@ class FirebaseGestionMembresiasRepository(
     override suspend fun obtenerTodas(): List<MembresiaDetalle> {
         val todas = membresias.get().await().documents.mapNotNull { it.toMembresia() }
         val personasPorMembresia = miembros.get().await().documents.map { it.toMiembro() }.groupBy { it.membresiaId }
+        val renovacionesAprobadas = db.collection("solicitudes_renovacion")
+            .whereEqualTo("status", SolicitudRenovacion.APROBADO)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { it.toSolicitudRenovacion() }
+            .groupBy { it.membresiaId }
+            .mapValues { (_, solicitudes) -> solicitudes.maxByOrNull { it.createdAt } }
 
         return todas.map { membresia ->
             val personas = personasPorMembresia[membresia.id]?.sortedBy { !it.esTitular }
                 ?: personasDeRegistroAnterior(membresia)
-            MembresiaDetalle(membresia, personas)
+            val membresiaVisual = reconciliarRenovacionAprobada(
+                membresia,
+                renovacionesAprobadas[membresia.id]
+            ).membresia ?: membresia
+            MembresiaDetalle(membresiaVisual, personas)
         }
+    }
+
+    private fun DocumentSnapshot.toSolicitudRenovacion(): SolicitudRenovacion? {
+        val socioId = getString("socioId") ?: return null
+        val monto = getDouble("monto") ?: getLong("monto")?.toDouble() ?: return null
+        return SolicitudRenovacion(
+            id = id,
+            socioId = socioId,
+            socioNombre = getString("socioNombre").orEmpty(),
+            membresiaId = getString("membresiaId").orEmpty(),
+            planId = getString("planId").orEmpty(),
+            monto = monto,
+            concepto = getString("concepto").orEmpty(),
+            comprobanteUrl = getString("comprobanteUrl").orEmpty(),
+            status = getString("status").orEmpty(),
+            createdAt = getLong("createdAt") ?: 0L,
+            motivoRechazo = getString("motivoRechazo").orEmpty(),
+            reviewedDate = getString("reviewedDate").orEmpty(),
+            reviewedAt = getTimestamp("reviewedAt")?.toDate()?.time,
+            renewedUntil = getString("renewedUntil").orEmpty()
+        )
     }
 
     /** Membresías creadas antes de los códigos: se muestran (sin código) con los datos que ya existían. */
@@ -424,6 +459,8 @@ class FirebaseGestionMembresiasRepository(
                 mapOf(
                     "status" to "APROBADO",
                     "reviewedBy" to uidRevisor,
+                    "reviewedDate" to hoy,
+                    "renewedUntil" to vence,
                     "reviewedAt" to FieldValue.serverTimestamp()
                 )
             )

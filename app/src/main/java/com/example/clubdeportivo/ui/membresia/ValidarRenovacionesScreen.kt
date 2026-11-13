@@ -21,12 +21,14 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -60,11 +62,14 @@ import com.example.clubdeportivo.util.Textos
 
 @Composable
 fun ValidarRenovacionesScreen(viewModel: RenovacionViewModel = viewModel()) {
-    val solicitudes by viewModel.solicitudesPendientes.collectAsState()
-    val accionEnCurso by viewModel.accionEnCurso.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val ui by viewModel.uiState.collectAsState()
+    val solicitudes = ui.solicitudesPendientes
+    val accionEnCurso = ui.accionEnCurso
+    val error = ui.error
     val context = LocalContext.current
     var comprobanteAmpliado by remember { mutableStateOf<String?>(null) }
+    var solicitudARechazar by remember { mutableStateOf<SolicitudRenovacion?>(null) }
+    var motivoRechazo by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) { viewModel.observarPendientes() }
     LaunchedEffect(error) {
@@ -99,7 +104,10 @@ fun ValidarRenovacionesScreen(viewModel: RenovacionViewModel = viewModel()) {
                     enCurso = accionEnCurso == solicitud.id,
                     onVerComprobante = { comprobanteAmpliado = solicitud.comprobanteUrl },
                     onAprobar = { viewModel.aprobar(solicitud) },
-                    onRechazar = { viewModel.rechazar(solicitud) }
+                    onRechazar = {
+                        motivoRechazo = ""
+                        solicitudARechazar = solicitud
+                    }
                 )
             }
         }
@@ -129,8 +137,44 @@ fun ValidarRenovacionesScreen(viewModel: RenovacionViewModel = viewModel()) {
                         Icon(Icons.Filled.Close, contentDescription = Textos.get("close_proof"))
                     }
                 }
+
             }
         }
+    }
+
+    solicitudARechazar?.let { solicitud ->
+        AlertDialog(
+            onDismissRequest = { solicitudARechazar = null },
+            title = { Text(Textos.get("renewal_reject_title")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(Textos.get("renewal_reject_prompt", solicitud.socioNombre))
+                    OutlinedTextField(
+                        value = motivoRechazo,
+                        onValueChange = { motivoRechazo = it },
+                        label = { Text(Textos.get("renewal_rejection_reason")) },
+                        minLines = 2,
+                        maxLines = 4
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.rechazar(
+                        solicitud,
+                        motivoRechazo.trim().ifBlank { Textos.get("renewal_rejection_default_reason") }
+                    )
+                    solicitudARechazar = null
+                }) {
+                    Text(Textos.get("reject"))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { solicitudARechazar = null }) {
+                    Text(Textos.get("cancel"))
+                }
+            }
+        )
     }
 }
 

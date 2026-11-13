@@ -10,7 +10,11 @@ data class SolicitudRenovacion(
     val concepto: String,
     val comprobanteUrl: String,
     val status: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val motivoRechazo: String = "",
+    val reviewedDate: String = "",
+    val reviewedAt: Long? = null,
+    val renewedUntil: String = ""
 ) {
     companion object {
         const val PENDIENTE = "PENDIENTE"
