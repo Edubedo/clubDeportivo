@@ -16,8 +16,8 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.tasks.await
 
 private fun DocumentSnapshot.toUsuario(
@@ -59,7 +59,7 @@ class FirebaseAuthRepository(
                 ?: return Resultado.Error(Textos.get("could_not_sign_in_please_try"))
 
             val perfil = usuarios.document(uid).get().await()
-            if (perfil.getString("estado") == "INACTIVO") {
+            if (perfil.getString("estado") == "INACTIVO" && !restaurarAccesoDeSocio(uid, perfil)) {
                 auth.signOut()
                 return Resultado.Error(Textos.get("login_cuenta_desactivada"))
             }
@@ -71,7 +71,25 @@ class FirebaseAuthRepository(
 
             Resultado.Exito(usuario)
         } catch (e: Exception) {
+            auth.signOut()
             Resultado.Error(traducirError(e))
+        }
+    }
+
+    private suspend fun restaurarAccesoDeSocio(uid: String, perfil: DocumentSnapshot): Boolean {
+        if (perfil.getString("rol") != Rol.SOCIO.name) return false
+        return try {
+            // Firestore rules verify the member-to-account link and active membership atomically.
+            // Reading those documents directly here is denied to an inactive account.
+            usuarios.document(uid).update(
+                mapOf(
+                    "estado" to "ACTIVO",
+                    "actualizadoEn" to FieldValue.serverTimestamp()
+                )
+            ).await()
+            true
+        } catch (e: FirebaseFirestoreException) {
+            if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) false else throw e
         }
     }
 

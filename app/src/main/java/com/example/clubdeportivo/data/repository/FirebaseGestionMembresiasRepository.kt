@@ -303,8 +303,13 @@ class FirebaseGestionMembresiasRepository(
 
     /** Ids de las cuentas (`usuarios/{uid}`) de todas las personas de la membresía, incluida la del titular de un registro anterior a los códigos. */
     private suspend fun cuentasDeLaMembresia(membresiaId: String): Set<String> {
-        val deMiembros = miembros.whereEqualTo("membresiaId", membresiaId).get().await().documents
-            .mapNotNull { it.getString("usuarioId")?.takeIf { uid -> uid.isNotBlank() } }
+        val registros = miembros.whereEqualTo("membresiaId", membresiaId).get().await().documents
+        val deMiembros = registros.mapNotNull { it.getString("usuarioId")?.takeIf(String::isNotBlank) }.toMutableSet()
+        registros.forEach { miembro ->
+            // Si el UID guardado en miembros quedó desactualizado, el código aún permite encontrar el perfil real.
+            usuarios.whereEqualTo("codigoMiembro", miembro.id).get().await().documents
+                .mapTo(deMiembros) { it.id }
+        }
         val titular = membresias.document(membresiaId).get().await().getString("usuarioId")?.takeIf { it.isNotBlank() }
         return (deMiembros + listOfNotNull(titular)).toSet()
     }

@@ -22,11 +22,17 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(db, 'usuarios/supervisor2'), { nombre: 'Sup2', rol: 'SUPERVISOR', estado: 'ACTIVO', areaTrabajo: 'Fútbol' });
   await setDoc(doc(db, 'usuarios/interno1'), { nombre: 'Ana', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-AAAAAA' });
   await setDoc(doc(db, 'usuarios/interno2'), { nombre: 'Visita', rol: 'VISITANTE_EXTERNO', estado: 'ACTIVO', codigoMiembro: 'CLB-BBBBBB' });
+  await setDoc(doc(db, 'usuarios/mario'), { nombre: 'Mario', rol: 'SOCIO', estado: 'INACTIVO', codigoMiembro: 'CLB-MARIO1' });
+  await setDoc(doc(db, 'usuarios/socio-suspendido'), { nombre: 'Suspendido', rol: 'SOCIO', estado: 'INACTIVO', codigoMiembro: 'CLB-SUSPEN' });
   await setDoc(doc(db, 'miembros/CLB-AAAAAA'), { nombre: 'Ana', usuarioId: 'interno1', membresiaId: 'm1', parentesco: 'Titular' });
   await setDoc(doc(db, 'miembros/CLB-BBBBBB'), { nombre: 'Visita', usuarioId: 'interno2', membresiaId: 'm2', parentesco: 'Titular' });
+  await setDoc(doc(db, 'miembros/CLB-MARIO1'), { nombre: 'Mario', usuarioId: 'mario', membresiaId: 'm-mario', parentesco: 'Titular' });
+  await setDoc(doc(db, 'miembros/CLB-SUSPEN'), { nombre: 'Suspendido', usuarioId: 'socio-suspendido', membresiaId: 'm-suspendido', parentesco: 'Titular' });
   await setDoc(doc(db, 'registroCodigos/CLB-AAAAAA'), { usuarioId: 'interno1', cuentaCreada: false });
   await setDoc(doc(db, 'registroCodigos/CLB-BBBBBB'), { usuarioId: 'interno2', cuentaCreada: false });
   await setDoc(doc(db, 'membresias/m1'), { usuarioId: 'interno1', estado: 'ACTIVA', tipo: 'INDIVIDUAL' });
+  await setDoc(doc(db, 'membresias/m-mario'), { usuarioId: 'mario', estado: 'ACTIVA', tipo: 'INDIVIDUAL' });
+  await setDoc(doc(db, 'membresias/m-suspendido'), { usuarioId: 'socio-suspendido', estado: 'SUSPENDIDA', tipo: 'INDIVIDUAL' });
   await setDoc(doc(db, 'areas/a1'), { nombre: 'Cancha' });
 });
 
@@ -34,6 +40,8 @@ const anonimo = env.unauthenticatedContext().firestore();
 const interno1 = env.authenticatedContext('interno1').firestore();
 const interno2 = env.authenticatedContext('interno2').firestore();
 const nuevo1 = env.authenticatedContext('nuevo1').firestore();
+const mario = env.authenticatedContext('mario').firestore();
+const socioSuspendido = env.authenticatedContext('socio-suspendido').firestore();
 const intruso = env.authenticatedContext('intruso').firestore();
 const admin = env.authenticatedContext('admin1').firestore();
 const ayudante = env.authenticatedContext('ayudante1').firestore();
@@ -182,6 +190,14 @@ await prueba('el personal da de alta un miembro y su código', async () => {
 });
 await prueba('el personal desactiva la cuenta anterior de un miembro (restablecer acceso)', () =>
   assertSucceeds(updateDoc(doc(ayudante, 'usuarios/nuevo1'), { estado: 'INACTIVO' })));
+await prueba('un miembro con membresía activa puede restaurar solo su estado de acceso', async () => {
+  await assertSucceeds(updateDoc(doc(mario, 'usuarios/mario'), { estado: 'ACTIVO' }));
+  await assertSucceeds(getDoc(doc(mario, 'membresias/m-mario')));
+});
+await prueba('un miembro con membresía suspendida no puede restaurar su acceso', () =>
+  assertFails(updateDoc(doc(socioSuspendido, 'usuarios/socio-suspendido'), { estado: 'ACTIVO' })));
+await prueba('un miembro no puede cambiar otros datos al restaurar acceso', () =>
+  assertFails(updateDoc(doc(socioSuspendido, 'usuarios/socio-suspendido'), { estado: 'ACTIVO', rol: 'ADMIN' })));
 await prueba('el encargado NO crea personal; el admin sí', async () => {
   await assertFails(setDoc(doc(ayudante, 'usuarios/emp1'), { nombre: 'E', rol: 'AYUDANTE_AREA', estado: 'ACTIVO' }));
   await assertSucceeds(setDoc(doc(admin, 'usuarios/emp1'), { nombre: 'E', rol: 'AYUDANTE_AREA', estado: 'ACTIVO' }));

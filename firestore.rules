@@ -36,6 +36,15 @@ service cloud.firestore {
     function esDeCliente(rol) {
       return rol in ['SOCIO', 'VISITANTE_EXTERNO'];
     }
+    // Una membresía activa permite reparar el estado de acceso que quedó inactivo tras una baja anterior.
+    function membresiaActivaDeCuenta() {
+      let codigo = get(rutaPerfil()).data.get('codigoMiembro', '');
+      return codigo != ''
+          && exists(/databases/$(database)/documents/miembros/$(codigo))
+          && get(/databases/$(database)/documents/miembros/$(codigo)).data.usuarioId == request.auth.uid
+          && exists(/databases/$(database)/documents/membresias/$(get(/databases/$(database)/documents/miembros/$(codigo)).data.membresiaId))
+          && get(/databases/$(database)/documents/membresias/$(get(/databases/$(database)/documents/miembros/$(codigo)).data.membresiaId)).data.estado == 'ACTIVA';
+    }
     // Titular de una membresía: la persona cuyo perfil apunta (por su código) a un miembro "Titular" de esa membresía.
     // Es quien puede dar de alta a su familia en un paquete familiar.
     function codigoPropio() {
@@ -96,6 +105,13 @@ service cloud.firestore {
       // clientes; solo un administrador toca al personal.
       allow update: if esAdmin()
                     || (esPersonal() && esDeCliente(resource.data.rol) && esDeCliente(request.resource.data.rol))
+                    || (firmado() && request.auth.uid == uid
+                        && resource.data.get('rol', '') == 'SOCIO'
+                        && resource.data.get('estado', '') == 'INACTIVO'
+                        && request.resource.data.get('estado', '') == 'ACTIVO'
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['estado', 'actualizadoEn'])
+                        && membresiaActivaDeCuenta())
                     || (firmado() && request.auth.uid == uid
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['nombre', 'telefono', 'fotoUrl', 'actualizadoEn']));
