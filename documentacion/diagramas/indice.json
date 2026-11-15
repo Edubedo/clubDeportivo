@@ -1,0 +1,110 @@
+[
+  {
+    "id": "D01_arquitectura_general",
+    "titulo": "Arquitectura general del sistema",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D01_arquitectura_general.png",
+    "ancho": 3200,
+    "alto": 2080,
+    "w": 1200,
+    "h": 780
+  },
+  {
+    "id": "D02_capas_mvvm",
+    "titulo": "Arquitectura por capas (MVVM)",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D02_capas_mvvm.png",
+    "ancho": 3200,
+    "alto": 2027,
+    "w": 1200,
+    "h": 760
+  },
+  {
+    "id": "D03_modelo_datos",
+    "titulo": "Modelo de datos (entidad-relación)",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D03_modelo_datos.png",
+    "ancho": 3307,
+    "alto": 2080,
+    "w": 1240,
+    "h": 780
+  },
+  {
+    "id": "D04_roles_funciones",
+    "titulo": "Roles de usuario y funciones",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D04_roles_funciones.png",
+    "ancho": 3307,
+    "alto": 1707,
+    "w": 1240,
+    "h": 640
+  },
+  {
+    "id": "D05_secuencia_alta_registro",
+    "titulo": "Secuencia: alta de miembro y registro con código",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D05_secuencia_alta_registro.png",
+    "ancho": 3307,
+    "alto": 2197,
+    "w": 1240,
+    "h": 824
+  },
+  {
+    "id": "D06_secuencia_reserva",
+    "titulo": "Secuencia: ciclo de una reserva",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D06_secuencia_reserva.png",
+    "ancho": 2773,
+    "alto": 2240,
+    "w": 1040,
+    "h": 840
+  },
+  {
+    "id": "D07_secuencia_renovacion",
+    "titulo": "Secuencia: renovación de membresía",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D07_secuencia_renovacion.png",
+    "ancho": 2907,
+    "alto": 1707,
+    "w": 1090,
+    "h": 640
+  },
+  {
+    "id": "D08a_estados_reserva",
+    "titulo": "Estados de una reserva",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D08a_estados_reserva.png",
+    "ancho": 2933,
+    "alto": 1227,
+    "w": 1100,
+    "h": 460
+  },
+  {
+    "id": "D08b_estados_membresia",
+    "titulo": "Estados de una membresía",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D08b_estados_membresia.png",
+    "ancho": 2933,
+    "alto": 1173,
+    "w": 1100,
+    "h": 440
+  },
+  {
+    "id": "D08c_estados_lista_espera",
+    "titulo": "Estados de la lista de espera",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D08c_estados_lista_espera.png",
+    "ancho": 2667,
+    "alto": 853,
+    "w": 1000,
+    "h": 320
+  },
+  {
+    "id": "D09_despliegue",
+    "titulo": "Despliegue y entornos",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D09_despliegue.png",
+    "ancho": 3200,
+    "alto": 1653,
+    "w": 1200,
+    "h": 620
+  },
+  {
+    "id": "D10_navegacion_roles",
+    "titulo": "Mapa de navegación por rol",
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/diagramas/D10_navegacion_roles.png",
+    "ancho": 3200,
+    "alto": 1600,
+    "w": 1200,
+    "h": 600
+  }
+]

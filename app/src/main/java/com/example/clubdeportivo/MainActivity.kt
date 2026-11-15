@@ -23,7 +23,7 @@ import com.example.clubdeportivo.ui.theme.PreferenciaTema
 
 /** Única Activity de la app: todo el contenido y la navegación viven en Compose. */
 class MainActivity : ComponentActivity() {
-
+D
     /** Código que trae el enlace de acceso con el que se abrió la app (clubdeportivo://registro?codigo=...). */
     private var codigoEntrante by mutableStateOf<String?>(null)
 
