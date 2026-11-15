@@ -6,10 +6,13 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { defineString, defineSecret } = require('firebase-functions/params');
 const { primerError } = require('./contrasena');
 const { crearTransporte, enviarBienvenida } = require('./bienvenida');
+const Correos = require('./correos');
 
 initializeApp();
 
 const ROLES_ADMINISTRADOR = ['SUPERADMIN', 'ADMIN'];
+// Quienes revisan renovaciones y cambios de plan: los administradores y los supervisores.
+const ROLES_REVISORES = ['SUPERADMIN', 'ADMIN', 'SUPERVISOR'];
 const ROLES_DE_PERSONAL = ['SUPERADMIN', 'ADMIN', 'ADMIN_AREA', 'AYUDANTE_AREA'];
 
 /**
@@ -76,50 +79,7 @@ async function guardarNotificacion(usuarioId, id, titulo, mensaje, tipo) {
   });
 }
 
-exports.notificarNuevaRenovacion = onDocumentCreated(
-  { document: 'solicitudes_renovacion/{solicitudId}', region: 'us-central1' },
-  async (event) => {
-    const solicitud = event.data?.data();
-    if (!solicitud || solicitud.status !== 'PENDIENTE') return;
-
-    const db = getFirestore();
-    const administradores = await db.collection('usuarios')
-      .where('rol', 'in', ROLES_ADMINISTRADOR)
-      .get();
-    await Promise.all(administradores.docs
-      .filter((admin) => (admin.get('estado') || 'ACTIVO') !== 'INACTIVO')
-      .map((admin) => guardarNotificacion(
-        admin.id,
-        `renovacion_${event.params.solicitudId}_${admin.id}`,
-        'Nueva solicitud de renovación',
-        `${solicitud.socioNombre || 'Un socio'} envió una renovación por $${Number(solicitud.monto || 0).toFixed(2)}. Revisa la pestaña Renovaciones.`,
-        'RENOVACION'
-      )));
-  }
-);
-
-exports.notificarResolucionRenovacion = onDocumentUpdated(
-  { document: 'solicitudes_renovacion/{solicitudId}', region: 'us-central1' },
-  async (event) => {
-    const anterior = event.data?.before.data();
-    const actual = event.data?.after.data();
-    if (!anterior || !actual || anterior.status !== 'PENDIENTE' ||
-        !['APROBADO', 'RECHAZADO'].includes(actual.status) || !actual.socioId) return;
-
-    const aprobado = actual.status === 'APROBADO';
-    await guardarNotificacion(
-      actual.socioId,
-      `renovacion_${event.params.solicitudId}_${actual.status.toLowerCase()}`,
-      aprobado ? 'Renovación aprobada' : 'Renovación rechazada',
-      aprobado
-        ? 'Tu renovación de membresía fue aprobada. Tu vigencia ya está actualizada.'
-        : 'Tu solicitud de renovación fue rechazada. Comunícate con el personal del club para más información.',
-      'RENOVACION'
-    );
- }
-);
-
-// ---------- Correo de bienvenida ----------
+// ---------- Parámetros del correo (SMTP) ----------
 // Servicio de correo: cualquier SMTP gratuito (Gmail con contraseña de aplicación, Brevo...). Ver docs/correo-de-bienvenida.md.
 const SMTP_HOST = defineString('SMTP_HOST', { default: 'smtp.gmail.com' });
 const SMTP_PORT = defineString('SMTP_PORT', { default: '465' });
@@ -127,6 +87,158 @@ const SMTP_USER = defineString('SMTP_USER', { default: '' });
 const SMTP_REMITENTE = defineString('SMTP_REMITENTE', { default: '' }); // "Athletic Club <correo@dominio>"; vacío = SMTP_USER
 const ENLACE_BASE = defineString('ENLACE_BASE', { default: '' }); // vacío = https://<proyecto>.web.app/unirse
 const SMTP_PASS = defineSecret('SMTP_PASS');
+
+/**
+ * Transporte de correo, o null para NO enviar de verdad ("simulado": solo queda constancia en `correos_enviados`).
+ * Es null en el emulador y mientras no haya un SMTP configurado, así probar nunca manda correos reales.
+ */
+function transporteDeCorreo() {
+  const usuario = SMTP_USER.value();
+  if (process.env.FUNCTIONS_EMULATOR === 'true' || !usuario) return null;
+  return crearTransporte({ host: SMTP_HOST.value(), port: SMTP_PORT.value(), user: usuario, pass: SMTP_PASS.value() });
+}
+
+/**
+ * Manda (o simula) un correo de membresía a una persona y deja constancia en `correos_enviados`.
+ * Si el correo de su cuenta es interno (cuentas por código) se usa el de contacto de `miembros/{codigo}`.
+ */
+async function correoAlMiembro({ event, tipo, uid, codigo, datos }) {
+  const db = getFirestore();
+  const perfil = uid ? await db.doc(`usuarios/${uid}`).get() : null;
+  const cod = codigo || (perfil && perfil.get('codigoMiembro')) || '';
+  const miembro = cod ? await db.doc(`miembros/${cod}`).get() : null;
+  const para = Correos.elegirCorreo({
+    correoCuenta: perfil && perfil.get('email'),
+    correoContacto: miembro && miembro.get('correo')
+  });
+  const nombre = datos.nombre || (perfil && perfil.get('nombre')) || '';
+  const correo = Correos.compositores[tipo]({ ...datos, nombre });
+  return Correos.despachar({
+    db, id: `${event.id}_${tipo}`, transporte: transporteDeCorreo(),
+    de: SMTP_REMITENTE.value() || SMTP_USER.value(), para, correo, tipo, meta: { usuarioId: uid || '' }
+  });
+}
+
+const OPCIONES = { region: 'us-central1', maxInstances: 5, secrets: [SMTP_PASS] };
+const NIVELES = ['NINO', 'NORMAL', 'DELUXE'];
+
+async function notificarARevisores(prefijoId, solicitudId, titulo, mensaje, tipo) {
+  const db = getFirestore();
+  const revisores = await db.collection('usuarios').where('rol', 'in', ROLES_REVISORES).get();
+  await Promise.all(revisores.docs
+    .filter((u) => (u.get('estado') || 'ACTIVO') !== 'INACTIVO')
+    .map((u) => guardarNotificacion(u.id, `${prefijoId}_${solicitudId}_${u.id}`, titulo, mensaje, tipo)));
+}
+
+exports.notificarNuevaRenovacion = onDocumentCreated(
+  { ...OPCIONES, document: 'solicitudes_renovacion/{solicitudId}' },
+  async (event) => {
+    const solicitud = event.data?.data();
+    if (!solicitud || solicitud.status !== 'PENDIENTE') return;
+    await notificarARevisores(
+      'renovacion', event.params.solicitudId, 'Nueva solicitud de renovación',
+      `${solicitud.socioNombre || 'Un socio'} envió una renovación por $${Number(solicitud.monto || 0).toFixed(2)}. Revisa la pestaña Renovaciones.`,
+      'RENOVACION'
+    );
+    // Acuse de recibo por correo al miembro.
+    if (solicitud.socioId) {
+      await correoAlMiembro({
+        event, tipo: 'renovacionRecibida', uid: solicitud.socioId,
+        datos: { nombre: solicitud.socioNombre, monto: solicitud.monto }
+      });
+    }
+  }
+);
+
+exports.notificarResolucionRenovacion = onDocumentUpdated(
+  { ...OPCIONES, document: 'solicitudes_renovacion/{solicitudId}' },
+  async (event) => {
+    const anterior = event.data?.before.data();
+    const actual = event.data?.after.data();
+    if (!anterior || !actual || anterior.status !== 'PENDIENTE' ||
+        !['APROBADO', 'RECHAZADO'].includes(actual.status) || !actual.socioId) return;
+
+    const aprobado = actual.status === 'APROBADO';
+    const hasta = actual.renewedUntil ? ` Vigente hasta el ${Correos.fechaLegible(actual.renewedUntil)}.` : ' Tu vigencia ya está actualizada.';
+    const motivo = actual.motivoRechazo ? ` Motivo: ${actual.motivoRechazo}` : ' Comunícate con el personal del club para más información.';
+    await guardarNotificacion(
+      actual.socioId,
+      `renovacion_${event.params.solicitudId}_${actual.status.toLowerCase()}`,
+      aprobado ? 'Renovación aprobada' : 'Renovación rechazada',
+      aprobado ? `Tu renovación de membresía fue aprobada.${hasta}` : `Tu solicitud de renovación fue rechazada.${motivo}`,
+      'RENOVACION'
+    );
+    // El correo de "aprobada" sale con el cambio de la membresía (cubre también las renovaciones hechas en recepción).
+    if (!aprobado) {
+      await correoAlMiembro({
+        event, tipo: 'renovacionRechazada', uid: actual.socioId,
+        datos: { nombre: actual.socioNombre, motivo: actual.motivoRechazo }
+      });
+    }
+  }
+);
+
+// ---------- Cambio de plan ----------
+exports.notificarNuevoCambioPlan = onDocumentCreated(
+  { ...OPCIONES, document: 'solicitudes_cambio_plan/{solicitudId}' },
+  async (event) => {
+    const s = event.data?.data();
+    if (!s || s.status !== 'PENDIENTE') return;
+    const sube = NIVELES.indexOf(s.planNuevo) > NIVELES.indexOf(s.planActual);
+    await notificarARevisores(
+      'cambioplan', event.params.solicitudId, 'Solicitud de cambio de plan',
+      `${s.socioNombre || 'Un socio'} pide ${sube ? 'subir' : 'bajar'} de ${Correos.nombrePlan(s.planActual)} a ${Correos.nombrePlan(s.planNuevo)}. Revisa la pestaña Cambios de plan.`,
+      'CAMBIO_PLAN'
+    );
+    await correoAlMiembro({
+      event, tipo: 'cambioPlanRecibido', uid: s.socioId,
+      datos: { nombre: s.socioNombre, planActual: s.planActual, planNuevo: s.planNuevo, precioNuevo: s.precioNuevo }
+    });
+  }
+);
+
+exports.notificarResolucionCambioPlan = onDocumentUpdated(
+  { ...OPCIONES, document: 'solicitudes_cambio_plan/{solicitudId}' },
+  async (event) => {
+    const antes = event.data?.before.data();
+    const s = event.data?.after.data();
+    if (!antes || !s || antes.status !== 'PENDIENTE' || !['APROBADO', 'RECHAZADO'].includes(s.status) || !s.socioId) return;
+    const aprobado = s.status === 'APROBADO';
+    const motivo = s.motivoRechazo ? ` Motivo: ${s.motivoRechazo}` : '';
+    await guardarNotificacion(
+      s.socioId, `cambioplan_${event.params.solicitudId}_${s.status.toLowerCase()}`,
+      aprobado ? 'Cambio de plan aprobado' : 'Cambio de plan rechazado',
+      aprobado
+        ? `Tu plan ahora es ${Correos.nombrePlan(s.planNuevo)}. El nuevo precio se cobra desde tu próxima renovación.`
+        : `No se aprobó tu cambio al plan ${Correos.nombrePlan(s.planNuevo)}.${motivo}`,
+      'CAMBIO_PLAN'
+    );
+    await correoAlMiembro({
+      event, tipo: aprobado ? 'cambioPlanAprobado' : 'cambioPlanRechazado', uid: s.socioId,
+      datos: aprobado
+        ? { nombre: s.socioNombre, planAnterior: s.planActual, planNuevo: s.planNuevo, precioNuevo: s.precioNuevo }
+        : { nombre: s.socioNombre, planNuevo: s.planNuevo, motivo: s.motivoRechazo }
+    });
+  }
+);
+
+// ---------- Cambios en la membresía (renovada, suspendida, reactivada, plan cambiado por el club) ----------
+exports.correosDeMembresia = onDocumentUpdated(
+  { ...OPCIONES, document: 'membresias/{membresiaId}' },
+  async (event) => {
+    const antes = event.data?.before.data();
+    const despues = event.data?.after.data();
+    const correos = Correos.correosPorCambioDeMembresia(antes, despues);
+    for (const { tipo, datos } of correos) {
+      await correoAlMiembro({
+        event, tipo, uid: despues.usuarioId, codigo: despues.titularCodigo,
+        datos: { ...datos, nombre: despues.titularNombre }
+      });
+    }
+  }
+);
+
+// ---------- Correo de bienvenida ----------
 
 /**
 * Cuando el personal registra a un miembro (o el titular agrega a un familiar) nace su documento `miembros/{codigo}`:

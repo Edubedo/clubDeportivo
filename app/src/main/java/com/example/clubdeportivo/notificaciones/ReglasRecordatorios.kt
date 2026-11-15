@@ -221,6 +221,22 @@ object ReglasRecordatorios {
                 )
             }
 
+    /** Una notificación que dejó el servidor (Cloud Functions) en la colección `notificaciones`: renovaciones, cambios de plan... */
+    data class NotificacionDeServidor(val id: String, val titulo: String, val mensaje: String, val ruta: String?)
+
+    /**
+     * Las notificaciones del servidor que todavía no se mostraron. Los miembros las ven como "Tu membresía" y el personal
+     * que revisa (administradores y supervisores) como "Solicitudes por revisar". El texto ya viene armado por el servidor.
+     */
+    fun deServidor(lista: List<NotificacionDeServidor>, tipo: TipoUsuario, nuevo: (String) -> Boolean): List<Recordatorio> {
+        val categoria = if (tipo == TipoUsuario.CLIENTE) CategoriaNotificacion.MEMBRESIA else CategoriaNotificacion.SOLICITUDES
+        return lista.mapNotNull { n ->
+            val clave = "servidor:${n.id}"
+            if (!nuevo(clave)) return@mapNotNull null
+            Recordatorio(clave, categoria, n.titulo, n.mensaje, n.ruta?.takeIf { it.isNotBlank() })
+        }
+    }
+
     // ---------------------------------------------------------------- Encargados y administradores
 
     /** Una sola notificación que resume las solicitudes en revisión que todavía no se avisaron. */

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,8 +56,14 @@ import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.PlanIndividual
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esPersonal
+import com.example.clubdeportivo.data.model.SolicitudCambioPlan
 import com.example.clubdeportivo.data.model.SolicitudRenovacion
+import com.example.clubdeportivo.data.model.TipoMembresia
+import com.example.clubdeportivo.util.ReglasCambioPlan
 import com.example.clubdeportivo.ui.components.BotonPrimario
+import com.example.clubdeportivo.ui.components.BotonSecundario
+import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.TipoInsignia
 import com.example.clubdeportivo.ui.components.CampoTexto
 import com.example.clubdeportivo.ui.components.DialogoFormulario
 import com.example.clubdeportivo.ui.components.EncabezadoPantalla
@@ -113,7 +121,8 @@ private fun MembresiasAdmin() {
             opciones = listOf(
                 Textos.get("members"),
                 Textos.get("plans_short"),
-                Textos.get("renewal_requests")
+                Textos.get("renewal_requests"),
+                Textos.get("cambio_plan_pestana")
             ),
             seleccionada = pestana,
             onSeleccion = { pestana = it },
@@ -124,23 +133,41 @@ private fun MembresiasAdmin() {
             // Los precios los cambia solo un administrador; el resto del personal los consulta.
             1 -> PlanesTab(editable = SesionManager.usuarioActual?.rol?.esAdministrador() == true, conTuMembresia = false)
             2 -> ValidarRenovacionesScreen()
+            3 -> ValidarCambiosPlanScreen()
         }
     }
 }
 
 /** Catálogo de planes con su precio vigente. Con [editable] el personal puede cambiar cada precio. */
 @Composable
-private fun PlanesTab(editable: Boolean, conTuMembresia: Boolean, viewModel: PreciosViewModel = viewModel()) {
+private fun PlanesTab(
+    editable: Boolean,
+    conTuMembresia: Boolean,
+    viewModel: PreciosViewModel = viewModel(),
+    membresiaViewModel: MembresiaViewModel = viewModel(),
+    cambioViewModel: CambioPlanViewModel = viewModel()
+) {
     val editados by viewModel.editados.observeAsState(emptyMap())
     val mensaje by viewModel.mensaje.observeAsState()
+    val membresiaUi by membresiaViewModel.uiState.collectAsState()
+    val cambioUi by cambioViewModel.ui.collectAsState()
+    val miMembresia = membresiaUi.membresia.takeIf { conTuMembresia }
+    val miPlan = miMembresia?.takeIf { it.tipo == TipoMembresia.INDIVIDUAL }?.plan
 
     var precioEnEdicion by remember { mutableStateOf<Triple<String, String, Double>?>(null) }
+    var planACambiar by remember { mutableStateOf<PlanIndividual?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(mensaje) {
         mensaje?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.onMensajeMostrado()
+        }
+    }
+    LaunchedEffect(cambioUi.mensaje) {
+        cambioUi.mensaje?.let {
+            snackbarHostState.showSnackbar(it)
+            cambioViewModel.mensajeMostrado()
         }
     }
 
@@ -171,13 +198,22 @@ private fun PlanesTab(editable: Boolean, conTuMembresia: Boolean, viewModel: Pre
                 PlanIndividual.entries.forEach { plan ->
                     val clave = ClavesPrecio.individual(plan)
                     val titulo = Catalogos.nombrePlanIndividual(plan)
+                    val puedePedir = miPlan != null && plan != miPlan &&
+                        ReglasMembresia.estadoEfectivo(miMembresia!!, Fechas.hoy()) == EstadoMembresia.ACTIVA &&
+                        cambioUi.ultimaLista && cambioUi.ultima?.status != SolicitudCambioPlan.PENDIENTE
                     TarjetaPlan(
                         titulo = titulo,
                         precio = dinero(ClavesPrecio.de(clave, editados)),
                         periodo = Textos.get("per_month"),
                         incluye = Catalogos.beneficiosPlanIndividual(plan),
-                        destacado = plan == PlanIndividual.DELUXE,
-                        onEditar = editar(clave, titulo)
+                        // Con plan propio, solo "Tu plan" lleva el realce: así se ve de un vistazo cuál es el tuyo.
+                        destacado = plan == PlanIndividual.DELUXE && miPlan == null,
+                        onEditar = editar(clave, titulo),
+                        esTuPlan = plan == miPlan,
+                        textoCambio = if (puedePedir) {
+                            if (ReglasCambioPlan.esMejora(miPlan!!, plan)) Textos.get("cambio_plan_subir") else Textos.get("cambio_plan_bajar")
+                        } else null,
+                        onCambiar = if (puedePedir) ({ planACambiar = plan }) else null
                     )
                 }
             }
@@ -234,6 +270,95 @@ private fun PlanesTab(editable: Boolean, conTuMembresia: Boolean, viewModel: Pre
             },
             onCerrar = { precioEnEdicion = null }
         )
+    }
+
+    planACambiar?.let { nuevo ->
+        val actual = miPlan
+        if (miMembresia != null && actual != null) {
+            DialogoCambioPlan(
+                planActual = actual,
+                precioActual = miMembresia.precio,
+                planNuevo = nuevo,
+                precioNuevo = ClavesPrecio.de(ClavesPrecio.individual(nuevo), editados),
+                enviando = cambioUi.enviando,
+                onEnviar = {
+                    cambioViewModel.solicitar(miMembresia, nuevo)
+                    planACambiar = null
+                },
+                onCerrar = { planACambiar = null }
+            )
+        }
+    }
+}
+
+/** Resumen y confirmación de la solicitud de cambio de plan que va a enviar el miembro. */
+@Composable
+private fun DialogoCambioPlan(
+    planActual: PlanIndividual,
+    precioActual: Double,
+    planNuevo: PlanIndividual,
+    precioNuevo: Double,
+    enviando: Boolean,
+    onEnviar: () -> Unit,
+    onCerrar: () -> Unit
+) {
+    val mejora = ReglasCambioPlan.esMejora(planActual, planNuevo)
+    val diferencia = ReglasCambioPlan.diferencia(precioActual, precioNuevo)
+    DialogoFormulario(titulo = Textos.get("cambio_plan_dialogo_titulo"), onCerrar = onCerrar, confirmarSalida = false) {
+        Insignia(
+            texto = if (mejora) Textos.get("cambio_plan_mejora") else Textos.get("cambio_plan_reduccion"),
+            tipo = if (mejora) TipoInsignia.EXITO else TipoInsignia.ALERTA
+        )
+        Text(
+            Textos.get(
+                "cambio_plan_resumen",
+                Catalogos.nombrePlanIndividual(planActual), dinero(precioActual),
+                Catalogos.nombrePlanIndividual(planNuevo), dinero(precioNuevo)
+            ),
+            style = MaterialTheme.typography.titleMedium,
+            color = TextoPrincipal,
+            modifier = Modifier.padding(top = 12.dp)
+        )
+        if (diferencia != 0.0) {
+            Text(
+                if (diferencia > 0) Textos.get("cambio_plan_diferencia_mas", dinero(diferencia))
+                else Textos.get("cambio_plan_diferencia_menos", dinero(-diferencia)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextoSecundario,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+        }
+        Text(
+            Textos.get("cambio_plan_como_funciona"),
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextoSecundario,
+            modifier = Modifier.padding(top = 12.dp)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        BotonPrimario(texto = Textos.get("cambio_plan_enviar"), enabled = !enviando, cargando = enviando, onClick = onEnviar)
+    }
+}
+
+/** Estado de la última solicitud de cambio de plan del miembro, para que sepa en qué quedó. */
+@Composable
+private fun EstadoCambioPlan(solicitud: SolicitudCambioPlan?) {
+    if (solicitud == null) return
+    val reciente = solicitud.revisadaEn?.let { System.currentTimeMillis() - it < 14L * 24 * 3600 * 1000 } ?: false
+    val nombreNuevo = Catalogos.nombrePlanIndividual(solicitud.planNuevo)
+    val (texto, tipo) = when (solicitud.status) {
+        SolicitudCambioPlan.PENDIENTE -> Textos.get("cambio_plan_estado_pendiente", nombreNuevo) to TipoInsignia.ALERTA
+        SolicitudCambioPlan.RECHAZADO -> Textos.get(
+            "cambio_plan_estado_rechazada", nombreNuevo,
+            solicitud.motivoRechazo.ifBlank { Textos.get("renewal_rejection_default_reason") }
+        ) to TipoInsignia.PELIGRO
+        SolicitudCambioPlan.APROBADO -> if (reciente) Textos.get("cambio_plan_estado_aprobada", nombreNuevo) to TipoInsignia.EXITO else return
+        else -> return
+    }
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Insignia(texto = Textos.get("cambio_plan_titulo"), tipo = tipo)
+            Text(texto, style = MaterialTheme.typography.bodyMedium, color = TextoPrincipal)
+        }
     }
 }
 
@@ -318,7 +443,10 @@ private fun TarjetaPlan(
     periodo: String,
     incluye: List<String>,
     destacado: Boolean = false,
-    onEditar: (() -> Unit)? = null
+    onEditar: (() -> Unit)? = null,
+    esTuPlan: Boolean = false,
+    textoCambio: String? = null,
+    onCambiar: (() -> Unit)? = null
 ) {
     val paquete = when {
         titulo.contains("familiar", ignoreCase = true) || titulo.contains("family", ignoreCase = true) ||
@@ -340,8 +468,16 @@ private fun TarjetaPlan(
         1 -> listOf(PackageIntermediateForeground, PackageIntermediateForeground, PackageIntermediateContainer, PackageIntermediateBorder)
         else -> listOf(PackageBasicForeground, PackageBasicForeground, PackageBasicContainer, PackageBasicBorder)
     }
-    TarjetaClub(modifier = Modifier.fillMaxWidth(), destacada = destacado) {
+    TarjetaClub(modifier = Modifier.fillMaxWidth(), destacada = destacado || esTuPlan) {
         Column(modifier = Modifier.padding(16.dp)) {
+            if (esTuPlan) {
+                Insignia(
+                    texto = Textos.get("cambio_plan_tu_plan"),
+                    tipo = TipoInsignia.MARCA,
+                    icono = Icons.Filled.CheckCircle,
+                    modifier = Modifier.padding(bottom = 10.dp)
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -386,6 +522,10 @@ private fun TarjetaPlan(
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 incluye.forEach { Incluye(it, accent) }
             }
+            if (textoCambio != null && onCambiar != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                BotonSecundario(texto = textoCambio, onClick = onCambiar, modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 }
@@ -395,9 +535,11 @@ private fun TarjetaPlan(
 private fun TuMembresia(
     viewModel: MembresiaViewModel = viewModel(),
     familiaViewModel: FamiliaViewModel = viewModel(),
-    renovacionViewModel: RenovacionViewModel = viewModel()
+    renovacionViewModel: RenovacionViewModel = viewModel(),
+    cambioViewModel: CambioPlanViewModel = viewModel()
 ) {
     val familia by familiaViewModel.familia.observeAsState()
+    val cambioPlan by cambioViewModel.ui.collectAsState()
     val ui by viewModel.uiState.collectAsState()
     val usuarioId = SesionManager.usuarioActual?.id
     val renovacion by renovacionViewModel.uiState.collectAsState()
@@ -437,6 +579,7 @@ private fun TuMembresia(
     LaunchedEffect(usuarioId) {
         viewModel.observarMembresia(usuarioId)
         usuarioId?.let(renovacionViewModel::observarSolicitudSocio)
+        usuarioId?.let(cambioViewModel::observarSocio)
     }
 
     TarjetaClub(modifier = Modifier.fillMaxWidth(), fondo = MarcaSuave) {
@@ -476,6 +619,7 @@ private fun TuMembresia(
                     Text(Textos.get("retry"))
                 }
             }
+            EstadoCambioPlan(cambioPlan.ultima)
             MembresiaSocioSection(
                 membresia = membresiaVisual,
                 renovacion = renovacion,

@@ -198,6 +198,53 @@ service cloud.firestore {
           );
     }
 
+    // Cambio de plan: el miembro (titular de una membresía INDIVIDUAL activa) pide pasar a otro plan individual.
+    // Los datos que declara deben coincidir con la membresía real (plan y precio actuales).
+    function cambioDePlanValido(datos) {
+      let membresia = get(/databases/$(database)/documents/membresias/$(datos.membresiaId)).data;
+      return exists(/databases/$(database)/documents/membresias/$(datos.membresiaId))
+          && membresia.get('usuarioId', '') == request.auth.uid
+          && membresia.get('tipo', '') == 'INDIVIDUAL'
+          && membresia.get('estado', '') == 'ACTIVA'
+          && membresia.get('plan', '') == datos.planActual
+          && membresia.get('precio', -1) == datos.precioActual
+          && datos.planNuevo in ['NINO', 'NORMAL', 'DELUXE']
+          && datos.planNuevo != datos.planActual
+          && datos.precioNuevo is number
+          && datos.precioNuevo > 0;
+    }
+    match /solicitudes_cambio_plan/{id} {
+      allow read: if esPersonal()
+                  || (firmado() && resource.data.socioId == request.auth.uid);
+      allow create: if conPerfil()
+                    && activo()
+                    && rolActual() == 'SOCIO'
+                    && request.resource.data.keys().hasOnly([
+                      'id', 'socioId', 'socioNombre', 'membresiaId', 'planActual', 'planNuevo',
+                      'precioActual', 'precioNuevo', 'status', 'createdAt'
+                    ])
+                    && request.resource.data.keys().hasAll([
+                      'id', 'socioId', 'socioNombre', 'membresiaId', 'planActual', 'planNuevo',
+                      'precioActual', 'precioNuevo', 'status', 'createdAt'
+                    ])
+                    && request.resource.data.id == id
+                    && request.resource.data.socioId == request.auth.uid
+                    && request.resource.data.socioNombre is string
+                    && request.resource.data.membresiaId is string
+                    && request.resource.data.status == 'PENDIENTE'
+                    && request.resource.data.createdAt is int
+                    && cambioDePlanValido(request.resource.data);
+      // Lo resuelven los administradores y los supervisores (no los encargados de área).
+      allow update: if (esAdmin() || esSupervisor())
+                    && resource.data.status == 'PENDIENTE'
+                    && request.resource.data.status in ['APROBADO', 'RECHAZADO']
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status', 'precioNuevo', 'motivoRechazo', 'reviewedBy', 'reviewedByNombre', 'reviewedAt'])
+                    && (request.resource.data.status != 'RECHAZADO'
+                        || (request.resource.data.get('motivoRechazo', '') is string
+                            && request.resource.data.get('motivoRechazo', '').size() > 0));
+      allow delete: if false;
+    }
     match /solicitudes_renovacion/{id} {
       allow read: if esPersonal()
                   || (firmado() && resource.data.socioId == request.auth.uid);
@@ -383,11 +430,15 @@ service cloud.firestore {
     match /torneos/{id} {
       allow read: if firmado();
       allow create, delete: if esPersonal();
-      // Inscribirse sube torneos.inscritos (sin pasar del cupo); cualquier otro cambio es del personal.
+      // Inscribirse sube torneos.inscritos de uno en uno (sin pasar del cupo) y en la misma operación crea la inscripción
+      // de quien lo hace (existsAfter); bajar el contador o cualquier otro cambio es del personal.
       allow update: if esPersonal()
                     || (firmado()
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['inscritos', 'actualizadoEn'])
-                        && request.resource.data.inscritos <= resource.data.cupoMaximo);
+                        && request.resource.data.inscritos == resource.data.get('inscritos', 0) + 1
+                        && request.resource.data.inscritos <= resource.data.cupoMaximo
+                        && existsAfter(/databases/$(database)/documents/inscripcionesTorneo/$(id + '_' + request.auth.uid))
+                        && !exists(/databases/$(database)/documents/inscripcionesTorneo/$(id + '_' + request.auth.uid)));
     }
 
     match /inscripcionesTorneo/{id} {

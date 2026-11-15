@@ -1,0 +1,30 @@
+{
+  "F1_arquitectura": {
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/articulo_figuras/F1_arquitectura.png",
+    "ancho": 1067,
+    "alto": 1067,
+    "w": 400,
+    "h": 400
+  },
+  "F2_capas": {
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/articulo_figuras/F2_capas.png",
+    "ancho": 1067,
+    "alto": 907,
+    "w": 400,
+    "h": 340
+  },
+  "F3_er": {
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/articulo_figuras/F3_er.png",
+    "ancho": 1067,
+    "alto": 992,
+    "w": 400,
+    "h": 372
+  },
+  "F4_estados": {
+    "ruta": "/Users/edubedo/AndroidStudioProjects/ClubDeportivo/documentacion/articulo_figuras/F4_estados.png",
+    "ancho": 1067,
+    "alto": 885,
+    "w": 400,
+    "h": 332
+  }
+}
