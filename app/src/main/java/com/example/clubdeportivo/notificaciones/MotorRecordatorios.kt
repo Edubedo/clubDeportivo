@@ -123,11 +123,31 @@ object MotorRecordatorios {
             registro.ultimoAvisoMillis = maxOf(ahora.time, avisos.maxOfOrNull { it.fechaMillis } ?: 0L)
         }
 
+        // Lo que el servidor dejó para esta persona (renovación aprobada, cambio de plan resuelto, solicitudes nuevas...).
+        val delServidor = mutableListOf<ReglasRecordatorios.NotificacionDeServidor>()
+        bloque {
+            FirebaseFirestore.getInstance().collection("notificaciones")
+                .whereEqualTo("usuarioId", uid).whereEqualTo("leida", false)
+                .get().await().documents.forEach { d ->
+                    delServidor += ReglasRecordatorios.NotificacionDeServidor(
+                        d.id, d.getString("titulo").orEmpty(), d.getString("mensaje").orEmpty(), d.getString("ruta")
+                    )
+                }
+            agregar(ReglasRecordatorios.deServidor(delServidor, tipo, nuevo))
+        }
+
         // De noche se calcula todo, pero no se muestra ni se marca como avisado: sale en la primera revisión de la mañana.
         if (silencio) return
         recordatorios.forEach { recordatorio ->
             Notificador.mostrar(contexto, recordatorio)
             registro.marcarAvisado(recordatorio.claves, hoy)
+            // Las del servidor se marcan como leídas para que no vuelvan a aparecer (la persona solo puede cambiar `leida`).
+            recordatorio.claves.filter { it.startsWith("servidor:") }.forEach { clave ->
+                runCatching {
+                    FirebaseFirestore.getInstance().collection("notificaciones").document(clave.removePrefix("servidor:"))
+                        .update(mapOf("leida" to true, "leidaEn" to System.currentTimeMillis())).await()
+                }
+            }
         }
     }
 }

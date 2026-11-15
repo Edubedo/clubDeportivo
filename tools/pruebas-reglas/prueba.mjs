@@ -379,6 +379,98 @@ await prueba('el familiar invitado puede registrarse con su código (flujo norma
   await assertSucceeds(getDoc(doc(real, 'membresias/fam1')));
 });
 
+// ---------- Cambio de plan (solicitudes_cambio_plan) ----------
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'usuarios/cp-socio'), { nombre: 'Cambio', rol: 'SOCIO', estado: 'ACTIVO' });
+  await setDoc(doc(db, 'usuarios/cp-otro'), { nombre: 'Otro', rol: 'SOCIO', estado: 'ACTIVO' });
+  await setDoc(doc(db, 'membresias/cp-m'), { usuarioId: 'cp-socio', tipo: 'INDIVIDUAL', plan: 'NORMAL', precio: 1800, estado: 'ACTIVA', fechaInicio: '2026-11-01', fechaVencimiento: '2026-12-01' });
+  await setDoc(doc(db, 'membresias/cp-susp'), { usuarioId: 'cp-socio', tipo: 'INDIVIDUAL', plan: 'NORMAL', precio: 1800, estado: 'SUSPENDIDA' });
+  await setDoc(doc(db, 'membresias/cp-fam'), { usuarioId: 'cp-socio', tipo: 'FAMILIAR', paqueteFamiliarId: 1, precio: 7000, estado: 'ACTIVA' });
+});
+const cpSocio = env.authenticatedContext('cp-socio').firestore();
+const cpOtro = env.authenticatedContext('cp-otro').firestore();
+const pedido = (extra = {}) => ({
+  id: 'cp1', socioId: 'cp-socio', socioNombre: 'Cambio', membresiaId: 'cp-m', planActual: 'NORMAL', planNuevo: 'DELUXE',
+  precioActual: 1800, precioNuevo: 3500, status: 'PENDIENTE', createdAt: Date.now(), ...extra
+});
+await prueba('cambio de plan: el miembro pide subir de plan', () => assertSucceeds(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp1'), pedido())));
+await prueba('cambio de plan: el miembro pide bajar de plan', () =>
+  assertSucceeds(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-baja'), pedido({ id: 'cp-baja', planNuevo: 'NINO', precioNuevo: 1500 }))));
+await prueba('cambio de plan: no se pide a nombre de otra persona', () =>
+  assertFails(setDoc(doc(cpOtro, 'solicitudes_cambio_plan/cp-x'), pedido({ id: 'cp-x' }))));
+await prueba('cambio de plan: el miembro no puede declarar un plan actual falso', () =>
+  assertFails(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-f'), pedido({ id: 'cp-f', planActual: 'DELUXE', planNuevo: 'NINO' }))));
+await prueba('cambio de plan: no se pide el mismo plan ni un plan inexistente', async () => {
+  await assertFails(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-m1'), pedido({ id: 'cp-m1', planNuevo: 'NORMAL' })));
+  await assertFails(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-m2'), pedido({ id: 'cp-m2', planNuevo: 'VIP' })));
+});
+await prueba('cambio de plan: el precio actual debe coincidir con el de la membresía', () =>
+  assertFails(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-p'), pedido({ id: 'cp-p', precioActual: 1 }))));
+await prueba('cambio de plan: no nace ya aprobada ni con campos de más', async () => {
+  await assertFails(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-a'), pedido({ id: 'cp-a', status: 'APROBADO' })));
+  await assertFails(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-e'), pedido({ id: 'cp-e', reviewedBy: 'yo' })));
+});
+await prueba('cambio de plan: no se pide con la membresía suspendida ni con una familiar', async () => {
+  await assertFails(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-s'), pedido({ id: 'cp-s', membresiaId: 'cp-susp' })));
+  await assertFails(setDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp-fa'), pedido({ id: 'cp-fa', membresiaId: 'cp-fam' })));
+});
+await prueba('cambio de plan: el dueño la lee y otro miembro no', async () => {
+  await assertSucceeds(getDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp1')));
+  await assertFails(getDoc(doc(cpOtro, 'solicitudes_cambio_plan/cp1')));
+});
+await prueba('cambio de plan: el miembro NO se la aprueba a sí mismo', () =>
+  assertFails(updateDoc(doc(cpSocio, 'solicitudes_cambio_plan/cp1'), { status: 'APROBADO' })));
+await prueba('cambio de plan: el encargado de área NO la resuelve', () =>
+  assertFails(updateDoc(doc(ayudante, 'solicitudes_cambio_plan/cp1'), { status: 'APROBADO', reviewedBy: 'ayudante1' })));
+await prueba('cambio de plan: el supervisor la aprueba', () =>
+  assertSucceeds(updateDoc(doc(supervisorConArea, 'solicitudes_cambio_plan/cp1'), { status: 'APROBADO', precioNuevo: 3500, reviewedBy: 'supervisor2', reviewedByNombre: 'Sup', reviewedAt: new Date() })));
+await prueba('cambio de plan: ya atendida no se puede volver a resolver', () =>
+  assertFails(updateDoc(doc(admin, 'solicitudes_cambio_plan/cp1'), { status: 'RECHAZADO', motivoRechazo: 'tarde' })));
+await prueba('cambio de plan: el admin rechaza solo con motivo', async () => {
+  await assertFails(updateDoc(doc(admin, 'solicitudes_cambio_plan/cp-baja'), { status: 'RECHAZADO', motivoRechazo: '' }));
+  await assertSucceeds(updateDoc(doc(admin, 'solicitudes_cambio_plan/cp-baja'), { status: 'RECHAZADO', motivoRechazo: 'Tienes un adeudo', reviewedBy: 'admin1', reviewedAt: new Date() }));
+});
+await prueba('cambio de plan: al resolver no se pueden alterar los planes ni los precios pedidos', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'solicitudes_cambio_plan/cp-t'), pedido({ id: 'cp-t' })));
+  await assertFails(updateDoc(doc(admin, 'solicitudes_cambio_plan/cp-t'), { status: 'APROBADO', planNuevo: 'NINO' }));
+  await assertFails(updateDoc(doc(admin, 'solicitudes_cambio_plan/cp-t'), { status: 'APROBADO', socioId: 'cp-otro' }));
+});
+await prueba('cambio de plan: nadie la borra', () => assertFails(deleteDoc(doc(admin, 'solicitudes_cambio_plan/cp1'))));
+await prueba('cambio de plan: el supervisor y el admin aplican el plan nuevo a la membresía', async () => {
+  await assertSucceeds(updateDoc(doc(supervisorConArea, 'membresias/cp-m'), { plan: 'DELUXE', precio: 3500, planAnterior: 'NORMAL', actualizadoEn: new Date() }));
+  await assertFails(updateDoc(doc(cpSocio, 'membresias/cp-m'), { plan: 'DELUXE', precio: 1 }));
+});
+
+// ---------- Torneos: el contador de inscritos ----------
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'usuarios/tq-socio'), { nombre: 'Torneo', rol: 'SOCIO', estado: 'ACTIVO' });
+  await setDoc(doc(db, 'torneos/tq'), { nombre: 'Copa', disciplina: 'Tenis', areaId: '5', cupoMaximo: 2, inscritos: 1 });
+});
+const tqSocio = env.authenticatedContext('tq-socio').firestore();
+await prueba('torneo: el miembro se inscribe (inscripción + contador +1 en la misma operación)', async () => {
+  const lote = writeBatch(tqSocio);
+  lote.set(doc(tqSocio, 'inscripcionesTorneo/tq_tq-socio'), { torneoId: 'tq', usuarioId: 'tq-socio', usuarioNombre: 'Torneo', estado: 'CONFIRMADA' });
+  lote.update(doc(tqSocio, 'torneos/tq'), { inscritos: 2, actualizadoEn: new Date() });
+  await assertSucceeds(lote.commit());
+});
+await prueba('torneo: un miembro NO puede bajar el contador de inscritos', () =>
+  assertFails(updateDoc(doc(tqSocio, 'torneos/tq'), { inscritos: 0, actualizadoEn: new Date() })));
+await prueba('torneo: no puede subir el contador sin inscribirse', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'torneos/tq'), { nombre: 'Copa', disciplina: 'Tenis', areaId: '5', cupoMaximo: 5, inscritos: 1 }));
+  await assertFails(updateDoc(doc(tqSocio, 'torneos/tq'), { inscritos: 2, actualizadoEn: new Date() }));
+});
+await prueba('torneo: no puede subir el contador de 2 en 2 aunque se inscriba', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'torneos/tq'), { nombre: 'Copa', disciplina: 'Tenis', areaId: '5', cupoMaximo: 5, inscritos: 1 }));
+  const lote = writeBatch(tqSocio);
+  lote.set(doc(tqSocio, 'inscripcionesTorneo/tq_tq-socio'), { torneoId: 'tq', usuarioId: 'tq-socio', usuarioNombre: 'Torneo', estado: 'CONFIRMADA' });
+  lote.update(doc(tqSocio, 'torneos/tq'), { inscritos: 3, actualizadoEn: new Date() });
+  await assertFails(lote.commit());
+});
+await prueba('torneo: el personal sí puede corregir el contador', () =>
+  assertSucceeds(updateDoc(doc(admin, 'torneos/tq'), { inscritos: 0, actualizadoEn: new Date() })));
+
 await env.cleanup();
 console.log(fallos === 0 ? '\nTODAS LAS PRUEBAS DE REGLAS PASARON' : `\n${fallos} PRUEBA(S) FALLARON`);
 process.exit(fallos === 0 ? 0 : 1);

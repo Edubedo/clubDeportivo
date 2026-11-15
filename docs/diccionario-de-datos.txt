@@ -557,6 +557,30 @@ PK: id automático. Escribe: administrador. Lee: cada rol según la audiencia; a
          SOCIOS y TODOS; personal lee PERSONAL y TODOS.
 
 
+----------------------------------------------------------------------------------------------------
+4.19  solicitudes_cambio_plan
+----------------------------------------------------------------------------------------------------
+Petición de un miembro (membresía INDIVIDUAL activa) para pasar a otro plan. La resuelve un administrador o supervisor.
+PK : id automático.   FK : socioId -> usuarios ; membresiaId -> membresias.
+Escribe : el miembro (alta) y administrador/supervisor (resolución).   Lee : el dueño y el personal.
+
+  Campo             Tipo     Req  Descripción
+  ----------------- -------- ---- ---------------------------------------------------------------------
+  socioId, socioNombre, membresiaId   String  S   Quién pide y sobre qué membresía.
+  planActual, planNuevo   String  S   NINO | NORMAL | DELUXE (distintos).
+  precioActual, precioNuevo   Number  S   Precios al pedir; al aprobar, precioNuevo se actualiza al vigente.
+  status            String   S    PENDIENTE | APROBADO | RECHAZADO.
+  createdAt         Number   S    Milisegundos.
+  motivoRechazo, reviewedBy, reviewedByNombre, reviewedAt   N   Datos de la resolución (el motivo es obligatorio al rechazar).
+  Al aprobar, la membresía guarda plan, precio, planAnterior, precioAnterior, cambioPlanSolicitudId, cambioPlanEn, cambioPlanPor.
+
+----------------------------------------------------------------------------------------------------
+4.20  correos_enviados   (solo servidor)
+----------------------------------------------------------------------------------------------------
+Constancia de cada correo de membresía que mandan las Cloud Functions. PK = id del evento + tipo (impide mandarlo dos veces).
+Campos: tipo, para, asunto, usuarioId, estado (ENVIADO | ERROR | SIN_CORREO | SIMULADO), error, creadoEn, enviadoEn.
+Las reglas lo niegan a todo cliente; solo lo lee y escribe el servidor.
+
 ====================================================================================================
 5. CATÁLOGO DE VALORES (ENUMERACIONES)
 ====================================================================================================

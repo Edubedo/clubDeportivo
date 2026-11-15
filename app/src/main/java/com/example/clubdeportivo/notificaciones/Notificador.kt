@@ -6,6 +6,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
@@ -23,8 +25,17 @@ object Notificador {
     fun crearCanales(contexto: Context) {
         val manager = NotificationManagerCompat.from(contexto)
         CategoriaNotificacion.entries.forEach { categoria ->
+            manager.deleteNotificationChannel(CategoriaNotificacion.canalIdAntiguo(categoria))
+            manager.deleteNotificationChannel(CategoriaNotificacion.canalIdAntiguoV2(categoria))
             manager.createNotificationChannel(
                 NotificationChannelCompat.Builder(categoria.canalId, categoria.importancia)
+                    .setSound(
+                        Uri.parse("android.resource://${contexto.packageName}/${R.raw.notificacion_club}"),
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
                     .setName(Textos.get(categoria.nombre))
                     .setDescription(Textos.get(categoria.descripcion))
                     .build()

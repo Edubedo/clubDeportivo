@@ -2,6 +2,7 @@ package com.example.clubdeportivo.data
 
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.AuthRepository
+import com.example.clubdeportivo.data.repository.CambioPlanRepository
 import com.example.clubdeportivo.data.repository.FakeRestriccionHorarioRepository
 import com.example.clubdeportivo.data.repository.FirebaseAreaRepository
 import com.example.clubdeportivo.data.repository.FirebaseAuthRepository
@@ -72,4 +73,5 @@ object AppContainer {
     val renovacionRepository: RenovacionRepository = RenovacionRepository(
         gestionMembresiasRepository = gestionMembresiasRepository
     )
+    val cambioPlanRepository: CambioPlanRepository = CambioPlanRepository()
 }

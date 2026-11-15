@@ -40,6 +40,20 @@ reservas de áreas, membresías y cobros, torneos, inventario, personal y avisos
 - Renovar suma un mes, **cobra** (con método de pago) y registra el pago.
 - Una membresía suspendida, vencida o inexistente **no puede reservar** (la app avisa por qué).
 
+## Cambio de plan y renovación (con avisos)
+
+- **Cambio de plan (solo membresías individuales):** el miembro lo pide en *Membresía*: su plan lleva la etiqueta **Tu plan** y
+  cada otro plan trae **Subir a este plan** o **Bajar a este plan** (Niño < Normal < Deluxe). Lo aprueba o rechaza (con motivo) un
+  **administrador o un supervisor** en *Membresías → Cambios de plan*. Al aprobarse el plan cambia de inmediato y el precio nuevo se
+  cobra desde la siguiente renovación. No se puede pedir con la membresía vencida o suspendida, ni con otra solicitud o una
+  renovación en revisión. Paquetes familiares y visitas cambian en recepción.
+- **Avisos al miembro:** cada paso le llega por la app (notificación) y **por correo**: solicitud recibida, aprobada o rechazada,
+  renovación recibida/aprobada/rechazada, membresía suspendida o reactivada y plan cambiado en recepción. Los administradores y
+  supervisores reciben la notificación de cada solicitud nueva.
+- **Correos:** los manda la Cloud Function (`functions/correos.js`, mismo SMTP que el correo de bienvenida; ver
+  `correo-de-bienvenida.md`). Cada envío queda en `correos_enviados` (`ENVIADO`, `ERROR`, `SIN_CORREO`; `SIMULADO` en el
+  emulador o mientras no haya SMTP). Si la cuenta del miembro es interna (por código) se usa el correo de contacto de `miembros`.
+
 ## Reservas: de la solicitud a la confirmación
 
 1. El **miembro** reserva un espacio y la solicitud queda **"En revisión"** (ya ocupa cupo, para que nadie más tome esas horas).

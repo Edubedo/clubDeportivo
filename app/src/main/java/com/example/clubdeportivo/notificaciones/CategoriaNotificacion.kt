@@ -4,6 +4,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esEncargado
+import com.example.clubdeportivo.data.model.esSupervisor
 
 /** Los tres tipos de persona que usan la app; cada uno recibe un conjunto distinto de recordatorios. */
 enum class TipoUsuario {
@@ -13,7 +14,8 @@ enum class TipoUsuario {
 
     companion object {
         fun de(rol: Rol): TipoUsuario = when {
-            rol.esAdministrador() -> ADMINISTRADOR
+            // El supervisor opera todas las áreas y revisa solicitudes igual que un administrador: recibe sus mismos avisos.
+            rol.esAdministrador() || rol.esSupervisor() -> ADMINISTRADOR
             rol.esEncargado() -> ENCARGADO
             else -> CLIENTE
         }
@@ -46,9 +48,13 @@ enum class CategoriaNotificacion(
     TORNEO("notif_cat_torneo", "notif_cat_torneo_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, TipoUsuario.entries.toSet()),
     AVISOS("notif_cat_avisos", "notif_cat_avisos_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, TipoUsuario.entries.toSet());
 
-    val canalId: String get() = "club_${name.lowercase()}"
+    val canalId: String get() = "club_v3_${name.lowercase()}"
 
     companion object {
+        /** Id del canal antiguo (sin sonido explícito); se elimina al crear los nuevos. */
+        fun canalIdAntiguo(c: CategoriaNotificacion) = "club_${c.name.lowercase()}"
+        fun canalIdAntiguoV2(c: CategoriaNotificacion) = "club_v2_${c.name.lowercase()}"
+
         fun de(tipo: TipoUsuario): List<CategoriaNotificacion> = entries.filter { tipo in it.tipos }
     }
 }

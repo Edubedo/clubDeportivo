@@ -56,6 +56,8 @@ class ReglasRecordatoriosTest {
         assertEquals(TipoUsuario.ENCARGADO, TipoUsuario.de(Rol.ADMIN_AREA))
         assertEquals(TipoUsuario.ADMINISTRADOR, TipoUsuario.de(Rol.ADMIN))
         assertEquals(TipoUsuario.ADMINISTRADOR, TipoUsuario.de(Rol.SUPERADMIN))
+        // El supervisor revisa solicitudes de todas las áreas: recibe los avisos de personal, no los de un socio.
+        assertEquals(TipoUsuario.ADMINISTRADOR, TipoUsuario.de(Rol.SUPERVISOR))
     }
 
     // ---- Horas de silencio
@@ -213,5 +215,30 @@ class ReglasRecordatoriosTest {
         val r = ReglasRecordatorios.vencimientos(ms, hoy, a("09:00"), todoNuevo)!!
         assertTrue(r.mensaje.contains("2 membresías") && r.mensaje.contains("1 hoy"))
         assertNotNull(r)
+    }
+
+    // ---- Notificaciones que deja el servidor
+
+    private fun delServidor(id: String) = ReglasRecordatorios.NotificacionDeServidor(id, "Renovación aprobada", "Vigente hasta el 17 de diciembre de 2026.", "membresia")
+
+    @Test
+    fun `las notificaciones del servidor llegan al miembro como Tu membresia y al personal como Solicitudes`() {
+        val miembro = ReglasRecordatorios.deServidor(listOf(delServidor("n1")), TipoUsuario.CLIENTE, todoNuevo)
+        assertEquals(1, miembro.size)
+        assertEquals(CategoriaNotificacion.MEMBRESIA, miembro.single().categoria)
+        assertEquals("Renovación aprobada", miembro.single().titulo)
+        assertEquals("membresia", miembro.single().ruta)
+        val revisor = ReglasRecordatorios.deServidor(listOf(delServidor("n2")), TipoUsuario.ADMINISTRADOR, todoNuevo)
+        assertEquals(CategoriaNotificacion.SOLICITUDES, revisor.single().categoria)
+    }
+
+    @Test
+    fun `una notificacion del servidor ya avisada no se repite y cada una lleva su propia clave`() {
+        val lista = listOf(delServidor("n1"), delServidor("n2"))
+        val soloN2 = ReglasRecordatorios.deServidor(lista, TipoUsuario.CLIENTE) { it != "servidor:n1" }
+        assertEquals(listOf("servidor:n2"), soloN2.flatMap { it.claves })
+        assertTrue(ReglasRecordatorios.deServidor(lista, TipoUsuario.CLIENTE) { false }.isEmpty())
+        // sin ruta, solo abre la app
+        assertNull(ReglasRecordatorios.deServidor(listOf(delServidor("n3").copy(ruta = "")), TipoUsuario.CLIENTE, todoNuevo).single().ruta)
     }
 }
