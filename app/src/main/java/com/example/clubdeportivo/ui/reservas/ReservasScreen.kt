@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.reservas
 
+import com.example.clubdeportivo.util.tr
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -323,15 +324,15 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                             imagen = imagenDeporte(deporte),
                             descripcion = when (deporte.lowercase()) {
                                 "fútbol", "futbol" ->
-                                    "Canchas para entrenamientos y partidos."
+                                    Textos.get("area_desc_futbol")
                                 "básquetbol", "basquetbol", "basquet" ->
-                                    "Espacios para practicar básquetbol."
+                                    Textos.get("area_desc_basquet")
                                 "natación", "natacion" ->
-                                    "Albercas para entrenar y nadar."
+                                    Textos.get("area_desc_natacion")
                                 "tenis" ->
-                                    "Canchas para entrenamientos y partidos."
+                                    Textos.get("area_desc_tenis")
                                 else ->
-                                    "Conoce nuestras instalaciones deportivas."
+                                    Textos.get("area_desc_otro")
                             },
                             onVerDetalle = {
                                 areaDetalle = ui.areas.firstOrNull { it.tipo == deporte }
@@ -520,7 +521,7 @@ private fun TarjetaOpcion(
             if (imagen != null) {
                 Image(
                     painter = painterResource(id = imagen),
-                    contentDescription = "Imagen de $titulo",
+                    contentDescription = tr("img_de", titulo),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(95.dp)
@@ -569,7 +570,7 @@ private fun TarjetaOpcion(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Ver detalles",
+                            text = tr("ver_detalles"),
                             color = Marca,
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -645,7 +646,7 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 val hasta = ui.hasta
                 Text(
                     text = if (desde != null && hasta != null) {
-                        "%02d:00 → %02d:00 (%dh)".format(desde, hasta + 1, ui.horasElegidas)
+                        String.format(java.util.Locale.ROOT, "%02d:00 → %02d:00 (%dh)", desde, hasta + 1, ui.horasElegidas)
                     } else {
                         Textos.get("tap_the_hours_you_want_to")
                     },
@@ -906,7 +907,7 @@ private fun DialogoListaEspera(area: Area, fecha: String, hora: Int, onConfirmar
                 Text(
                     Textos.get(
                         "espera_mensaje_dialogo",
-                        Deportes.titulo(area.tipo, area.nombre), fecha, "%02d:00".format(hora), "%02d:00".format(hora + 1),
+                        Deportes.titulo(area.tipo, area.nombre), fecha, String.format(java.util.Locale.ROOT, "%02d:00", hora), String.format(java.util.Locale.ROOT, "%02d:00", hora + 1),
                         Catalogos.MINUTOS_PRIORIDAD_LISTA_ESPERA
                     ),
                     style = MaterialTheme.typography.bodyMedium,

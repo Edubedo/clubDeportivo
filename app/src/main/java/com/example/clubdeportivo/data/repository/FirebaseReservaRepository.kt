@@ -10,6 +10,7 @@ import com.example.clubdeportivo.util.ReglasReserva
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.tasks.await
 import com.example.clubdeportivo.util.Textos
 
@@ -36,6 +37,9 @@ private fun DocumentSnapshot.toReserva(): Reserva? {
         deporte = getString("deporte") ?: ""
     )
 }
+
+/** Otra persona se quedó con el último lugar al mismo tiempo: la reserva recién creada se canceló sola. */
+class CupoAgotadoException(mensaje: String) : IllegalStateException(mensaje)
 
 class FirebaseReservaRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -106,6 +110,7 @@ class FirebaseReservaRepository(
             "actualizadoEn" to FieldValue.serverTimestamp()
         )
         val documento = reservas.add(datos).await()
+        verificarCupoTrasCrear(documento.id, areaId, (area.getLong("capacidad") ?: 0L).toInt(), fecha, horaInicio, horaFin, carril)
         val nuevaReserva = Reserva(
             documento.id, usuarioId, areaId, fecha, horaInicio, horaFin, estadoInicial, esExterno, personas,
             usuarioNombre = persona.getString("nombre") ?: "",
@@ -119,6 +124,62 @@ class FirebaseReservaRepository(
         if (estadoInicial == EstadoReserva.CONFIRMADA) asignarMaterial(nuevaReserva)
 
         return nuevaReserva
+    }
+
+    /**
+     * Firestore no permite leer-y-escribir el cupo en una sola transacción (no hay consultas dentro de ellas), así que dos
+     * personas que reservan la última plaza a la vez podían pasarse del cupo. Tras crear la reserva se vuelve a leer el
+     * servidor y se ordenan las reservas del horario por orden de llegada (marca de tiempo del servidor y, de empate, el id):
+     * si la nuestra ya no cabe —o su carril lo ganó otra persona antes—, se cancela y se avisa. Las dos apps llegan a la
+     * misma conclusión, así que gana solo la primera.
+     */
+    private suspend fun verificarCupoTrasCrear(
+        reservaId: String, areaId: String, capacidad: Int, fecha: String,
+        horaInicio: String, horaFin: String, carril: Int?
+    ) {
+        val inicio = ReglasReserva.aMinutos(horaInicio) ?: return
+        val fin = ReglasReserva.aMinutos(horaFin) ?: return
+        val delArea = try {
+            reservas.whereEqualTo("areaId", areaId).get(Source.SERVER).await().documents
+        } catch (e: Exception) {
+            return // sin conexión al servidor no se puede comprobar; la reserva queda como está
+        }
+        class Llegada(val id: String, val llegada: Long, val reserva: Reserva)
+        val orden = delArea
+            .filter { it.getString("fecha") == fecha }
+            .mapNotNull { doc -> doc.toReserva()?.let { Llegada(doc.id, doc.getTimestamp("creadoEn")?.toDate()?.time ?: Long.MAX_VALUE, it) } }
+            .filter { ReglasReserva.esVigente(it.reserva) }
+            .filter { llegada ->
+                val i = ReglasReserva.aMinutos(llegada.reserva.horaInicio) ?: return@filter false
+                val f = ReglasReserva.aMinutos(llegada.reserva.horaFin) ?: return@filter false
+                i < fin && inicio < f
+            }
+            .sortedWith(compareBy({ it.llegada }, { it.id }))
+        val posicion = orden.indexOfFirst { it.id == reservaId }
+        if (posicion < 0) return
+        val anteriores = orden.take(posicion)
+
+        var sinCupo = false
+        for (hora in (inicio / 60) until (fin / 60)) {
+            val h0 = hora * 60
+            val ocupadas = (anteriores + orden[posicion]).filter {
+                val i = ReglasReserva.aMinutos(it.reserva.horaInicio) ?: return@filter false
+                val f = ReglasReserva.aMinutos(it.reserva.horaFin) ?: return@filter false
+                i < h0 + 60 && h0 < f
+            }.sumOf { it.reserva.personas }
+            if (ocupadas > capacidad) { sinCupo = true; break }
+        }
+        val carrilGanado = carril != null && anteriores.any { it.reserva.carril == carril }
+        if (!sinCupo && !carrilGanado) return
+
+        reservas.document(reservaId).update(
+            mapOf(
+                "estado" to EstadoReserva.CANCELADA.name,
+                "canceladaEn" to FieldValue.serverTimestamp(),
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        ).await()
+        throw CupoAgotadoException(Textos.get("espera_cupo_lleno_ahora"))
     }
 
     /** Aparta el material del área si la reserva tiene al menos [Catalogos.MATERIAL_AUTOMATICO_ANTICIPACION_MINIMA_HORAS] de anticipación. */

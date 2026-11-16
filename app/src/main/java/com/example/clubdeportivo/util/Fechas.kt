@@ -27,8 +27,8 @@ object Fechas {
     private const val PATRON_FECHA_HORA = "yyyy-MM-dd HH:mm"
     private const val PATRON_FECHA = "yyyy-MM-dd"
 
-    private fun formatoFechaHora() = SimpleDateFormat(PATRON_FECHA_HORA, Locale.getDefault())
-    private fun formatoFecha() = SimpleDateFormat(PATRON_FECHA, Locale.getDefault())
+    private fun formatoFechaHora() = SimpleDateFormat(PATRON_FECHA_HORA, Locale.ROOT)
+    private fun formatoFecha() = SimpleDateFormat(PATRON_FECHA, Locale.ROOT)
 
     fun combinar(fecha: String, hora: String): Date =
         formatoFechaHora().parse("$fecha $hora") ?: Date()
@@ -48,8 +48,24 @@ object Fechas {
     /** Fecha de vigencia con día y mes explícitos, sin etiquetas relativas como "Hoy". */
     fun fechaVigencia(fecha: String): String {
         val base = runCatching { formatoFecha().parse(fecha) }.getOrNull() ?: return fecha
-        return SimpleDateFormat("EEE'.' d MMM", Locale.forLanguageTag("es-MX")).format(base)
+        val cal = Calendar.getInstance().apply { time = base }
+        val dia = NOMBRES_DIA[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val mes = NOMBRES_MES[cal.get(Calendar.MONTH)]
+        val numero = cal.get(Calendar.DAY_OF_MONTH)
+        return if (ingles) "$dia $mes $numero" else "$dia $numero $mes"
     }
+
+    // --- Selector de fecha de Material: trabaja con milisegundos a medianoche UTC (sin java.time, que exige API 26). ---
+    private fun formatoFechaUtc() = SimpleDateFormat(PATRON_FECHA, Locale.ROOT).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+
+    /** "yyyy-MM-dd" a milisegundos de ese día a las 00:00 UTC; null si el texto no es una fecha. */
+    fun fechaAMillisUtc(fecha: String): Long? = runCatching { formatoFechaUtc().parse(fecha)?.time }.getOrNull()
+
+    /** Milisegundos (00:00 UTC) devueltos por el selector de fecha a "yyyy-MM-dd". */
+    fun millisUtcAFecha(millis: Long): String = formatoFechaUtc().format(Date(millis))
+
+    /** 00:00 UTC del día siguiente al de hoy (fecha local). */
+    fun mananaEnMillisUtc(): Long = fechaAMillisUtc(sumarDias(1)) ?: 0L
 
     /** [fecha] más [meses] meses (31 de enero + 1 mes = 28 o 29 de febrero). */
     fun sumarMeses(fecha: String, meses: Int): String {

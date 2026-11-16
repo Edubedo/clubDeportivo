@@ -52,8 +52,6 @@ class FirebaseGestionMembresiasRepository(
     private val registroCodigos = db.collection("registroCodigos")
     private val pagos = db.collection("pagos")
 
-    private suspend fun crearCuenta(): CuentaDeAcceso = CuentasDeAcceso.crear(miembros)
-
     private fun authSecundaria(): FirebaseAuth = CuentasDeAcceso.auth()
 
     override suspend fun obtenerTodas(): List<MembresiaDetalle> {
@@ -131,7 +129,7 @@ class FirebaseGestionMembresiasRepository(
         metodoPago: MetodoPago,
         comprobanteUrl: String?
     ): MembresiaDetalle {
-        val cuentas = personas.map { crearCuenta() }
+        val cuentas = CuentasDeAcceso.crearVarias(miembros, personas.size)
         val hoy = Fechas.hoy()
         val membresiaId = membresias.document().id
         val rol = ReglasMembresia.rolDeAcceso(tipo)
@@ -179,7 +177,13 @@ class FirebaseGestionMembresiasRepository(
                 hoy = hoy
             )
         )
-        batch.commit().await()
+        try {
+            batch.commit().await()
+        } catch (e: Exception) {
+            // El alta no se guardó: se borran las cuentas internas para no dejarlas huérfanas.
+            CuentasDeAcceso.descartar(cuentas)
+            throw e
+        }
         CorreoBienvenida.enviarEnSegundoPlano(registradas)
 
         val membresia = membresias.document(membresiaId).get().await().toMembresia() ?: error(Textos.get("the_created_membership_could_not_be"))
@@ -229,7 +233,8 @@ class FirebaseGestionMembresiasRepository(
         val rol = ReglasMembresia.rolDeAcceso(tipo)
         val hoy = Fechas.hoy()
 
-        val nuevas = personas.filter { it.codigo == null }.map { it to crearCuenta() }
+        val porCrear = personas.filter { it.codigo == null }
+        val nuevas = porCrear.zip(CuentasDeAcceso.crearVarias(miembros, porCrear.size))
 
         val batch = db.batch()
         val cambiosMembresia = mutableMapOf<String, Any>(
@@ -283,7 +288,12 @@ class FirebaseGestionMembresiasRepository(
             batch.set(usuarios.document(cuenta.uid), datosUsuarioDeMiembro(persona, cuenta.codigo, rol.name, hoy))
             batch.set(registroCodigos.document(cuenta.codigo), datosRegistro(cuenta.uid))
         }
-        batch.commit().await()
+        try {
+            batch.commit().await()
+        } catch (e: Exception) {
+            CuentasDeAcceso.descartar(nuevas.map { it.second })
+            throw e
+        }
         CorreoBienvenida.enviarEnSegundoPlano(
             nuevas.map { (persona, cuenta) ->
                 MiembroClub(cuenta.codigo, persona.nombre.trim(), persona.telefono.trim(), persona.correo.trim(), membresiaId, persona.parentesco.ifBlank { "Integrante" }, cuenta.uid)
@@ -409,7 +419,7 @@ class FirebaseGestionMembresiasRepository(
         db.runTransaction { transaction ->
             val solicitud = transaction.get(solicitudRef)
             check(solicitud.getString("status") == "PENDIENTE") {
-                "La solicitud ya fue atendida."
+                Textos.get("err_solicitud_atendida")
             }
             val documento = transaction.get(membresiaRef)
             val membresia = documento.toMembresia()
@@ -517,7 +527,7 @@ class FirebaseGestionMembresiasRepository(
         if (cuentaAnterior.isNotBlank()) {
             batch.update(
                 usuarios.document(cuentaAnterior),
-                mapOf("estado" to "INACTIVO", "actualizadoEn" to FieldValue.serverTimestamp())
+                mapOf("estado" to "INACTIVO", "accesoRevocado" to true, "actualizadoEn" to FieldValue.serverTimestamp())
             )
         }
         batch.commit().await()

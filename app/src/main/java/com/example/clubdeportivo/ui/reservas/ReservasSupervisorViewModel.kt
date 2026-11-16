@@ -1,6 +1,7 @@
 
 package com.example.clubdeportivo.ui.reservas
 
+import com.example.clubdeportivo.util.Textos
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -38,7 +39,7 @@ class ReservasSupervisorViewModel : ViewModel() {
 
     fun cargarReservas() {
         if (!esSupervisor()) {
-            _error.value = "No tienes permiso para consultar estas reservas."
+            _error.value = Textos.get("supvm_sin_permiso")
             return
         }
 
@@ -54,7 +55,7 @@ class ReservasSupervisorViewModel : ViewModel() {
                             .thenBy { it.horaInicio }
                     )
             } catch (e: Exception) {
-                _error.value = "No se pudieron cargar las reservas."
+                _error.value = Textos.get("supvm_no_cargo")
             } finally {
                 _cargando.value = false
             }
@@ -74,12 +75,12 @@ class ReservasSupervisorViewModel : ViewModel() {
                     .firstOrNull { it.id == reservaId }
 
                 if (reserva?.estado != EstadoReserva.PENDIENTE_APROBACION) {
-                    _error.value = "La reserva ya no está pendiente."
+                    _error.value = Textos.get("supvm_ya_no_pendiente")
                     return@launch
                 }
 
                 repository.aprobarReserva(reservaId)
-                _mensaje.value = "Reserva aprobada correctamente."
+                _mensaje.value = Textos.get("supvm_aprobada")
 
                 _reservas.value = repository
                     .obtenerReservasVigentes()
@@ -95,7 +96,7 @@ class ReservasSupervisorViewModel : ViewModel() {
                     e
                 )
 
-                _error.value = "Error al aprobar: ${e.message}"
+                _error.value = Textos.get("supvm_error_aprobar", e.message.orEmpty())
             } finally {
                 _cargando.value = false
             }
@@ -106,7 +107,7 @@ class ReservasSupervisorViewModel : ViewModel() {
         if (!esSupervisor()) return
 
         if (motivo.isBlank()) {
-            _error.value = "Debes escribir un motivo de rechazo."
+            _error.value = Textos.get("supvm_motivo_obligatorio")
             return
         }
 
@@ -120,7 +121,7 @@ class ReservasSupervisorViewModel : ViewModel() {
                     .firstOrNull { it.id == reservaId }
 
                 if (reserva?.estado != EstadoReserva.PENDIENTE_APROBACION) {
-                    _error.value = "La reserva ya no está pendiente."
+                    _error.value = Textos.get("supvm_ya_no_pendiente")
                     return@launch
                 }
 
@@ -129,7 +130,7 @@ class ReservasSupervisorViewModel : ViewModel() {
                     motivo = motivo.trim()
                 )
 
-                _mensaje.value = "Reserva rechazada correctamente."
+                _mensaje.value = Textos.get("supvm_rechazada")
 
                 _reservas.value = repository
                     .obtenerReservasVigentes()
@@ -145,7 +146,7 @@ class ReservasSupervisorViewModel : ViewModel() {
                     e
                 )
 
-                _error.value = "Error al rechazar: ${e.message}"
+                _error.value = Textos.get("supvm_error_rechazar", e.message.orEmpty())
             } finally {
                 _cargando.value = false
             }

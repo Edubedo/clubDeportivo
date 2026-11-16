@@ -139,7 +139,9 @@ object MotorRecordatorios {
         // De noche se calcula todo, pero no se muestra ni se marca como avisado: sale en la primera revisión de la mañana.
         if (silencio) return
         recordatorios.forEach { recordatorio ->
-            Notificador.mostrar(contexto, recordatorio)
+            // Sin permiso (o con las notificaciones apagadas) nada se muestra: no se marca como avisado ni como leído,
+            // así el aviso sale cuando la persona las active.
+            if (!Notificador.mostrar(contexto, recordatorio)) return@forEach
             registro.marcarAvisado(recordatorio.claves, hoy)
             // Las del servidor se marcan como leídas para que no vuelvan a aparecer (la persona solo puede cambiar `leida`).
             recordatorio.claves.filter { it.startsWith("servidor:") }.forEach { clave ->

@@ -1,6 +1,7 @@
 
 package com.example.clubdeportivo.ui.supervisor
 
+import com.example.clubdeportivo.util.tr
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -42,47 +43,47 @@ fun SupervisorHomeScreen(
     ) {
 
         Text(
-            text = "Hola, $nombre",
+            text = tr("sup_home_hola", nombre),
             style = MaterialTheme.typography.headlineSmall,
             color = TextoPrincipal
         )
 
         Text(
-            text = "Panel de supervisión",
+            text = tr("sup_home_panel"),
             style = MaterialTheme.typography.titleMedium,
             color = TextoSecundario
         )
 
         Text(
-            text = "Gestiona las operaciones de todas las áreas del club.",
+            text = tr("sup_home_gestiona"),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoSecundario
         )
 
         TarjetaSupervisor(
-            titulo = "Reservas",
-            descripcion = "Consulta, aprueba y rechaza reservas de todas las áreas.",
+            titulo = tr("nav_reservas"),
+            descripcion = tr("sup_card_reservas_desc"),
             icono = Icons.Filled.CalendarMonth,
             onClick = onReservas
         )
 
         TarjetaSupervisor(
-            titulo = "Áreas deportivas",
-            descripcion = "Consulta horarios, capacidad y estado de las instalaciones.",
+            titulo = tr("sup_card_areas"),
+            descripcion = tr("sup_card_areas_desc"),
             icono = Icons.Filled.Place,
             onClick = onAreas
         )
 
         TarjetaSupervisor(
-            titulo = "Inventario",
-            descripcion = "Consulta y ajusta las existencias de todas las áreas.",
+            titulo = tr("sup_card_inventario"),
+            descripcion = tr("sup_card_inventario_desc"),
             icono = Icons.Filled.Inventory2,
             onClick = onInventario
         )
 
         TarjetaSupervisor(
-            titulo = "Registrar miembros",
-            descripcion = "Registra nuevos miembros del club.",
+            titulo = tr("sup_card_miembros"),
+            descripcion = tr("sup_card_miembros_desc"),
             icono = Icons.Filled.Groups,
             onClick = onMiembros
         )

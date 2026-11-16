@@ -25,6 +25,10 @@ service cloud.firestore {
     function esAdmin() {
       return conPerfil() && activo() && rolActual() in ['SUPERADMIN', 'ADMIN'];
     }
+    // Solo el superadministrador toca a otro superadministrador: un ADMIN no puede cambiarle el rol ni borrarlo.
+    function esSuperadmin() {
+      return conPerfil() && activo() && rolActual() == 'SUPERADMIN';
+    }
     // Supervisor: opera las reservas, el inventario y las áreas de TODO el club y registra miembros (no es de un área).
     function esSupervisor() {
       return conPerfil() && activo() && rolActual() == 'SUPERVISOR';
@@ -91,7 +95,7 @@ service cloud.firestore {
                         && request.resource.data.get('estado', 'ACTIVO') == 'ACTIVO'
                         && request.resource.data.get('codigoMiembro', '') != ''
                         && reclamoValido(request.resource.data.codigoMiembro, request.resource.data.rol))
-                    || esAdmin()
+                    || (esAdmin() && (esSuperadmin() || request.resource.data.rol != 'SUPERADMIN'))
                     || (esPersonal() && esDeCliente(request.resource.data.rol))
                     // Perfil de acceso de un familiar que el titular acaba de dar de alta (mismo lote que su miembro).
                     || (request.resource.data.rol == 'SOCIO'
@@ -103,7 +107,8 @@ service cloud.firestore {
 
       // Cada quien edita solo su nombre, teléfono y foto; nunca su rol ni su estado. El personal edita
       // clientes; solo un administrador toca al personal.
-      allow update: if esAdmin()
+      allow update: if esSuperadmin()
+                    || (esAdmin() && resource.data.get('rol', '') != 'SUPERADMIN' && request.resource.data.rol != 'SUPERADMIN')
                     || (esPersonal() && esDeCliente(resource.data.rol) && esDeCliente(request.resource.data.rol))
                     || (firmado() && request.auth.uid == uid
                         && resource.data.get('rol', '') == 'SOCIO'
@@ -115,7 +120,7 @@ service cloud.firestore {
                     || (firmado() && request.auth.uid == uid
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['nombre', 'telefono', 'fotoUrl', 'actualizadoEn']));
-      allow delete: if esAdmin();
+      allow delete: if esSuperadmin() || (esAdmin() && resource.data.get('rol', '') != 'SUPERADMIN');
     }
 
     match /miembros/{codigo} {
@@ -203,7 +208,7 @@ service cloud.firestore {
     function cambioDePlanValido(datos) {
       let membresia = get(/databases/$(database)/documents/membresias/$(datos.membresiaId)).data;
       return exists(/databases/$(database)/documents/membresias/$(datos.membresiaId))
-          && membresia.get('usuarioId', '') == request.auth.uid
+          && (membresia.get('usuarioId', '') == request.auth.uid || esTitularDe(datos.membresiaId))
           && membresia.get('tipo', '') == 'INDIVIDUAL'
           && membresia.get('estado', '') == 'ACTIVA'
           && membresia.get('plan', '') == datos.planActual
@@ -334,7 +339,9 @@ service cloud.firestore {
                         && resource.data.get('deporte', '') == get(rutaPerfil()).data.get('areaTrabajo', ''))
                     || (firmado() && resource.data.usuarioId == request.auth.uid
                         && request.resource.data.usuarioId == resource.data.usuarioId
-                        && request.resource.data.estado == 'CANCELADA');
+                        && request.resource.data.estado == 'CANCELADA'
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['estado', 'canceladaEn', 'sinPenalizacion', 'actualizadoEn']));
       allow delete: if esPersonal();
     }
 
@@ -427,13 +434,19 @@ service cloud.firestore {
     }
 
     // ---------- Torneos ----------
+    // Inscribirse a un torneo: personal, visitantes con perfil activo o socios con la membresía activa.
+    function puedeInscribirse() {
+      return conPerfil() && activo()
+          && (rolActual() == 'VISITANTE_EXTERNO' || membresiaActivaDeCuenta());
+    }
+
     match /torneos/{id} {
       allow read: if firmado();
       allow create, delete: if esPersonal();
       // Inscribirse sube torneos.inscritos de uno en uno (sin pasar del cupo) y en la misma operación crea la inscripción
       // de quien lo hace (existsAfter); bajar el contador o cualquier otro cambio es del personal.
       allow update: if esPersonal()
-                    || (firmado()
+                    || (puedeInscribirse()
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['inscritos', 'actualizadoEn'])
                         && request.resource.data.inscritos == resource.data.get('inscritos', 0) + 1
                         && request.resource.data.inscritos <= resource.data.cupoMaximo
@@ -445,7 +458,7 @@ service cloud.firestore {
       // Se leen todas para contar los inscritos de cada torneo.
       allow read: if firmado();
       allow create: if esPersonal()
-                    || (firmado() && request.resource.data.usuarioId == request.auth.uid
+                    || (puedeInscribirse() && request.resource.data.usuarioId == request.auth.uid
                         && id == request.resource.data.torneoId + '_' + request.auth.uid);
       allow update, delete: if esPersonal();
     }

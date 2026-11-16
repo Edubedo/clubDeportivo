@@ -146,7 +146,7 @@ fun LoginScreen(
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.logo_club),
-                        contentDescription = "Logo Athletic Club",
+                        contentDescription = tr("logo_club_desc"),
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(12.dp)),

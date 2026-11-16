@@ -103,9 +103,6 @@ import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneOffset
 import com.example.clubdeportivo.util.Textos
 import com.example.clubdeportivo.data.model.etiquetaArea
 import com.example.clubdeportivo.data.model.etiquetaDeporte
@@ -396,17 +393,11 @@ private fun TorneoCardSocio(torneo: Torneo, inscrito: Boolean, onInscribirse: ()
 }
 
 
-private fun manianaEnMillis(): Long =
-    LocalDate.now().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+private fun manianaEnMillis(): Long = Fechas.mananaEnMillisUtc()
 
-private fun fechaAMillis(fecha: String): Long? = try {
-    LocalDate.parse(fecha).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-} catch (e: Exception) {
-    null
-}
+private fun fechaAMillis(fecha: String): Long? = Fechas.fechaAMillisUtc(fecha)
 
-private fun millisAFecha(millis: Long): String =
-    Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString()
+private fun millisAFecha(millis: Long): String = Fechas.millisUtcAFecha(millis)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -679,7 +670,7 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
                                 horaElegida = nuevaHora
                                 if (minutoElegido !in minutosPara(nuevaHora)) minutoElegido = 0
                             },
-                            formatear = { "%02d".format(it) },
+                            formatear = { String.format(java.util.Locale.ROOT, "%02d", it) },
                             modifier = Modifier.weight(1f)
                         )
                         Text(
@@ -693,7 +684,7 @@ private fun CampoHora(hora: String, onHoraSeleccionada: (String) -> Unit) {
                                 valores = minutosPara(horaElegida),
                                 valorSeleccionado = minutoElegido,
                                 onValorSeleccionado = { minutoElegido = it },
-                                formatear = { "%02d".format(it) },
+                                formatear = { String.format(java.util.Locale.ROOT, "%02d", it) },
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -786,7 +777,7 @@ private fun horaAPartes(hora: String): Pair<Int, Int> {
     return horaValor to minutoValor
 }
 
-private fun partesAHora(hora: Int, minuto: Int): String = "%02d:%02d".format(hora, minuto)
+private fun partesAHora(hora: Int, minuto: Int): String = String.format(java.util.Locale.ROOT, "%02d:%02d", hora, minuto)
 
 @Composable
 private fun DropdownSeleccionable(

@@ -21,7 +21,7 @@ object ReglasListaEspera {
 
     fun idDe(areaId: String, fecha: String, hora: Int, usuarioId: String) = "${areaId}_${fecha}_${hora}_$usuarioId"
 
-    fun textoHora(hora: Int) = "%02d:00".format(hora)
+    fun textoHora(hora: Int) = String.format(java.util.Locale.ROOT, "%02d:00", hora)
 
     /** Hasta cuándo se le guarda el lugar a quien ya fue avisado; null si todavía no le toca. */
     fun limiteMillis(entrada: EntradaEspera): Long? =

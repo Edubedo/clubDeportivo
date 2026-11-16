@@ -83,7 +83,12 @@ class FirebaseFamiliaRepository(
             membresias.document(membresia.id),
             mapOf("totalPersonas" to (total + 1).toLong(), "actualizadoEn" to FieldValue.serverTimestamp())
         )
-        lote.commit().await()
+        try {
+            lote.commit().await()
+        } catch (e: Exception) {
+            CuentasDeAcceso.descartar(listOf(cuenta))
+            throw e
+        }
 
         val nuevo = MiembroClub(cuenta.codigo, persona.nombre.trim(), persona.telefono.trim(), persona.correo.trim(), membresia.id, parentesco, cuenta.uid)
         CorreoBienvenida.enviarEnSegundoPlano(listOf(nuevo))
