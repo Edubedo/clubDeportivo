@@ -50,7 +50,12 @@ object CorreoBienvenida {
         }
         return try {
             conexion.outputStream.use { it.write(cuerpo.toByteArray(Charsets.UTF_8)) }
-            conexion.responseCode in 200..299
+            val codigoHttp = conexion.responseCode
+            if (codigoHttp !in 200..299) {
+                val detalle = runCatching { conexion.errorStream?.bufferedReader()?.use { it.readText() } }.getOrNull()
+                Log.w("CorreoBienvenida", "Resend respondió $codigoHttp para $correo: $detalle")
+            }
+            codigoHttp in 200..299
         } finally {
             conexion.disconnect()
         }
