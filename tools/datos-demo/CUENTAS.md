@@ -1,6 +1,6 @@
-# Cuentas de prueba (SOLO emuladores locales)
+# Cuentas de prueba (emulador local + Firebase real)
 
-Estas cuentas existen únicamente en el emulador de Firebase Authentication/Firestore local; **no existen en el Firebase real**.
+Las 8 cuentas principales (personal + Mariana y Diego) existen también en el Firebase real (creadas el 2026-11-16 con `sembrar-cuentas-reales.mjs`, sin datos demo). Los miembros de relleno y los datos demo solo existen en el emulador.
 Se recrean con `node tools/datos-demo/sembrar-demo.mjs`. Inicio de sesión: correo + contraseña.
 
 | Rol | Nombre | Usuario (correo) | Contraseña | Notas |
