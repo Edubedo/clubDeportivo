@@ -11,12 +11,14 @@ import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Usuario
 import com.example.clubdeportivo.data.repository.FotoPerfilRepository
 import com.example.clubdeportivo.data.repository.UsuarioRepository
+import com.example.clubdeportivo.notificaciones.GestorTokenFCM
 import com.example.clubdeportivo.util.comprimirFotoPerfil
 import com.example.clubdeportivo.util.Resultado
 import com.example.clubdeportivo.util.Textos
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 class PerfilViewModel(
     private val usuarioRepository: UsuarioRepository =
@@ -139,7 +141,14 @@ class PerfilViewModel(
     }
 
     fun cerrarSesion() {
-        AppContainer.authRepository.cerrarSesion()
-        SesionManager.cerrarSesion()
+        val uid = SesionManager.usuarioActual?.id
+        viewModelScope.launch {
+            if (uid != null) {
+                runCatching { withTimeout(3_000L) { GestorTokenFCM.eliminar(uid) } }
+                    .onFailure { android.util.Log.e("PerfilViewModel", "No se pudo desvincular FCM de $uid", it) }
+            }
+            AppContainer.authRepository.cerrarSesion()
+            SesionManager.cerrarSesion()
+        }
     }
 }

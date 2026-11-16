@@ -14,8 +14,11 @@ import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.notificaciones.DestinatarioNotificacion
 import com.example.clubdeportivo.data.notificaciones.Notificacion
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import com.example.clubdeportivo.util.Textos
 
 /**
@@ -29,6 +32,8 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
 
     private var todos by mutableStateOf<List<Notificacion>>(emptyList())
     private var leidas by mutableStateOf<Set<String>>(emptySet())
+    private var listenerNotificaciones: ListenerRegistration? = null
+    private var uidEscuchado: String? = null
 
     var cargando by mutableStateOf(false)
         private set
@@ -45,10 +50,14 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
         get() {
             val yo = usuario ?: return emptyList()
             return todos.filter { aviso ->
-                aviso.autorId != yo.id && if (esPersonal) {
-                    aviso.destinatario != DestinatarioNotificacion.SOCIOS
+                if (aviso.esInterna) {
+                    aviso.usuarioId == yo.id
                 } else {
-                    aviso.destinatario != DestinatarioNotificacion.EMPLEADOS
+                    aviso.autorId != yo.id && if (esPersonal) {
+                        aviso.destinatario != DestinatarioNotificacion.SOCIOS
+                    } else {
+                        aviso.destinatario != DestinatarioNotificacion.EMPLEADOS
+                    }
                 }
             }
         }
@@ -65,16 +74,33 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
     fun cargar() {
         val yo = usuario
         if (yo == null) {
+            listenerNotificaciones?.remove()
+            listenerNotificaciones = null
+            uidEscuchado = null
             todos = emptyList()
             leidas = emptySet()
+            cargando = false
+            mensaje = null
             return
         }
+        if (uidEscuchado != yo.id) {
+            listenerNotificaciones?.remove()
+            listenerNotificaciones = null
+            uidEscuchado = yo.id
+            todos = emptyList()
+            leidas = emptySet()
+            mensaje = null
+        }
         leidas = preferencias.getStringSet(claveLeidas(yo.id), emptySet()).orEmpty().toSet()
+        escucharNotificaciones(yo.id)
         viewModelScope.launch {
             cargando = true
             try {
-                todos = repositorio.obtener(esPersonal)
+                val avisosPublicos = repositorio.obtener(esPersonal)
+                if (usuario?.id != yo.id) return@launch
+                todos = (avisosPublicos + todos.filter { it.esInterna }).sortedByDescending { it.fechaMillis }
             } catch (e: Exception) {
+                if (usuario?.id != yo.id) return@launch
                 Log.e(TAG, "No se pudieron cargar los avisos para ${yo.id} (personal=$esPersonal)", e)
                 mensaje = when ((e as? FirebaseFirestoreException)?.code) {
                     FirebaseFirestoreException.Code.PERMISSION_DENIED ->
@@ -86,22 +112,104 @@ class AvisosViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
                     else -> Textos.get("the_notices_could_not_be_loaded")
                 }
             } finally {
-                cargando = false
+                if (usuario?.id == yo.id) cargando = false
             }
         }
+    }
+
+    private fun escucharNotificaciones(uid: String) {
+        listenerNotificaciones?.remove()
+        listenerNotificaciones = FirebaseFirestore.getInstance().collection("notificaciones")
+            .whereEqualTo("usuarioId", uid)
+            .limit(100)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    if (usuario?.id != uid) return@addSnapshotListener
+                    Log.e(TAG, "No se pudieron escuchar las notificaciones para $uid", error)
+                    if ((error as? FirebaseFirestoreException)?.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                        mensaje = Textos.get("notices_permission_denied")
+                    }
+                    return@addSnapshotListener
+                }
+                if (usuario?.id != uid || snapshot == null) return@addSnapshotListener
+                val internas = snapshot.documents.mapNotNull { documento ->
+                    val titulo = documento.getString("titulo") ?: return@mapNotNull null
+                    Notificacion(
+                        id = "interna:${documento.id}",
+                        titulo = titulo,
+                        mensaje = documento.getString("mensaje").orEmpty(),
+                        destinatario = if (esPersonal) DestinatarioNotificacion.EMPLEADOS else DestinatarioNotificacion.SOCIOS,
+                        fechaMillis = documento.getLong("createdAt") ?: 0L,
+                        usuarioId = uid,
+                        tipo = documento.getString("tipo").orEmpty(),
+                        leida = documento.getBoolean("leida") == true,
+                        esInterna = true
+                    )
+                }
+                todos = (todos.filterNot { it.esInterna } + internas).sortedByDescending { it.fechaMillis }
+                leidas = preferencias.getStringSet(claveLeidas(uid), emptySet()).orEmpty().toSet() +
+                    internas.filter { it.leida }.map { it.id }
+            }
+    }
+
+    override fun onCleared() {
+        listenerNotificaciones?.remove()
+        super.onCleared()
     }
 
     fun marcarLeido(id: String) {
         val yo = usuario ?: return
         if (id in leidas) return
         leidas = leidas + id
-        preferencias.edit().putStringSet(claveLeidas(yo.id), leidas).apply()
+        val aviso = todos.firstOrNull { it.id == id }
+        if (aviso?.esInterna == true) {
+            viewModelScope.launch {
+                try {
+                    FirebaseFirestore.getInstance().collection("notificaciones")
+                        .document(id.removePrefix("interna:"))
+                        .update(mapOf("leida" to true, "leidaEn" to System.currentTimeMillis())).await()
+                    todos = todos.map { if (it.id == id) it.copy(leida = true) else it }
+                } catch (e: Exception) {
+                    leidas = leidas - id
+                    Log.e(TAG, "No se pudo marcar como leída la notificación $id para ${yo.id}", e)
+                    mensaje = Textos.get("the_change_could_not_be_saved")
+                }
+            }
+        } else {
+            preferencias.edit().putStringSet(claveLeidas(yo.id), leidas - todos.filter { it.esInterna }.map { it.id }.toSet()).apply()
+        }
     }
 
     fun marcarTodosLeidos() {
         val yo = usuario ?: return
-        leidas = leidas + recibidos.map { it.id }
-        preferencias.edit().putStringSet(claveLeidas(yo.id), leidas).apply()
+        val pendientes = recibidos.filterNot { it.id in leidas }
+        leidas = leidas + pendientes.map { it.id }
+        val internas = pendientes.filter { it.esInterna }
+        preferencias.edit().putStringSet(
+            claveLeidas(yo.id),
+            leidas - todos.filter { it.esInterna }.map { it.id }.toSet()
+        ).apply()
+        if (internas.isNotEmpty()) {
+            viewModelScope.launch {
+                try {
+                    val batch = FirebaseFirestore.getInstance().batch()
+                    internas.forEach { aviso ->
+                        batch.update(
+                            FirebaseFirestore.getInstance().collection("notificaciones")
+                                .document(aviso.id.removePrefix("interna:")),
+                            mapOf("leida" to true, "leidaEn" to System.currentTimeMillis())
+                        )
+                    }
+                    batch.commit().await()
+                    val ids = internas.map { it.id }.toSet()
+                    todos = todos.map { if (it.id in ids) it.copy(leida = true) else it }
+                } catch (e: Exception) {
+                    leidas = leidas - internas.map { it.id }.toSet()
+                    Log.e(TAG, "No se pudieron marcar las notificaciones como leídas para ${yo.id}", e)
+                    mensaje = Textos.get("the_change_could_not_be_saved")
+                }
+            }
+        }
     }
 
     /** Los avisos internos se dirigen al personal o a los socios, no a una audiencia abierta. */

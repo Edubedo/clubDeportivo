@@ -1,6 +1,7 @@
 package com.example.clubdeportivo.notificaciones
 
 import android.content.Context
+import android.util.Log
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.GestorListaEspera
 import com.example.clubdeportivo.data.model.EstadoEspera
@@ -14,6 +15,7 @@ import com.example.clubdeportivo.util.Fechas
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import java.security.MessageDigest
 import java.util.Date
 
 /**
@@ -36,7 +38,6 @@ object MotorRecordatorios {
     suspend fun ejecutar(contexto: Context, reloj: Date = Date()) {
         val ahora = horaSimulada(contexto) ?: reloj
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        if (!Notificador.puedeNotificar(contexto)) return
 
         val perfil = FirebaseFirestore.getInstance().collection("usuarios").document(uid).get().await()
         if (!perfil.exists() || perfil.getString("estado") == "INACTIVO") return
@@ -56,7 +57,10 @@ object MotorRecordatorios {
         fun agregar(lista: List<Recordatorio?>) { recordatorios += lista.filterNotNull().filter { it.categoria in activas } }
 
         // Cada bloque falla por separado: si una consulta no se pudo (sin permiso, sin red), las demás siguen.
-        suspend fun bloque(accion: suspend () -> Unit) { runCatching { accion() } }
+        suspend fun bloque(accion: suspend () -> Unit) {
+            runCatching { accion() }
+                .onFailure { Log.e(TAG, "Falló un bloque de recordatorios para $uid", it) }
+        }
 
         when (tipo) {
             TipoUsuario.CLIENTE -> {
@@ -102,11 +106,9 @@ object MotorRecordatorios {
                     val articulos = AppContainer.inventarioRepository.obtenerArticulos().filter { usuario.puedeVerDeporte(it.deporte) }
                     agregar(listOf(ReglasRecordatorios.stockBajo(articulos, hoy, ahora, nuevo)))
                 }
-                if (esAdmin) {
-                    bloque {
-                        val membresias = AppContainer.gestionMembresiasRepository.obtenerTodas().map { it.membresia }
-                        agregar(listOf(ReglasRecordatorios.vencimientos(membresias, hoy, ahora, nuevo)))
-                    }
+                bloque {
+                    val membresias = AppContainer.gestionMembresiasRepository.obtenerTodas().map { it.membresia }
+                    agregar(listOf(ReglasRecordatorios.vencimientos(membresias, hoy, ahora, nuevo)))
                 }
                 bloque {
                     val torneos = AppContainer.torneoRepository.obtenerTorneos().filter { esAdmin || usuario.puedeVerDeporte(it.disciplina) }
@@ -139,17 +141,52 @@ object MotorRecordatorios {
         // De noche se calcula todo, pero no se muestra ni se marca como avisado: sale en la primera revisión de la mañana.
         if (silencio) return
         recordatorios.forEach { recordatorio ->
+            if (recordatorio.claves.any { it.startsWith("solicitud:") } &&
+                recordatorio.categoria == CategoriaNotificacion.SOLICITUDES
+            ) return@forEach
+            if (recordatorio.claves.none { it.startsWith("servidor:") }) guardarEnBandeja(uid, recordatorio)
             // Sin permiso (o con las notificaciones apagadas) nada se muestra: no se marca como avisado ni como leído,
             // así el aviso sale cuando la persona las active.
             if (!Notificador.mostrar(contexto, recordatorio)) return@forEach
             registro.marcarAvisado(recordatorio.claves, hoy)
-            // Las del servidor se marcan como leídas para que no vuelvan a aparecer (la persona solo puede cambiar `leida`).
-            recordatorio.claves.filter { it.startsWith("servidor:") }.forEach { clave ->
-                runCatching {
-                    FirebaseFirestore.getInstance().collection("notificaciones").document(clave.removePrefix("servidor:"))
-                        .update(mapOf("leida" to true, "leidaEn" to System.currentTimeMillis())).await()
-                }
-            }
         }
     }
+
+    private suspend fun guardarEnBandeja(uid: String, recordatorio: Recordatorio) {
+        val clave = recordatorio.claves.joinToString("|")
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(clave.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        val documentoId = when {
+            recordatorio.claves.size == 1 && recordatorio.claves.single().startsWith("solicitud:") ->
+                "reserva_${recordatorio.claves.single().substringAfter(':')}_nueva_$uid"
+            recordatorio.claves.size == 1 && recordatorio.claves.single().startsWith("respuesta:") -> {
+                val partes = recordatorio.claves.single().split(':')
+                val estado = if (partes.lastOrNull() == "ok") "confirmada" else "rechazada"
+                "reserva_${partes.getOrNull(1).orEmpty()}_resuelta_${estado}_$uid"
+            }
+            else -> "local_${uid}_$digest"
+        }
+        val referencia = FirebaseFirestore.getInstance().collection("notificaciones")
+            .document(documentoId)
+        FirebaseFirestore.getInstance().runTransaction { transaccion ->
+            if (!transaccion.get(referencia).exists()) {
+                transaccion.set(
+                    referencia,
+                    mapOf(
+                        "id" to referencia.id,
+                        "usuarioId" to uid,
+                        "titulo" to recordatorio.titulo,
+                        "mensaje" to recordatorio.mensaje,
+                        "tipo" to recordatorio.categoria.name,
+                        "leida" to false,
+                        "createdAt" to System.currentTimeMillis(),
+                        "ruta" to recordatorio.ruta.orEmpty()
+                    )
+                )
+            }
+        }.await()
+    }
+
+    private const val TAG = "MotorRecordatorios"
 }

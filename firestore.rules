@@ -407,9 +407,10 @@ service cloud.firestore {
     }
 
     match /notificaciones/{id} {
-      allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid);
-      allow create: if (esPersonal()
-                        || (firmado() && request.resource.data.usuarioId == request.auth.uid))
+      // Toda notificación se materializa para una cuenta concreta; no se consultan documentos por rol compartido.
+      allow read: if firmado() && resource.data.usuarioId == request.auth.uid;
+      allow create: if firmado()
+                    && request.resource.data.usuarioId == request.auth.uid
                     && request.resource.data.keys().hasOnly([
                          'id', 'usuarioId', 'titulo', 'mensaje', 'tipo', 'leida', 'createdAt', 'ruta'
                        ])
@@ -417,20 +418,34 @@ service cloud.firestore {
                          'id', 'usuarioId', 'titulo', 'mensaje', 'tipo', 'leida', 'createdAt'
                        ])
                     && request.resource.data.id == id
-                    && request.resource.data.usuarioId is string
                     && request.resource.data.titulo is string
                     && request.resource.data.mensaje is string
-                    && request.resource.data.tipo in ['SISTEMA', 'ADMIN', 'RENOVACION', 'RESERVA']
+                    && request.resource.data.tipo in [
+                         'SISTEMA', 'ADMIN', 'RENOVACION', 'CAMBIO_PLAN', 'RESERVA',
+                         'RESERVA_PROXIMA', 'RESERVA_RESPUESTA', 'MEMBRESIA', 'LISTA_ESPERA',
+                         'SOLICITUDES', 'ASISTENCIA', 'STOCK', 'VENCIMIENTOS', 'TORNEO', 'AVISOS'
+                       ]
                     && request.resource.data.get('leida', false) == false
                     && request.resource.data.createdAt is int
                     && request.resource.data.get('ruta', '') is string;
-      allow update: if esPersonal()
-                    || (firmado()
-                        && resource.data.usuarioId == request.auth.uid
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['leida', 'leidaEn'])
-                        && request.resource.data.leida == true);
-      allow delete: if esPersonal();
+      allow update: if firmado()
+                    && resource.data.usuarioId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['leida', 'leidaEn'])
+                    && request.resource.data.leida == true
+                    && (!request.resource.data.keys().hasAny(['leidaEn']) || request.resource.data.leidaEn is int);
+      allow delete: if false;
+    }
+
+    // Tokens de instalación: no son legibles por clientes; cada cuenta solo registra o borra su propio token.
+    match /fcmTokens/{tokenId} {
+      allow read: if false;
+      allow create, update: if firmado()
+                            && request.resource.data.usuarioId == request.auth.uid
+                            && request.resource.data.keys().hasOnly(['usuarioId', 'token', 'updatedAt'])
+                            && request.resource.data.token is string
+                            && request.resource.data.updatedAt is timestamp;
+      allow delete: if firmado() && resource.data.usuarioId == request.auth.uid;
     }
 
     // ---------- Torneos ----------
