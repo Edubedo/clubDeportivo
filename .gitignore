@@ -21,7 +21,4 @@ local.properties
 # no se comparte por git. Ver docs/usuarios-y-guia.md.
 app/google-services.json
 
-# Credenciales del correo (funciones): nunca al repositorio. Ver docs/correo-de-bienvenida.md.
-functions/.env.*
-functions/.secret.local
 
