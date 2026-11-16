@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.data.repository
 
+import com.example.clubdeportivo.util.Textos
 import com.example.clubdeportivo.data.ClavesPrecio
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.PlanIndividual
@@ -83,7 +84,7 @@ class CambioPlanRepository(
         ClavesPrecio.de(ClavesPrecio.individual(plan), preciosRepository.obtenerEditados())
 
     suspend fun enviar(membresiaId: String, planActual: PlanIndividual, precioActual: Double, planNuevo: PlanIndividual, socioNombre: String): SolicitudCambioPlan {
-        val uid = auth.currentUser?.uid ?: error("Sin sesión")
+        val uid = auth.currentUser?.uid ?: error(Textos.get("err_sin_sesion"))
         val documento = solicitudes.document()
         val solicitud = SolicitudCambioPlan(
             id = documento.id,
@@ -126,7 +127,7 @@ class CambioPlanRepository(
         val membresiaRef = membresias.document(solicitud.membresiaId)
         db.runTransaction { transaccion ->
             val actualSolicitud = transaccion.get(solicitudRef).toSolicitudCambioPlan()
-                ?: throw IllegalStateException("La solicitud ya no existe.")
+                ?: throw IllegalStateException(Textos.get("err_solicitud_inexistente"))
             val membresia = transaccion.get(membresiaRef).toMembresia()
             ReglasCambioPlan.motivoNoSePuedeAprobar(actualSolicitud, membresia, Fechas.hoy(), hayRenovacion)
                 ?.let { throw IllegalStateException(it) }
@@ -161,8 +162,8 @@ class CambioPlanRepository(
         val revisor = SesionManager.usuarioActual
         val ref = solicitudes.document(solicitudId)
         db.runTransaction { transaccion ->
-            val actual = transaccion.get(ref).toSolicitudCambioPlan() ?: throw IllegalStateException("La solicitud ya no existe.")
-            if (actual.status != SolicitudCambioPlan.PENDIENTE) throw IllegalStateException("La solicitud ya fue atendida.")
+            val actual = transaccion.get(ref).toSolicitudCambioPlan() ?: throw IllegalStateException(Textos.get("err_solicitud_inexistente"))
+            if (actual.status != SolicitudCambioPlan.PENDIENTE) throw IllegalStateException(Textos.get("err_solicitud_atendida"))
             transaccion.update(
                 ref,
                 mapOf(

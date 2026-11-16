@@ -1,8 +1,8 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+sconst { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');n
 const { defineString, defineSecret } = require('firebase-functions/params');
 const { primerError } = require('./contrasena');
 const { crearTransporte, enviarBienvenida } = require('./bienvenida');
@@ -13,7 +13,7 @@ initializeApp();
 const ROLES_ADMINISTRADOR = ['SUPERADMIN', 'ADMIN'];
 // Quienes revisan renovaciones y cambios de plan: los administradores y los supervisores.
 const ROLES_REVISORES = ['SUPERADMIN', 'ADMIN', 'SUPERVISOR'];
-const ROLES_DE_PERSONAL = ['SUPERADMIN', 'ADMIN', 'ADMIN_AREA', 'AYUDANTE_AREA'];
+const ROLES_DE_PERSONAL = ['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'ADMIN_AREA', 'AYUDANTE_AREA'];
 
 /**
  * Un administrador cambia la contraseña de una persona del personal sin enviarle correo.
@@ -43,6 +43,11 @@ exports.cambiarContrasenaPersonal = onCall({ region: 'us-central1', maxInstances
   if (!objetivo.exists) throw new HttpsError('not-found', 'Esa persona ya no existe.');
   if (!ROLES_DE_PERSONAL.includes(objetivo.get('rol'))) {
     throw new HttpsError('permission-denied', 'Solo se puede cambiar la contraseña del personal, no la de los miembros.');
+  }
+
+  // Solo un superadministrador puede cambiar la contraseña de otro superadministrador (un ADMIN tomaría su cuenta).
+  if (objetivo.get('rol') === 'SUPERADMIN' && miRol !== 'SUPERADMIN') {
+    throw new HttpsError('permission-denied', 'Solo un superadministrador puede cambiar la contraseña de otro superadministrador.');
   }
 
   try {
@@ -274,4 +279,25 @@ exports.enviarBienvenidaMiembro = onDocumentCreated(
      await snap.ref.set({ bienvenidaError: `smtp:${e.code || 'error'}` }, { merge: true });
    }
  }
+);
+
+// ---------- Acceso revocado ----------
+/**
+ * Cuando el personal restablece el acceso de un miembro (restablecerAcceso), su cuenta real anterior queda marcada con
+ * `accesoRevocado`: aquí se deshabilita en Firebase Authentication y se cierran sus sesiones, para que no siga siendo
+ * una credencial válida (la app solo la bloquea por el estado INACTIVO del perfil).
+ */
+exports.revocarAccesoDeCuenta = onDocumentUpdated(
+  { ...OPCIONES, document: 'usuarios/{uid}' },
+  async (event) => {
+    const antes = event.data?.before.data();
+    const despues = event.data?.after.data();
+    if (!despues || despues.accesoRevocado !== true || antes?.accesoRevocado === true) return;
+    try {
+      await getAuth().updateUser(event.params.uid, { disabled: true });
+      await getAuth().revokeRefreshTokens(event.params.uid);
+    } catch (e) {
+      if (e.code !== 'auth/user-not-found') console.error('No se pudo revocar el acceso', event.params.uid, e.code);
+    }
+  }
 );

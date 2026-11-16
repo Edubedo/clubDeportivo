@@ -115,7 +115,7 @@ object ReglasReserva {
             }
             .sumOf { it.personas }
 
-    private fun texto(hora: Int) = "%02d:00".format(hora)
+    private fun texto(hora: Int) = String.format(java.util.Locale.ROOT, "%02d:00", hora)
 
     /**
      * @return el motivo por el que NO se puede reservar [area] el [fecha] de [horaInicio] a [horaFin]

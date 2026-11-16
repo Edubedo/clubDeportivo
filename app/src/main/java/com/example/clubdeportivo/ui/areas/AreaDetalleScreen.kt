@@ -1,6 +1,7 @@
 
 package com.example.clubdeportivo.ui.areas
 
+import com.example.clubdeportivo.util.tr
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -38,7 +39,7 @@ fun AreaDetalleScreen(
         IconButton(onClick = onVolver) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Regresar"
+                contentDescription = tr("area_det_regresar")
             )
         }
 
@@ -50,7 +51,7 @@ fun AreaDetalleScreen(
         if (area.imagenUrl.isNotBlank()) {
             AsyncImage(
                 model = area.imagenUrl,
-                contentDescription = "Fotografía de ${area.nombre}",
+                contentDescription = tr("area_det_foto", area.nombre),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(240.dp),
@@ -59,7 +60,7 @@ fun AreaDetalleScreen(
         } else {
             Image(
                 painter = painterResource(id = imagenDeporte(area.tipo)),
-                contentDescription = "Fotografía de ${area.nombre}",
+                contentDescription = tr("area_det_foto", area.nombre),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(240.dp),
@@ -68,15 +69,13 @@ fun AreaDetalleScreen(
         }
 
         Text(
-            text = "Descripción del área",
+            text = tr("area_det_descripcion_titulo"),
             style = MaterialTheme.typography.titleMedium
         )
 
         Text(
             text = area.descripcion.ifBlank {
-                "Espacio deportivo destinado a la práctica de " +
-                        "${area.tipo}, diseñado para ofrecer " +
-                        "instalaciones cómodas y seguras."
+                tr("area_det_descripcion_defecto", area.tipo)
             },
             style = MaterialTheme.typography.bodyMedium
         )
@@ -84,13 +83,13 @@ fun AreaDetalleScreen(
         HorizontalDivider()
 
         Text(
-            text = "Entrenadores a cargo",
+            text = tr("area_det_entrenadores"),
             style = MaterialTheme.typography.titleMedium
         )
 
         if (area.entrenadores.isEmpty()) {
             Text(
-                text = "Aún no hay entrenadores asignados.",
+                text = tr("area_det_sin_entrenadores"),
                 style = MaterialTheme.typography.bodyMedium
             )
         } else {
@@ -120,7 +119,7 @@ fun AreaDetalleScreen(
         HorizontalDivider()
 
         Text(
-            text = "Información del área",
+            text = tr("area_det_info"),
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -132,19 +131,19 @@ fun AreaDetalleScreen(
                 contentDescription = null
             )
 
-            Text("Capacidad: ${area.capacidad} personas")
+            Text(tr("area_det_capacidad", area.capacidad))
         }
 
         Text(
-            text = "Estado: " + when (area.disponibilidad) {
-                DisponibilidadArea.DISPONIBLE -> "Disponible"
-                DisponibilidadArea.OCUPADA -> "Ocupada"
-                DisponibilidadArea.MANTENIMIENTO -> "En mantenimiento"
-            }
+            text = tr("area_det_estado", when (area.disponibilidad) {
+                DisponibilidadArea.DISPONIBLE -> tr("available")
+                DisponibilidadArea.OCUPADA -> tr("occupied")
+                DisponibilidadArea.MANTENIMIENTO -> tr("under_maintenance")
+            })
         )
 
         if (area.carriles > 0) {
-            Text("Carriles: ${area.carriles}")
+            Text(tr("area_det_carriles", area.carriles))
         }
     }
 }

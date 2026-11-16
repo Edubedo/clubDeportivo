@@ -29,6 +29,33 @@ internal object CuentasDeAcceso {
         return FirebaseAuth.getInstance(app).also { EmuladoresFirebase.configurar(it) }
     }
 
+    /**
+     * Borra las cuentas internas recién creadas cuando el alta no llegó a guardarse en Firestore (así no quedan cuentas
+     * sueltas que ocupen el correo interno de un código). Entra con cada una —su contraseña es el propio código— y la elimina.
+     */
+    suspend fun descartar(cuentas: List<CuentaDeAcceso>) {
+        val auth = auth()
+        cuentas.forEach { cuenta ->
+            runCatching {
+                auth.signInWithEmailAndPassword(ReglasMembresia.emailDeCodigo(cuenta.codigo), cuenta.codigo).await()
+                    .user?.delete()?.await()
+            }
+            runCatching { auth.signOut() }
+        }
+    }
+
+    /** Crea [cantidad] cuentas; si una falla, borra las que ya se habían creado para no dejarlas sueltas. */
+    suspend fun crearVarias(miembros: CollectionReference, cantidad: Int): List<CuentaDeAcceso> {
+        val creadas = mutableListOf<CuentaDeAcceso>()
+        try {
+            repeat(cantidad) { creadas += crear(miembros) }
+        } catch (e: Exception) {
+            descartar(creadas)
+            throw e
+        }
+        return creadas
+    }
+
     /** Genera un código que no exista en [miembros] y crea su cuenta de acceso. */
     suspend fun crear(miembros: CollectionReference): CuentaDeAcceso {
         val auth = auth()

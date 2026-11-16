@@ -47,7 +47,7 @@ object CalculoResumenAdmin {
         return (cantidad - 1 downTo 0).map { atras ->
             val c = cal.clone() as Calendar
             c.add(Calendar.MONTH, -atras)
-            "%04d-%02d".format(c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1)
+            String.format(java.util.Locale.ROOT, "%04d-%02d", c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1)
         }
     }
 

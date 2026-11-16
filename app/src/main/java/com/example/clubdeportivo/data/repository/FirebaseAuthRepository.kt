@@ -58,7 +58,9 @@ class FirebaseAuthRepository(
             val uid = resultado.user?.uid
                 ?: return Resultado.Error(Textos.get("could_not_sign_in_please_try"))
 
-            val perfil = usuarios.document(uid).get().await()
+            var perfil = usuarios.document(uid).get().await()
+            // Un registro que se cortó a medias (cuenta y código ya reclamados, pero sin perfil) se termina aquí.
+            if (!perfil.exists()) perfil = completarRegistroIncompleto(uid, correo.trim()) ?: perfil
             if (perfil.getString("estado") == "INACTIVO" && !restaurarAccesoDeSocio(uid, perfil)) {
                 auth.signOut()
                 return Resultado.Error(Textos.get("login_cuenta_desactivada"))
@@ -74,6 +76,41 @@ class FirebaseAuthRepository(
             auth.signOut()
             Resultado.Error(traducirError(e))
         }
+    }
+
+    /**
+     * El registro ([registrarMiembro]) hace varios pasos y la app pudo cerrarse entre reclamar el código y crear el perfil:
+     * el código queda "ya registrado" y la cuenta nueva sin perfil, sin forma de reintentar. Si el miembro ya apunta a esta
+     * cuenta, se crea el perfil que faltaba. El rol del código no se puede leer sin perfil; las reglas solo aceptan el
+     * mismo que tiene la cuenta interna, así que se prueba con los dos que existen para clientes.
+     */
+    private suspend fun completarRegistroIncompleto(uid: String, correo: String): DocumentSnapshot? {
+        val miembro = try {
+            db.collection("miembros").whereEqualTo("usuarioId", uid).limit(1).get().await().documents.firstOrNull()
+        } catch (e: FirebaseFirestoreException) {
+            null
+        } ?: return null
+        if (miembro.getBoolean("cuentaCreada") != true) return null
+        val base = mapOf(
+            "nombre" to (miembro.getString("nombre") ?: correo),
+            "email" to correo,
+            "telefono" to (miembro.getString("telefono") ?: ""),
+            "estado" to "ACTIVO",
+            "codigoMiembro" to miembro.id,
+            "perfilRecuperado" to true,
+            "fechaRegistro" to Fechas.hoy(),
+            "creadoEn" to FieldValue.serverTimestamp(),
+            "actualizadoEn" to FieldValue.serverTimestamp()
+        )
+        for (rol in listOf(Rol.SOCIO, Rol.VISITANTE_EXTERNO)) {
+            try {
+                usuarios.document(uid).set(base + ("rol" to rol.name)).await()
+                return usuarios.document(uid).get().await()
+            } catch (e: FirebaseFirestoreException) {
+                if (e.code != FirebaseFirestoreException.Code.PERMISSION_DENIED) throw e
+            }
+        }
+        return null
     }
 
     private suspend fun restaurarAccesoDeSocio(uid: String, perfil: DocumentSnapshot): Boolean {

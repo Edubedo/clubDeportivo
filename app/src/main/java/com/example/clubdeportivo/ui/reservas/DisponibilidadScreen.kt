@@ -124,7 +124,7 @@ private fun FilaHoraCard(fila: FilaDisponibilidad, capacidad: Int) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "%02d:00 – %02d:00".format(fila.hora, fila.hora + 1),
+                    text = String.format(java.util.Locale.ROOT, "%02d:00 – %02d:00", fila.hora, fila.hora + 1),
                     style = MaterialTheme.typography.titleSmall,
                     color = TextoPrincipal
                 )

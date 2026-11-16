@@ -129,7 +129,7 @@ object ReglasRecordatorios {
      * momento del aviso: si vuelve a entrar a la fila y le toca otra vez, se avisa de nuevo.
      */
     fun listaEspera(entradas: List<EntradaEspera>, ahora: Date, nuevo: (String) -> Boolean): List<Recordatorio> {
-        val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val formatoHora = SimpleDateFormat("HH:mm", Locale.ROOT)
         return entradas
             .filter { it.estado == EstadoEspera.AVISADO && ReglasListaEspera.vigente(it, ahora) }
             .mapNotNull { entrada ->

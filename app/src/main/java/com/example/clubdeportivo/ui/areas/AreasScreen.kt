@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.ui.areas
 
+import com.example.clubdeportivo.util.tr
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -300,7 +301,7 @@ private fun AreaCard(
             if (area.imagenUrl.isNotBlank()) {
                 AsyncImage(
                     model = area.imagenUrl,
-                    contentDescription = "Imagen de ${area.tipo}",
+                    contentDescription = tr("img_de", area.tipo),
                     modifier = Modifier
                         .padding(top = 4.dp)
                         .size(width = 90.dp, height = 80.dp)
@@ -311,7 +312,7 @@ private fun AreaCard(
             } else {
                 Image(
                     painter = painterResource(id = imagenDeporte(area.tipo)),
-                    contentDescription = "Imagen de ${area.tipo}",
+                    contentDescription = tr("img_de", area.tipo),
                     modifier = Modifier
                         .padding(top = 4.dp)
                         .size(width = 90.dp, height = 80.dp)

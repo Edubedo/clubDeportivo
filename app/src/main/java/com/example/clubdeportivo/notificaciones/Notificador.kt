@@ -51,8 +51,9 @@ object Notificador {
     }
 
     @SuppressLint("MissingPermission") // puedeNotificar() ya comprobó el permiso
-    fun mostrar(contexto: Context, recordatorio: Recordatorio) {
-        if (!puedeNotificar(contexto)) return
+    /** @return true si la notificación se mostró; false si no hay permiso o están desactivadas (no se debe dar por avisada). */
+    fun mostrar(contexto: Context, recordatorio: Recordatorio): Boolean {
+        if (!puedeNotificar(contexto)) return false
         val abrir = Intent(contexto, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             recordatorio.ruta?.let { putExtra(EXTRA_RUTA, it) }
@@ -71,5 +72,6 @@ object Notificador {
             .setAutoCancel(true)
             .build()
         NotificationManagerCompat.from(contexto).notify(id, notificacion)
+        return true
     }
 }

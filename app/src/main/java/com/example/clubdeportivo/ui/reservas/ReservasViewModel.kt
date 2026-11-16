@@ -253,7 +253,7 @@ class ReservasViewModel(
                 val apartados = usuario?.let { ReglasListaEspera.apartadosPara(it.id, fila, base.libres) } ?: 0
                 HoraUi(
                     estado = base.copy(ocupadas = base.ocupadas + apartados),
-                    pasada = Fechas.horasDesdeAhora(fecha, "%02d:00".format(hora)) < Catalogos.ANTICIPACION_MINIMA_HORAS,
+                    pasada = Fechas.horasDesdeAhora(fecha, String.format(java.util.Locale.ROOT, "%02d:00", hora)) < Catalogos.ANTICIPACION_MINIMA_HORAS,
                     enEspera = usuario?.let { ReglasListaEspera.posicion(it.id, fila) } != null
                 )
             }
@@ -343,8 +343,8 @@ class ReservasViewModel(
                 .filter {
                     it.fecha == actual.fecha &&
                         it.carril != null &&
-                        it.horaInicio < "%02d:00".format(hasta + 1) &&
-                        it.horaFin > "%02d:00".format(desde)
+                        it.horaInicio < String.format(java.util.Locale.ROOT, "%02d:00", hasta + 1) &&
+                        it.horaFin > String.format(java.util.Locale.ROOT, "%02d:00", desde)
                 }
                 .mapNotNull { it.carril }
                 .toSet()
@@ -366,16 +366,18 @@ class ReservasViewModel(
     }
 
     fun confirmar() {
+        // Un segundo toque mientras la primera reserva se envía no debe crear otra.
+        if (estado.enviando) return
         val actual = estado
         val area = actual.area ?: return
         val desde = actual.desde ?: return
         val hasta = actual.hasta ?: return
         val usuario = usuario ?: return
-        val horaInicio = "%02d:00".format(desde)
-        val horaFin = "%02d:00".format(hasta + 1)
+        val horaInicio = String.format(java.util.Locale.ROOT, "%02d:00", desde)
+        val horaFin = String.format(java.util.Locale.ROOT, "%02d:00", hasta + 1)
 
+        _ui.value = estado.copy(enviando = true)
         viewModelScope.launch {
-            _ui.value = estado.copy(enviando = true)
             try {
                 val error = validar(area, actual.fecha, horaInicio, horaFin, actual.personas, actual.carril)
                 if (error != null) {
@@ -408,6 +410,15 @@ class ReservasViewModel(
                 val (apertura, cierre) = rangoDeApertura(area)
                 recalcularHoras(apertura, cierre)
                 cargarLista(estado.areas)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: com.example.clubdeportivo.data.repository.CupoAgotadoException) {
+                _mensaje.value = e.message
+                runCatching {
+                    val (apertura, cierre) = rangoDeApertura(area)
+                    recalcularHoras(apertura, cierre)
+                    cargarLista(estado.areas)
+                }
             } catch (e: Exception) {
                 _mensaje.value = Textos.get("the_booking_could_not_be_completed")
             }
@@ -548,7 +559,7 @@ class ReservasViewModel(
             val filas = dias.associateWith { (areaId, fecha) ->
                 runCatching { listaEsperaRepository.obtenerDeArea(areaId, fecha) }.getOrDefault(emptyList())
             }
-            val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val formatoHora = SimpleDateFormat("HH:mm", Locale.ROOT)
             _esperas.value = mias.sortedWith(compareBy({ it.fecha }, { it.hora })).map { entrada ->
                 val area = estado.areas.firstOrNull { it.id == entrada.areaId }
                 val fila = ReglasListaEspera.fila(filas[entrada.areaId to entrada.fecha].orEmpty(), entrada.areaId, entrada.fecha, entrada.hora, ahora)

@@ -1,6 +1,7 @@
 
 package com.example.clubdeportivo.ui.reservas
 
+import com.example.clubdeportivo.util.tr
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +23,6 @@ import com.example.clubdeportivo.ui.components.EncabezadoPantalla
 import com.example.clubdeportivo.ui.components.MargenPantalla
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.util.Fechas
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,10 +35,10 @@ fun ReservasSupervisorScreen(
     val mensaje by viewModel.mensaje.observeAsState()
 
     var areaSeleccionada by rememberSaveable {
-        mutableStateOf("Todas las áreas")
+        mutableStateOf("")
     }
     var estadoSeleccionado by rememberSaveable {
-        mutableStateOf("Todos")
+        mutableStateOf("TODOS")
     }
     var fechaSeleccionada by rememberSaveable {
         mutableStateOf("")
@@ -51,7 +51,7 @@ fun ReservasSupervisorScreen(
     var motivoRechazo by remember { mutableStateOf("") }
 
     val areas = remember(reservas) {
-        listOf("Todas las áreas") +
+        listOf("") +
                 reservas.map { it.areaNombre.ifBlank { it.areaId } }
                     .distinct()
                     .sorted()
@@ -61,15 +61,15 @@ fun ReservasSupervisorScreen(
         val nombreArea = reserva.areaNombre.ifBlank { reserva.areaId }
 
         val coincideArea =
-            areaSeleccionada == "Todas las áreas" ||
+            areaSeleccionada.isEmpty() ||
                     nombreArea == areaSeleccionada
 
         val coincideEstado = when (estadoSeleccionado) {
-            "Pendientes" ->
+            "PENDIENTES" ->
                 reserva.estado == EstadoReserva.PENDIENTE_APROBACION
-            "Confirmadas" ->
+            "CONFIRMADAS" ->
                 reserva.estado == EstadoReserva.CONFIRMADA
-            "Rechazadas" ->
+            "RECHAZADAS" ->
                 reserva.estado == EstadoReserva.RECHAZADA
             else -> true
         }
@@ -88,8 +88,8 @@ fun ReservasSupervisorScreen(
     Column(modifier = Modifier.fillMaxSize()) {
 
         EncabezadoPantalla(
-            titulo = "Gestión de reservas",
-            subtitulo = "Reservas de todas las áreas del club",
+            titulo = tr("sup_titulo"),
+            subtitulo = tr("sup_subtitulo"),
             modifier = Modifier.padding(horizontal = MargenPantalla)
         )
 
@@ -109,7 +109,7 @@ fun ReservasSupervisorScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ResumenSupervisor(
-                        titulo = "Pendientes",
+                        titulo = tr("sup_pendientes"),
                         cantidad = reservas.count {
                             it.estado == EstadoReserva.PENDIENTE_APROBACION
                         },
@@ -117,7 +117,7 @@ fun ReservasSupervisorScreen(
                     )
 
                     ResumenSupervisor(
-                        titulo = "Confirmadas",
+                        titulo = tr("sup_confirmadas"),
                         cantidad = reservas.count {
                             it.estado == EstadoReserva.CONFIRMADA
                         },
@@ -128,7 +128,7 @@ fun ReservasSupervisorScreen(
 
             item {
                 Text(
-                    text = "Filtrar reservas",
+                    text = tr("sup_filtrar"),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -139,10 +139,10 @@ fun ReservasSupervisorScreen(
                     onExpandedChange = { menuAreas = it }
                 ) {
                     OutlinedTextField(
-                        value = areaSeleccionada,
+                        value = areaSeleccionada.ifEmpty { tr("all_areas") },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Área deportiva") },
+                        label = { Text(tr("sup_area_deportiva")) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(
                                 expanded = menuAreas
@@ -159,7 +159,7 @@ fun ReservasSupervisorScreen(
                     ) {
                         areas.forEach { area ->
                             DropdownMenuItem(
-                                text = { Text(area) },
+                                text = { Text(area.ifEmpty { tr("all_areas") }) },
                                 onClick = {
                                     areaSeleccionada = area
                                     menuAreas = false
@@ -176,10 +176,10 @@ fun ReservasSupervisorScreen(
                     onExpandedChange = { menuEstados = it }
                 ) {
                     OutlinedTextField(
-                        value = estadoSeleccionado,
+                        value = etiquetaEstadoFiltro(estadoSeleccionado),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Estado de reserva") },
+                        label = { Text(tr("sup_estado_reserva")) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(
                                 expanded = menuEstados
@@ -194,14 +194,9 @@ fun ReservasSupervisorScreen(
                         expanded = menuEstados,
                         onDismissRequest = { menuEstados = false }
                     ) {
-                        listOf(
-                            "Todos",
-                            "Pendientes",
-                            "Confirmadas",
-                            "Rechazadas"
-                        ).forEach { estado ->
+                        listOf("TODOS", "PENDIENTES", "CONFIRMADAS", "RECHAZADAS").forEach { estado ->
                             DropdownMenuItem(
-                                text = { Text(estado) },
+                                text = { Text(etiquetaEstadoFiltro(estado)) },
                                 onClick = {
                                     estadoSeleccionado = estado
                                     menuEstados = false
@@ -224,7 +219,7 @@ fun ReservasSupervisorScreen(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             if (fechaSeleccionada.isBlank())
-                                "Todas las fechas"
+                                tr("sup_todas_fechas")
                             else fechaSeleccionada
                         )
                     }
@@ -233,7 +228,7 @@ fun ReservasSupervisorScreen(
                         TextButton(
                             onClick = { fechaSeleccionada = "" }
                         ) {
-                            Text("Limpiar")
+                            Text(tr("clear"))
                         }
                     }
                 }
@@ -267,14 +262,14 @@ fun ReservasSupervisorScreen(
 
             item {
                 Text(
-                    text = "Reservas (${reservasFiltradas.size})",
+                    text = tr("sup_reservas_n", reservasFiltradas.size),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
 
             if (reservasFiltradas.isEmpty() && !cargando) {
                 item {
-                    Text("No se encontraron reservas con estos filtros.")
+                    Text(tr("sup_sin_resultados"))
                 }
             }
 
@@ -304,22 +299,19 @@ fun ReservasSupervisorScreen(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
                             fechaSeleccionada =
-                                java.time.Instant.ofEpochMilli(millis)
-                                    .atZone(java.time.ZoneOffset.UTC)
-                                    .toLocalDate()
-                                    .toString()
+                                com.example.clubdeportivo.util.Fechas.millisUtcAFecha(millis)
                         }
                         mostrarCalendario = false
                     }
                 ) {
-                    Text("Aceptar")
+                    Text(tr("ok"))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { mostrarCalendario = false }
                 ) {
-                    Text("Cancelar")
+                    Text(tr("cancel"))
                 }
             }
         ) {
@@ -330,15 +322,15 @@ fun ReservasSupervisorScreen(
     if (reservaARechazar != null) {
         AlertDialog(
             onDismissRequest = { reservaARechazar = null },
-            title = { Text("Rechazar reserva") },
+            title = { Text(tr("sup_rechazar_titulo")) },
             text = {
                 Column {
-                    Text("Escribe el motivo del rechazo:")
+                    Text(tr("sup_escribe_motivo"))
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = motivoRechazo,
                         onValueChange = { motivoRechazo = it },
-                        label = { Text("Motivo") },
+                        label = { Text(tr("sup_motivo")) },
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -357,14 +349,14 @@ fun ReservasSupervisorScreen(
                         reservaARechazar = null
                     }
                 ) {
-                    Text("Rechazar")
+                    Text(tr("reject"))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { reservaARechazar = null }
                 ) {
-                    Text("Cancelar")
+                    Text(tr("cancel"))
                 }
             }
         )
@@ -409,7 +401,7 @@ private fun TarjetaReservaSupervisor(
             )
 
             Text(
-                text = reserva.usuarioNombre.ifBlank { "Miembro" }
+                text = reserva.usuarioNombre.ifBlank { tr("member") }
             )
 
             Text(
@@ -419,9 +411,9 @@ private fun TarjetaReservaSupervisor(
 
             Text(
                 text = when (reserva.estado) {
-                    EstadoReserva.PENDIENTE_APROBACION -> "Pendiente"
-                    EstadoReserva.CONFIRMADA -> "Confirmada"
-                    EstadoReserva.RECHAZADA -> "Rechazada"
+                    EstadoReserva.PENDIENTE_APROBACION -> tr("pending")
+                    EstadoReserva.CONFIRMADA -> tr("confirmed_2")
+                    EstadoReserva.RECHAZADA -> tr("rejected")
                     else -> reserva.estado.name
                 },
                 color = MaterialTheme.colorScheme.secondary
@@ -442,7 +434,7 @@ private fun TarjetaReservaSupervisor(
                             contentDescription = null
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Rechazar")
+                        Text(tr("reject"))
                     }
 
                     Button(
@@ -455,10 +447,17 @@ private fun TarjetaReservaSupervisor(
                             contentDescription = null
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Aprobar")
+                        Text(tr("approve"))
                     }
                 }
             }
         }
     }
+}
+
+private fun etiquetaEstadoFiltro(codigo: String): String = when (codigo) {
+    "PENDIENTES" -> tr("sup_pendientes")
+    "CONFIRMADAS" -> tr("sup_confirmadas")
+    "RECHAZADAS" -> tr("sup_rechazadas")
+    else -> tr("all_2")
 }

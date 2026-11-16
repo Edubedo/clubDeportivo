@@ -356,6 +356,6 @@ object MigracionEsquema {
     }
 
     private fun aTimestamp(texto: String): Timestamp? =
-        runCatching { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).parse(texto) }
+        runCatching { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT).parse(texto) }
             .getOrNull()?.let { Timestamp(it) }
 }

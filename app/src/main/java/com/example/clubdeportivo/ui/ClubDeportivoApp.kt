@@ -234,7 +234,7 @@ fun ClubDeportivoApp(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Image(
                                     painter = painterResource(id = R.drawable.logo_club),
-                                    contentDescription = "Logo Athletic Club",
+                                    contentDescription = tr("logo_club_desc"),
                                     modifier = Modifier
                                         .size(38.dp)
                                         .clip(RoundedCornerShape(10.dp)),
