@@ -14,4 +14,10 @@ interface FamiliaRepository {
      * personal) y lo suma al paquete. Solo funciona para el titular, mientras el paquete esté activo y tenga lugar.
      */
     suspend fun agregarFamiliar(familia: Familia, persona: PersonaForm): MiembroClub
+
+    /**
+     * El titular quita a un familiar de su paquete: su cuenta queda suspendida (ya no puede entrar ni registrarse con su
+     * código), el paquete recupera el lugar y se avisa por correo al titular y a quien se quitó. No aplica al titular.
+     */
+    suspend fun quitarFamiliar(familia: Familia, miembro: MiembroClub)
 }

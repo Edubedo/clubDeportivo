@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -66,7 +67,9 @@ internal fun TarjetaFamilia(viewModel: FamiliaViewModel) {
     val guardando by viewModel.guardando.observeAsState(false)
     val error by viewModel.errorFormulario.observeAsState()
     val invitacion by viewModel.invitacion.observeAsState()
+    val quitando by viewModel.quitando.observeAsState(false)
     var agregando by remember { mutableStateOf(false) }
+    var porQuitar by remember { mutableStateOf<MiembroClub?>(null) }
 
     val datos = familia ?: return
 
@@ -87,9 +90,13 @@ internal fun TarjetaFamilia(viewModel: FamiliaViewModel) {
                     )
                 }
                 datos.miembros.forEach { persona ->
-                    FilaIntegrante(persona = persona, puedeCompartir = datos.esTitular && !persona.esTitular && !persona.cuentaCreada) {
-                        viewModel.mostrarInvitacion(persona)
-                    }
+                    FilaIntegrante(
+                        persona = persona,
+                        puedeCompartir = datos.esTitular && !persona.esTitular && !persona.cuentaCreada,
+                        puedeQuitar = datos.esTitular && !persona.esTitular,
+                        onCompartir = { viewModel.mostrarInvitacion(persona) },
+                        onQuitar = { porQuitar = persona }
+                    )
                 }
                 if (datos.esTitular) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -109,6 +116,22 @@ internal fun TarjetaFamilia(viewModel: FamiliaViewModel) {
                 }
             }
         }
+    }
+
+    porQuitar?.let { persona ->
+        AlertDialog(
+            onDismissRequest = { if (!quitando) porQuitar = null },
+            title = { Text(Textos.get("remove_family_member")) },
+            text = { Text(Textos.get("remove_family_member_warning", persona.nombre)) },
+            confirmButton = {
+                TextButton(enabled = !quitando, onClick = { viewModel.quitar(persona); porQuitar = null }) {
+                    Text(Textos.get("remove"), color = Peligro, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !quitando, onClick = { porQuitar = null }) { Text(Textos.get("cancel")) }
+            }
+        )
     }
 
     if (agregando) {
@@ -132,7 +155,13 @@ internal fun TarjetaFamilia(viewModel: FamiliaViewModel) {
 }
 
 @Composable
-private fun FilaIntegrante(persona: MiembroClub, puedeCompartir: Boolean, onCompartir: () -> Unit) {
+private fun FilaIntegrante(
+    persona: MiembroClub,
+    puedeCompartir: Boolean,
+    puedeQuitar: Boolean,
+    onCompartir: () -> Unit,
+    onQuitar: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -148,6 +177,11 @@ private fun FilaIntegrante(persona: MiembroClub, puedeCompartir: Boolean, onComp
             }
         } else {
             Insignia(if (persona.cuentaCreada) Textos.get("with_account") else "Titular", if (persona.cuentaCreada) TipoInsignia.EXITO else TipoInsignia.NEUTRO)
+        }
+        if (puedeQuitar) {
+            TextButton(onClick = onQuitar, modifier = modifierReflejo(Modifier, enabled = true)) {
+                Text(Textos.get("remove"), color = Peligro, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

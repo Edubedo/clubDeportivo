@@ -1,5 +1,6 @@
 package com.example.clubdeportivo.data.repository
 
+import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.correo.CorreoBienvenida
 import com.example.clubdeportivo.data.model.EstadoMembresia
 import com.example.clubdeportivo.data.model.Familia
@@ -93,5 +94,50 @@ class FirebaseFamiliaRepository(
         val nuevo = MiembroClub(cuenta.codigo, persona.nombre.trim(), persona.telefono.trim(), persona.correo.trim(), membresia.id, parentesco, cuenta.uid)
         CorreoBienvenida.enviarEnSegundoPlano(listOf(nuevo))
         return nuevo
+    }
+
+    override suspend fun quitarFamiliar(familia: Familia, miembro: MiembroClub) {
+        require(familia.esTitular) { Textos.get("only_the_package_holder_can_remove") }
+        require(!miembro.esTitular) { Textos.get("the_package_holder_cannot_be_removed") }
+        val membresia = familia.membresia
+
+        // Se lee el contador más reciente: puede haber cambiado desde que se abrió la pantalla.
+        val total = membresias.document(membresia.id).get().await().getLong("totalPersonas")?.toInt() ?: familia.miembros.size
+        check(total > 1) { Textos.get("the_package_holder_cannot_be_removed") }
+
+        val titular = SesionManager.usuarioActual
+        val lote = db.batch()
+        lote.delete(miembros.document(miembro.codigo))
+        lote.delete(registroCodigos.document(miembro.codigo))
+        if (miembro.usuarioId.isNotBlank()) {
+            lote.update(
+                usuarios.document(miembro.usuarioId),
+                mapOf("estado" to "INACTIVO", "actualizadoEn" to FieldValue.serverTimestamp())
+            )
+        }
+        lote.update(
+            membresias.document(membresia.id),
+            mapOf(
+                "totalPersonas" to (total - 1).toLong(),
+                "ultimaBajaCodigo" to miembro.codigo,
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        )
+        // Aviso para la Cloud Function que manda los correos (al titular y a quien se quitó).
+        lote.set(
+            db.collection("bajasFamiliares").document(miembro.codigo),
+            mapOf(
+                "codigo" to miembro.codigo,
+                "membresiaId" to membresia.id,
+                "usuarioId" to miembro.usuarioId,
+                "nombre" to miembro.nombre,
+                "correo" to miembro.correo,
+                "parentesco" to miembro.parentesco,
+                "titularId" to titular?.id.orEmpty(),
+                "titularNombre" to titular?.nombre.orEmpty(),
+                "createdAt" to System.currentTimeMillis()
+            )
+        )
+        lote.commit().await()
     }
 }

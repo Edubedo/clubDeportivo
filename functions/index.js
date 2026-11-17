@@ -447,6 +447,47 @@ exports.enviarBienvenidaMiembro = onDocumentCreated(
  }
 );
 
+// ---------- Un titular quita a un familiar de su paquete ----------
+/**
+ * La app deja `bajasFamiliares/{codigo}` en el mismo lote que borra al miembro y suspende su cuenta. Aquí se avisa por
+ * correo (y en la app) al titular, con un recordatorio de que ya tiene un lugar libre, y a quien se quitó.
+ */
+exports.avisarFamiliarQuitado = onDocumentCreated(
+  { ...OPCIONES, document: 'bajasFamiliares/{codigo}' },
+  async (event) => {
+    const baja = event.data?.data();
+    if (!baja) return;
+    const db = getFirestore();
+    const membresia = baja.membresiaId ? await db.doc(`membresias/${baja.membresiaId}`).get() : null;
+    const total = Number(membresia?.get('totalPersonas') || 1);
+    const tope = { 1: 4, 2: 2, 3: 4 }[membresia?.get('paqueteFamiliarId')] || total;
+    const lugaresLibres = Math.max(tope - total, 0);
+
+    if (baja.titularId) {
+      await guardarNotificacion(
+        baja.titularId, `baja_familiar_${event.params.codigo}`,
+        'Familiar quitado de tu paquete',
+        `${baja.nombre} salió de tu paquete familiar.` + (lugaresLibres > 0 ? ' Ya tienes un lugar libre para registrar a otra persona.' : ''),
+        'MEMBRESIA'
+      );
+      await correoAlMiembro({
+        event, tipo: 'familiarQuitadoTitular', uid: baja.titularId,
+        datos: { nombre: baja.titularNombre, familiar: baja.nombre, lugaresLibres }
+      });
+    }
+
+    // A quien se quitó: el correo de su cuenta si es real; si no (cuenta interna por código), el de contacto del alta.
+    const perfil = baja.usuarioId ? await db.doc(`usuarios/${baja.usuarioId}`).get() : null;
+    const para = Correos.elegirCorreo({ correoCuenta: perfil && perfil.get('email'), correoContacto: baja.correo });
+    await Correos.despachar({
+      db, id: `${event.id}_familiarQuitadoFamiliar`, transporte: transporteDeCorreo(),
+      de: SMTP_REMITENTE.value() || SMTP_USER.value(), para, tipo: 'familiarQuitadoFamiliar',
+      correo: Correos.compositores.familiarQuitadoFamiliar({ nombre: baja.nombre, titular: baja.titularNombre }),
+      meta: { usuarioId: baja.usuarioId || '' }
+    });
+  }
+);
+
 // ---------- Acceso revocado ----------
 /**
  * Cuando el personal restablece el acceso de un miembro (restablecerAcceso), su cuenta real anterior queda marcada con

@@ -74,6 +74,15 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/membresias/$(membresiaId)).data.get('totalPersonas', 1)
                <= topePaquete(get(/databases/$(database)/documents/membresias/$(membresiaId)).data.get('paqueteFamiliarId', 1));
     }
+    // Baja de un familiar: el titular quita a UNA persona (no titular) de su paquete familiar. El miembro se borra y el
+    // contador de la membresía baja en el mismo lote (nunca por debajo de 1), con lo que queda un lugar libre.
+    function esFamiliarDeTitular(codigo) {
+      return exists(/databases/$(database)/documents/miembros/$(codigo))
+          && get(/databases/$(database)/documents/miembros/$(codigo)).data.get('parentesco', '') != 'Titular'
+          && get(/databases/$(database)/documents/miembros/$(codigo)).data.get('esTitular', false) == false
+          && esTitularDe(get(/databases/$(database)/documents/miembros/$(codigo)).data.membresiaId)
+          && get(/databases/$(database)/documents/membresias/$(get(/databases/$(database)/documents/miembros/$(codigo)).data.membresiaId)).data.tipo == 'FAMILIAR';
+    }
     // Un miembro se registra con su código. El registro es válido si el código ya fue "reclamado" por esta misma
     // cuenta (registroCodigos/{código}.usuarioNuevo) y el rol pedido es el que el personal le dio al dar de alta
     // al miembro (el de su cuenta interna, cuyo uid guarda registroCodigos/{código}.usuarioId).
@@ -119,7 +128,15 @@ service cloud.firestore {
                         && membresiaActivaDeCuenta())
                     || (firmado() && request.auth.uid == uid
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['nombre', 'telefono', 'fotoUrl', 'actualizadoEn']));
+                             .hasOnly(['nombre', 'telefono', 'fotoUrl', 'actualizadoEn']))
+                    // El titular suspende la cuenta de un familiar que quita de su paquete (en el mismo lote que borra su miembro).
+                    || (resource.data.get('rol', '') == 'SOCIO'
+                        && resource.data.get('codigoMiembro', '') != ''
+                        && esFamiliarDeTitular(resource.data.codigoMiembro)
+                        && get(/databases/$(database)/documents/miembros/$(resource.data.codigoMiembro)).data.get('usuarioId', '') == uid
+                        && !existsAfter(/databases/$(database)/documents/miembros/$(resource.data.codigoMiembro))
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn'])
+                        && request.resource.data.estado == 'INACTIVO');
       allow delete: if esSuperadmin() || (esAdmin() && resource.data.get('rol', '') != 'SUPERADMIN');
     }
 
@@ -128,7 +145,10 @@ service cloud.firestore {
       allow read: if esPersonal() || (firmado() && resource.data.usuarioId == request.auth.uid)
                   || (conPerfil() && get(rutaPerfil()).data.get('codigoMiembro', '') == codigo)
                   || esTitularDe(resource.data.membresiaId);
-      allow delete: if esPersonal();
+      allow delete: if esPersonal()
+                    || (esFamiliarDeTitular(codigo)
+                        && getAfter(/databases/$(database)/documents/membresias/$(resource.data.membresiaId)).data.get('totalPersonas', 1)
+                             == get(/databases/$(database)/documents/membresias/$(resource.data.membresiaId)).data.get('totalPersonas', 1) - 1);
       allow create: if esPersonal()
                     || (request.resource.data.get('parentesco', '') != 'Titular'
                         && request.resource.data.get('esTitular', false) == false
@@ -146,7 +166,9 @@ service cloud.firestore {
     // código a la vez (get); no se puede listar. No guarda datos personales: únicamente banderas y uids.
     match /registroCodigos/{codigo} {
       allow get: if true;
-      allow delete: if esPersonal();
+      allow delete: if esPersonal()
+                    || (esFamiliarDeTitular(codigo)
+                        && !existsAfter(/databases/$(database)/documents/miembros/$(codigo)));
       allow create: if esPersonal()
                     || (existsAfter(/databases/$(database)/documents/miembros/$(codigo))
                         && getAfter(/databases/$(database)/documents/miembros/$(codigo)).data.usuarioId == request.resource.data.usuarioId
@@ -171,7 +193,35 @@ service cloud.firestore {
       allow update: if esPersonal()
                     || (esTitularDe(id)
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalPersonas', 'actualizadoEn'])
-                        && request.resource.data.get('totalPersonas', 1) == resource.data.get('totalPersonas', 1) + 1);
+                        && request.resource.data.get('totalPersonas', 1) == resource.data.get('totalPersonas', 1) + 1)
+                    // Quitar a un familiar baja el contador en uno, atado a la baja real de ese miembro (no se puede
+                    // bajar el contador sin quitar a nadie para luego sumar de más).
+                    || (esTitularDe(id)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalPersonas', 'actualizadoEn', 'ultimaBajaCodigo'])
+                        && request.resource.data.get('totalPersonas', 1) == resource.data.get('totalPersonas', 1) - 1
+                        && request.resource.data.get('totalPersonas', 1) >= 1
+                        && request.resource.data.get('ultimaBajaCodigo', '') is string
+                        && request.resource.data.get('ultimaBajaCodigo', '') != ''
+                        && esFamiliarDeTitular(request.resource.data.ultimaBajaCodigo)
+                        && get(/databases/$(database)/documents/miembros/$(request.resource.data.ultimaBajaCodigo)).data.membresiaId == id
+                        && !existsAfter(/databases/$(database)/documents/miembros/$(request.resource.data.ultimaBajaCodigo)));
+    }
+
+    // Aviso de que un titular quitó a un familiar de su paquete: lo escribe el titular en el mismo lote de la baja y una
+    // Cloud Function manda los correos (al titular y a quien se quitó). Solo lo lee el personal.
+    match /bajasFamiliares/{codigo} {
+      allow read: if esPersonal();
+      allow create: if esFamiliarDeTitular(codigo)
+                    && request.resource.data.keys().hasOnly([
+                         'codigo', 'membresiaId', 'usuarioId', 'nombre', 'correo', 'parentesco',
+                         'titularId', 'titularNombre', 'createdAt'
+                       ])
+                    && request.resource.data.codigo == codigo
+                    && request.resource.data.membresiaId == get(/databases/$(database)/documents/miembros/$(codigo)).data.membresiaId
+                    && request.resource.data.titularId == request.auth.uid
+                    && !existsAfter(/databases/$(database)/documents/miembros/$(codigo))
+                    && request.resource.data.createdAt is int;
+      allow update, delete: if false;
     }
 
     function puedeRenovar(membresiaId) {

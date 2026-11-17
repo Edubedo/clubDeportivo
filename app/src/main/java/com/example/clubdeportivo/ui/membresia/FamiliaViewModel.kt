@@ -79,6 +79,25 @@ class FamiliaViewModel(
         }
     }
 
+    private val _quitando = MutableLiveData(false)
+    val quitando: LiveData<Boolean> = _quitando
+
+    fun quitar(miembro: MiembroClub) {
+        val actual = _familia.value ?: return
+        if (_quitando.value == true || !actual.esTitular || miembro.esTitular) return
+        viewModelScope.launch {
+            _quitando.value = true
+            try {
+                familiaRepository.quitarFamiliar(actual, miembro)
+                _familia.value = SesionManager.usuarioActual?.let { familiaRepository.obtenerFamilia(it.id) } ?: actual
+                _mensaje.value = Textos.get("family_member_removed", miembro.nombre)
+            } catch (e: Exception) {
+                _mensaje.value = Textos.get("the_family_member_could_not_be_removed")
+            }
+            _quitando.value = false
+        }
+    }
+
     fun limpiarError() {
         _errorFormulario.value = null
     }

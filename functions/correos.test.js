@@ -80,3 +80,15 @@ test('despachar: simula sin transporte, envía con transporte, es idempotente y 
   assert.strictEqual((await C.despachar({ db, id: 'e4', transporte: mal, de: 'x', para: 'a@b.com', correo, tipo: 't' })).estado, 'ERROR');
   assert.strictEqual(guardado.e4.error, 'EAUTH');
 });
+
+test('correos de un familiar quitado: al titular (con su lugar libre) y a quien se quitó', () => {
+  const t = C.compositores.familiarQuitadoTitular({ nombre: 'Mariana López', familiar: 'Pedro López', lugaresLibres: 1 });
+  assert.match(t.texto, /Hola Mariana,/);
+  assert.match(t.texto, /Pedro López/);
+  assert.match(t.texto, /lugar libre/);
+  assert.match(t.html, /Lugares libres en tu paquete: 1/);
+  const f = C.compositores.familiarQuitadoFamiliar({ nombre: 'Pedro López', titular: 'Mariana López' });
+  assert.match(f.texto, /Hola Pedro,/);
+  assert.match(f.texto, /Mariana López te quitó/);
+  assert.match(f.asunto, /suspendido/);
+});

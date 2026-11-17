@@ -131,6 +131,30 @@ const compositores = {
       ], nota: PIE
     })
   }),
+  familiarQuitadoTitular: ({ nombre, familiar, lugaresLibres }) => ({
+    asunto: `${familiar} salió de tu paquete familiar`,
+    ...plantilla({
+      nombre, titulo: 'Quitaste a un familiar de tu paquete',
+      parrafos: [
+        `Quitaste a ${familiar} de tu paquete familiar. Su cuenta quedó suspendida y ya no puede entrar al club ni registrarse con su código.`,
+        lugaresLibres > 0
+          ? 'Ya tienes un lugar libre: desde la app, en Membresía > Tu familia, puedes registrar a otra persona. Le llegará su código de acceso por correo.'
+          : 'Puedes registrar a otra persona desde la app, en Membresía > Tu familia.'
+      ],
+      destacado: lugaresLibres > 0 ? `Lugares libres en tu paquete: ${lugaresLibres}` : undefined, nota: PIE
+    })
+  }),
+  familiarQuitadoFamiliar: ({ nombre, titular }) => ({
+    asunto: 'Tu acceso a Athletic Club fue suspendido',
+    ...plantilla({
+      nombre, titulo: 'Saliste de un paquete familiar',
+      parrafos: [
+        `${titular || 'El titular de tu paquete familiar'} te quitó de su paquete, por lo que tu cuenta quedó suspendida y ya no tienes acceso al club.`,
+        'Si crees que fue un error, habla con el titular o acércate a recepción.'
+      ],
+      nota: PIE
+    })
+  }),
   membresiaSuspendida: ({ nombre, motivo }) => ({
     asunto: 'Tu membresía fue suspendida',
     ...plantilla({

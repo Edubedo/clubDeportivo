@@ -432,6 +432,65 @@ await prueba('el familiar invitado puede registrarse con su código (flujo norma
   await assertSucceeds(getDoc(doc(real, 'membresias/fam1')));
 });
 
+// ---- plan familiar: el titular quita a un familiar (su cuenta queda suspendida y se libera su lugar)
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'membresias/famBaja'), { usuarioId: 'tBaja', tipo: 'FAMILIAR', paqueteFamiliarId: 1, estado: 'ACTIVA', totalPersonas: 3 });
+  await setDoc(doc(db, 'usuarios/tBaja'), { nombre: 'Titular', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-TBJ001' });
+  await setDoc(doc(db, 'miembros/CLB-TBJ001'), { nombre: 'Titular', usuarioId: 'tBaja', membresiaId: 'famBaja', parentesco: 'Titular', esTitular: true, cuentaCreada: true });
+  for (const n of ['A', 'B']) {
+    await setDoc(doc(db, 'usuarios/fBaja' + n), { nombre: 'Fam ' + n, rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-FB' + n + '001' });
+    await setDoc(doc(db, 'miembros/CLB-FB' + n + '001'), { nombre: 'Fam ' + n, usuarioId: 'fBaja' + n, membresiaId: 'famBaja', parentesco: 'Hijo', esTitular: false, cuentaCreada: true });
+    await setDoc(doc(db, 'registroCodigos/CLB-FB' + n + '001'), { usuarioId: 'fBaja' + n, cuentaCreada: true });
+  }
+});
+const tBaja = env.authenticatedContext('tBaja').firestore();
+function quitarFamiliar(db, { codigo, uid, membresia = 'famBaja', total, ultima = codigo, titularId = 'tBaja', conAviso = true }) {
+  const lote = writeBatch(db);
+  lote.delete(doc(db, 'miembros/' + codigo));
+  lote.delete(doc(db, 'registroCodigos/' + codigo));
+  lote.update(doc(db, 'usuarios/' + uid), { estado: 'INACTIVO', actualizadoEn: 1 });
+  lote.update(doc(db, 'membresias/' + membresia), { totalPersonas: total, ultimaBajaCodigo: ultima, actualizadoEn: 1 });
+  if (conAviso) lote.set(doc(db, 'bajasFamiliares/' + codigo), { codigo, membresiaId: membresia, usuarioId: uid, nombre: 'Fam', correo: '', parentesco: 'Hijo', titularId, titularNombre: 'Titular', createdAt: 1 });
+  return lote.commit();
+}
+await prueba('el titular quita a un familiar: miembro borrado, cuenta suspendida y contador -1', async () => {
+  await assertSucceeds(quitarFamiliar(tBaja, { codigo: 'CLB-FBA001', uid: 'fBajaA', total: 2 }));
+});
+await prueba('tras quitarlo, el titular puede dar de alta a otra persona (el lugar quedó libre)', () =>
+  assertSucceeds(altaFamiliar(tBaja, { membresia: 'famBaja', total: 3, codigo: 'CLB-FBN001', uid: 'cuentaFBN1' })));
+await prueba('el familiar quitado NO puede reactivar su cuenta aunque la membresía siga activa', async () => {
+  const quitado = env.authenticatedContext('fBajaA').firestore();
+  await assertFails(updateDoc(doc(quitado, 'usuarios/fBajaA'), { estado: 'ACTIVO', actualizadoEn: 1 }));
+});
+await prueba('el titular NO puede quitar al titular (a sí mismo)', () => {
+  const lote = writeBatch(tBaja);
+  lote.delete(doc(tBaja, 'miembros/CLB-TBJ001'));
+  lote.update(doc(tBaja, 'membresias/famBaja'), { totalPersonas: 2, ultimaBajaCodigo: 'CLB-TBJ001', actualizadoEn: 1 });
+  return assertFails(lote.commit());
+});
+await prueba('el titular NO puede bajar el contador sin quitar a nadie', () =>
+  assertFails(updateDoc(doc(tBaja, 'membresias/famBaja'), { totalPersonas: 2, ultimaBajaCodigo: 'CLB-FBB001', actualizadoEn: 1 })));
+await prueba('el titular NO puede quitar a alguien de OTRA familia', () =>
+  assertFails(quitarFamiliar(titular1, { codigo: 'CLB-FBB001', uid: 'fBajaB', membresia: 'famBaja', total: 1, titularId: 'titular1' })));
+await prueba('un familiar NO puede quitar a otro familiar', () => {
+  const hijo = env.authenticatedContext('fBajaB').firestore();
+  return assertFails(quitarFamiliar(hijo, { codigo: 'CLB-FBB001', uid: 'fBajaB', total: 1, titularId: 'fBajaB' }));
+});
+await prueba('el titular NO puede quitar al familiar sin borrar su miembro (solo suspender la cuenta)', () =>
+  assertFails(updateDoc(doc(tBaja, 'usuarios/fBajaB'), { estado: 'INACTIVO', actualizadoEn: 1 })));
+await prueba('el titular NO puede suspender a un familiar y a la vez cambiarle otros datos', () => {
+  const lote = writeBatch(tBaja);
+  lote.delete(doc(tBaja, 'miembros/CLB-FBB001'));
+  lote.update(doc(tBaja, 'usuarios/fBajaB'), { estado: 'INACTIVO', rol: 'ADMIN' });
+  lote.update(doc(tBaja, 'membresias/famBaja'), { totalPersonas: 2, ultimaBajaCodigo: 'CLB-FBB001', actualizadoEn: 1 });
+  return assertFails(lote.commit());
+});
+await prueba('nadie lee los avisos de baja salvo el personal', async () => {
+  await assertFails(getDoc(doc(tBaja, 'bajasFamiliares/CLB-FBA001')));
+  await assertSucceeds(getDoc(doc(admin, 'bajasFamiliares/CLB-FBA001')));
+});
+
 // ---------- Cambio de plan (solicitudes_cambio_plan) ----------
 await env.withSecurityRulesDisabled(async ctx => {
   const db = ctx.firestore();

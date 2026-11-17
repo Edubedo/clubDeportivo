@@ -1306,5 +1306,12 @@
   "area_desc_tenis": "Courts for training and matches.",
   "area_desc_otro": "Discover our sports facilities.",
   "estado_reserva_cancelada": "Cancelled",
-  "estado_reserva_finalizada": "Finished"
+  "estado_reserva_finalizada": "Finished",
+  "only_the_package_holder_can_remove": "Only the package holder can remove family members.",
+  "the_package_holder_cannot_be_removed": "The package holder cannot be removed from their own package.",
+  "family_member_removed": "%1$s was removed from your package. Their account is suspended and you now have a free spot.",
+  "the_family_member_could_not_be_removed": "The family member could not be removed. Check your connection and try again.",
+  "remove_family_member": "Remove from package",
+  "remove_family_member_warning": "%1$s will lose access to the club and their account will be suspended. A spot will free up in your package so you can register someone else. Both of you will be notified by email.",
+  "remove": "Remove"
 }

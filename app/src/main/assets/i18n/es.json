@@ -1306,5 +1306,12 @@
   "area_desc_tenis": "Canchas para entrenamientos y partidos.",
   "area_desc_otro": "Conoce nuestras instalaciones deportivas.",
   "estado_reserva_cancelada": "Cancelada",
-  "estado_reserva_finalizada": "Finalizada"
+  "estado_reserva_finalizada": "Finalizada",
+  "only_the_package_holder_can_remove": "Solo el titular del paquete puede quitar familiares.",
+  "the_package_holder_cannot_be_removed": "El titular no se puede quitar de su propio paquete.",
+  "family_member_removed": "%1$s salió de tu paquete. Su cuenta quedó suspendida y ya tienes un lugar libre.",
+  "the_family_member_could_not_be_removed": "No se pudo quitar al familiar. Revisa tu conexión e inténtalo de nuevo.",
+  "remove_family_member": "Quitar del paquete",
+  "remove_family_member_warning": "%1$s dejará de tener acceso al club y su cuenta quedará suspendida. Se liberará un lugar en tu paquete para registrar a otra persona. Se les avisará por correo.",
+  "remove": "Quitar"
 }
