@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.data.model.etiquetaEstadoReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.ui.components.BurbujaTexto
 import com.example.clubdeportivo.ui.components.EmptyState
@@ -166,7 +167,7 @@ private fun TarjetaReservaAdministrador(reserva: Reserva) {
                     EstadoReserva.CONFIRMADA -> Insignia(Textos.get("confirmed_2"), TipoInsignia.EXITO, icono = Icons.Filled.Check)
                     EstadoReserva.PENDIENTE_APROBACION ->
                         Insignia(Textos.get("under_review_2"), TipoInsignia.ALERTA, icono = Icons.Filled.Schedule)
-                    else -> Insignia(reserva.estado.name, TipoInsignia.NEUTRO)
+                    else -> Insignia(etiquetaEstadoReserva(reserva.estado), TipoInsignia.NEUTRO)
                 }
             }
 

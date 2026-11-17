@@ -225,7 +225,7 @@ const md = [
   '| Rol | Nombre | Usuario (correo) | Contraseña | Notas |',
   '|---|---|---|---|---|',
   ...cuentas.map((c) => fila(c.rol === 'ADMIN' ? 'Administrador' : c.rol === 'SUPERVISOR' ? 'Supervisor' : 'Encargado de área', c.nombre, c.email, c.password, c.area ? `Área: ${c.area}` : '')),
-  ...oficiales.map((m) => fila('Miembro (socio)', m.nombre, m.email, m.password, `Código ${m.codigo} · plan ${m.plan} · vence ${dia(m.vence)}`)),
+  ...oficiales.map((m) => fila('Socio', m.nombre, m.email, m.password, `Código ${m.codigo} · plan ${m.plan} · vence ${dia(m.vence)}`)),
   '',
   `Miembros de relleno (también pueden entrar): correo \`<id>@athleticclub.test\` con contraseña \`${PASS_RELLENO}\`:`,
   '',

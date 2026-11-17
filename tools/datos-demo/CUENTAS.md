@@ -11,8 +11,8 @@ Se recrean con `node tools/datos-demo/sembrar-demo.mjs`. Inicio de sesión: corr
 | Encargado de área | Ana Lucía Duarte | `encargado.basquetbol@athleticclub.test` | `Basquet#2026Club` | Área: Básquetbol |
 | Encargado de área | Miguel Ángel Cota | `encargado.tenis@athleticclub.test` | `Tenis#2026Club` | Área: Tenis |
 | Encargado de área | Daniela Robles Urías | `encargado.natacion@athleticclub.test` | `Natacion#2026Club` | Área: Natación |
-| Miembro (socio) | Mariana López Ruiz | `mariana.lopez@athleticclub.test` | `Socio#2026Mariana` | Código CLB-7K3M9Q · plan NORMAL · vence 2026-11-19 |
-| Miembro (socio) | Diego Hernández Soto | `diego.hernandez@athleticclub.test` | `Socio#2026Diego` | Código CLB-X4RT82 · plan DELUXE · vence 2026-12-07 |
+| Socio | Mariana López Ruiz | `mariana.lopez@athleticclub.test` | `Socio#2026Mariana` | Código CLB-7K3M9Q · plan NORMAL · vence 2026-11-19 |
+| Socio | Diego Hernández Soto | `diego.hernandez@athleticclub.test` | `Socio#2026Diego` | Código CLB-X4RT82 · plan DELUXE · vence 2026-12-07 |
 
 Miembros de relleno (también pueden entrar): correo `<id>@athleticclub.test` con contraseña `Relleno#2026Club`:
 

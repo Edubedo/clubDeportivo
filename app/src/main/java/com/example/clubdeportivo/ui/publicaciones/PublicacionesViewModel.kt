@@ -28,8 +28,9 @@ class PublicacionesViewModel : ViewModel() {
     var error by mutableStateOf<String?>(null)
         private set
 
+    /** Avisos que el administrador gestiona: todos los publicados (los puede editar o retirar cualquier administrador). */
     val propias: List<Publicacion>
-        get() = SesionManager.usuarioActual?.id?.let { id -> publicaciones.filter { it.autorId == id } }.orEmpty()
+        get() = if (SesionManager.usuarioActual?.rol?.esAdministrador() == true) publicaciones else emptyList()
 
     val visibles: List<Publicacion>
         get() {

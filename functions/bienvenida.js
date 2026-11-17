@@ -31,7 +31,7 @@ function componerBienvenida({ nombre, codigo, enlace, club = 'Athletic Club' }) 
   const texto = [
     `${saludo},`,
     '',
-    `Te damos la bienvenida a ${club}. Ya eres miembro.`,
+    `Te damos la bienvenida a ${club}. Ya eres socio.`,
     '',
     `Tu código de acceso: ${codigo}`,
     '',
@@ -50,7 +50,7 @@ function componerBienvenida({ nombre, codigo, enlace, club = 'Athletic Club' }) 
 <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;padding:28px">
 <tr><td>
 <h1 style="margin:0 0 12px;font-size:22px;color:#e8590c">${escapar(club)}</h1>
-<p style="margin:0 0 16px;font-size:16px">${saludoHtml}, te damos la bienvenida. Ya eres miembro.</p>
+<p style="margin:0 0 16px;font-size:16px">${saludoHtml}, te damos la bienvenida. Ya eres socio.</p>
 <p style="margin:0 0 6px;font-size:14px;color:#6b625a">Tu código de acceso</p>
 <p style="margin:0 0 20px;font-size:28px;font-weight:bold;letter-spacing:3px;font-family:Consolas,Menlo,monospace">${escapar(codigo)}</p>
 <p style="margin:0 0 20px"><a href="${e}" style="display:inline-block;background:#e8590c;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px">Crear mi cuenta</a></p>

@@ -94,6 +94,7 @@ import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.ui.reservas.ReservaListada
 import com.example.clubdeportivo.ui.reservas.ReservasViewModel
 import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.data.model.etiquetaEstadoReserva
 import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.data.publicaciones.Publicacion
@@ -360,7 +361,7 @@ private fun MemberBookingCard(reserva: ReservaListada?, onClick: () -> Unit) {
                     val (estadoColor, estadoFondo) = if (reserva.estado == EstadoReserva.CONFIRMADA) Verde to FondoVerde else Amarillo to FondoAmarillo
                     Surface(color = estadoFondo, shape = RoundedCornerShape(50), modifier = Modifier.padding(top = 8.dp)) {
                         Text(
-                            if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) Textos.get("request_under_review") else reserva.estado.name.lowercase().replaceFirstChar { it.uppercase() },
+                            if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) Textos.get("request_under_review") else etiquetaEstadoReserva(reserva.estado),
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = estadoColor

@@ -44,7 +44,7 @@ exports.cambiarContrasenaPersonal = onCall({ region: 'us-central1', maxInstances
   const objetivo = await db.doc(`usuarios/${uid}`).get();
   if (!objetivo.exists) throw new HttpsError('not-found', 'Esa persona ya no existe.');
   if (!ROLES_DE_PERSONAL.includes(objetivo.get('rol'))) {
-    throw new HttpsError('permission-denied', 'Solo se puede cambiar la contraseña del personal, no la de los miembros.');
+    throw new HttpsError('permission-denied', 'Solo se puede cambiar la contraseña del personal, no la de los socios.');
   }
 
   // Solo un superadministrador puede cambiar la contraseña de otro superadministrador (un ADMIN tomaría su cuenta).

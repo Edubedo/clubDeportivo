@@ -70,7 +70,7 @@ object CorreoBienvenida {
         val primer = nombre.trim().split(Regex("\\s+")).first()
         val saludo = if (primer.isNotEmpty()) "Hola $primer" else "Hola"
         val asunto = "Tu código de acceso a Athletic Club: $codigo"
-        val texto = "$saludo,\n\nTe damos la bienvenida a Athletic Club. Ya eres miembro.\n\n" +
+        val texto = "$saludo,\n\nTe damos la bienvenida a Athletic Club. Ya eres socio.\n\n" +
             "Tu código de acceso: $codigo\n\n" +
             "Para crear tu cuenta abre este enlace desde tu teléfono Android (con la app instalada):\n$enlace\n\n" +
             "Si el enlace no abre la app, entra a \"Regístrate con tu código\" y escribe el código a mano.\n" +
@@ -78,7 +78,7 @@ object CorreoBienvenida {
             "Si no esperabas este correo, ignóralo."
         val html = """<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#2b2622">""" +
             """<h1 style="color:#e8590c;font-size:22px">Athletic Club</h1>""" +
-            """<p>${html(saludo)}, te damos la bienvenida. Ya eres miembro.</p>""" +
+            """<p>${html(saludo)}, te damos la bienvenida. Ya eres socio.</p>""" +
             """<p style="margin:0;color:#6b625a;font-size:14px">Tu código de acceso</p>""" +
             """<p style="font:bold 28px Menlo,Consolas,monospace;letter-spacing:3px;margin:4px 0 20px">${html(codigo)}</p>""" +
             """<p><a href="${html(enlace)}" style="background:#e8590c;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px;display:inline-block">Crear mi cuenta</a></p>""" +

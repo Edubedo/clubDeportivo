@@ -95,7 +95,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardCard(emoji = "👤", cantidad = "3", titulo = "Miembros", backgroundColor = Superficie, modifier = Modifier.weight(1f))
+                DashboardCard(emoji = "👤", cantidad = "3", titulo = "Socios", backgroundColor = Superficie, modifier = Modifier.weight(1f))
                 DashboardCard(emoji = "🗓️", cantidad = "2", titulo = "Reservas hoy", backgroundColor = Superficie, modifier = Modifier.weight(1f))
             }
 

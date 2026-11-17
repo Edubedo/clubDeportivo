@@ -87,3 +87,14 @@ fun etiquetaMotivoSuspension(guardado: String): String {
     }
     return guardado
 }
+
+/** Texto traducido del estado de una reserva (en lugar de mostrar el nombre crudo del enum, que está en español). */
+fun etiquetaEstadoReserva(estado: EstadoReserva): String = Textos.get(
+    when (estado) {
+        EstadoReserva.CONFIRMADA -> "confirmed_2"
+        EstadoReserva.PENDIENTE_APROBACION -> "under_review_2"
+        EstadoReserva.RECHAZADA -> "rejected"
+        EstadoReserva.CANCELADA -> "estado_reserva_cancelada"
+        EstadoReserva.FINALIZADA -> "estado_reserva_finalizada"
+    }
+)

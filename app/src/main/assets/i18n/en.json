@@ -1303,5 +1303,7 @@
   "area_desc_basquet": "Spaces to practice basketball.",
   "area_desc_natacion": "Pools to train and swim.",
   "area_desc_tenis": "Courts for training and matches.",
-  "area_desc_otro": "Discover our sports facilities."
+  "area_desc_otro": "Discover our sports facilities.",
+  "estado_reserva_cancelada": "Cancelled",
+  "estado_reserva_finalizada": "Finished"
 }

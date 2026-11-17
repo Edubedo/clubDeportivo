@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.data.model.etiquetaEstadoReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.ui.components.EncabezadoPantalla
 import com.example.clubdeportivo.ui.components.MargenPantalla
@@ -414,7 +415,7 @@ private fun TarjetaReservaSupervisor(
                     EstadoReserva.PENDIENTE_APROBACION -> tr("pending")
                     EstadoReserva.CONFIRMADA -> tr("confirmed_2")
                     EstadoReserva.RECHAZADA -> tr("rejected")
-                    else -> reserva.estado.name
+                    else -> etiquetaEstadoReserva(reserva.estado)
                 },
                 color = MaterialTheme.colorScheme.secondary
             )
