@@ -145,6 +145,7 @@ internal fun MiembrosTab(
     val errorFormulario by viewModel.errorFormulario.observeAsState()
     val guardadoExitoso by viewModel.guardadoExitoso.observeAsState(0)
     val registroReciente by viewModel.registroReciente.observeAsState()
+    val resolver = LocalContext.current.contentResolver
     val precios by preciosViewModel.editados.observeAsState(emptyMap())
 
     var busqueda by remember { mutableStateOf("") }
@@ -269,7 +270,7 @@ internal fun MiembrosTab(
             guardando = guardando,
             onGuardar = { tipo, plan, paqueteId, personas, estado, motivo, metodo, comprobanteUri ->
                 val editando = enEdicion
-                if (editando == null) viewModel.registrar(tipo, plan, paqueteId, personas, metodo, comprobanteUri)
+                if (editando == null) viewModel.registrar(tipo, plan, paqueteId, personas, metodo, comprobanteUri, resolver)
                 else viewModel.actualizar(editando, plan, paqueteId, personas, estado, motivo)
             },
             onRestablecerAcceso = { restableciendo = it },

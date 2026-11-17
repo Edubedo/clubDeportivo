@@ -14,6 +14,7 @@ import com.example.clubdeportivo.data.repository.EmuladoresFirebase
 import com.example.clubdeportivo.util.Fechas
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.tasks.await
 import java.security.MessageDigest
 import java.util.Date
@@ -144,7 +145,10 @@ object MotorRecordatorios {
             if (recordatorio.claves.any { it.startsWith("solicitud:") } &&
                 recordatorio.categoria == CategoriaNotificacion.SOLICITUDES
             ) return@forEach
-            if (recordatorio.claves.none { it.startsWith("servidor:") }) guardarEnBandeja(uid, recordatorio)
+            if (recordatorio.claves.none { it.startsWith("servidor:") }) {
+                runCatching { guardarEnBandeja(uid, recordatorio) }
+                    .onFailure { Log.e(TAG, "No se pudo guardar en la bandeja el aviso ${recordatorio.claves}", it) }
+            }
             // Sin permiso (o con las notificaciones apagadas) nada se muestra: no se marca como avisado ni como leído,
             // así el aviso sale cuando la persona las active.
             if (!Notificador.mostrar(contexto, recordatorio)) return@forEach
@@ -169,23 +173,26 @@ object MotorRecordatorios {
         }
         val referencia = FirebaseFirestore.getInstance().collection("notificaciones")
             .document(documentoId)
-        FirebaseFirestore.getInstance().runTransaction { transaccion ->
-            if (!transaccion.get(referencia).exists()) {
-                transaccion.set(
-                    referencia,
-                    mapOf(
-                        "id" to referencia.id,
-                        "usuarioId" to uid,
-                        "titulo" to recordatorio.titulo,
-                        "mensaje" to recordatorio.mensaje,
-                        "tipo" to recordatorio.categoria.name,
-                        "leida" to false,
-                        "createdAt" to System.currentTimeMillis(),
-                        "ruta" to recordatorio.ruta.orEmpty()
-                    )
+        // Se crea con un `set` directo y NO con una transacción que primero lee el documento: las reglas solo dejan leer
+        // notificaciones propias que ya existen, así que leer una que aún no existe es PERMISSION_DENIED y el aviso nunca
+        // llegaba a la campanita. Si ya existía (otra revisión lo guardó antes), las reglas rechazan el `set` porque
+        // sería una edición: eso significa "ya está en la bandeja", no un error.
+        try {
+            referencia.set(
+                mapOf(
+                    "id" to referencia.id,
+                    "usuarioId" to uid,
+                    "titulo" to recordatorio.titulo,
+                    "mensaje" to recordatorio.mensaje,
+                    "tipo" to recordatorio.categoria.name,
+                    "leida" to false,
+                    "createdAt" to System.currentTimeMillis(),
+                    "ruta" to recordatorio.ruta.orEmpty()
                 )
-            }
-        }.await()
+            ).await()
+        } catch (e: FirebaseFirestoreException) {
+            if (e.code != FirebaseFirestoreException.Code.PERMISSION_DENIED) throw e
+        }
     }
 
     private const val TAG = "MotorRecordatorios"

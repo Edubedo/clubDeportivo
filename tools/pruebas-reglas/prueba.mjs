@@ -498,7 +498,10 @@ await prueba('cambio de plan: el supervisor y el admin aplican el plan nuevo a l
 // ---------- Torneos: el contador de inscritos ----------
 await env.withSecurityRulesDisabled(async ctx => {
   const db = ctx.firestore();
-  await setDoc(doc(db, 'usuarios/tq-socio'), { nombre: 'Torneo', rol: 'SOCIO', estado: 'ACTIVO' });
+  // Para inscribirse, la regla exige una membresía ACTIVA ligada a la cuenta (perfil -> miembro -> membresía).
+  await setDoc(doc(db, 'usuarios/tq-socio'), { nombre: 'Torneo', rol: 'SOCIO', estado: 'ACTIVO', codigoMiembro: 'CLB-TQSOC1' });
+  await setDoc(doc(db, 'miembros/CLB-TQSOC1'), { nombre: 'Torneo', usuarioId: 'tq-socio', membresiaId: 'tq-m', parentesco: 'Titular' });
+  await setDoc(doc(db, 'membresias/tq-m'), { usuarioId: 'tq-socio', tipo: 'INDIVIDUAL', estado: 'ACTIVA' });
   await setDoc(doc(db, 'torneos/tq'), { nombre: 'Copa', disciplina: 'Tenis', areaId: '5', cupoMaximo: 2, inscritos: 1 });
 });
 const tqSocio = env.authenticatedContext('tq-socio').firestore();

@@ -1,6 +1,8 @@
 package com.example.clubdeportivo.ui.membresia
 
+import android.content.ContentResolver
 import android.net.Uri
+import android.util.Base64
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -16,14 +18,14 @@ import com.example.clubdeportivo.data.model.PlanIndividual
 import com.example.clubdeportivo.data.model.TipoMembresia
 import com.example.clubdeportivo.data.repository.GestionMembresiasRepository
 import com.example.clubdeportivo.data.repository.PreciosRepository
-import com.google.firebase.storage.FirebaseStorage
+import com.example.clubdeportivo.util.comprimirComprobanteRenovacion
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.Idioma
 import com.example.clubdeportivo.util.ReglasMembresia
 import com.example.clubdeportivo.util.Textos
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import java.util.UUID
+import kotlinx.coroutines.withContext
 
 /** Control de las membresías del club: alta de miembros (con su código), edición, renovación y suspensión. */
 class MembresiasAdminViewModel(
@@ -82,7 +84,8 @@ class MembresiasAdminViewModel(
         paqueteId: Int?,
         personas: List<PersonaForm>,
         metodoPago: MetodoPago,
-        comprobanteUri: Uri? = null
+        comprobanteUri: Uri? = null,
+        resolver: ContentResolver? = null
     ) {
         val error = ReglasMembresia.validarPersonas(tipo, paqueteId, personas)
         if (error != null) {
@@ -94,12 +97,12 @@ class MembresiasAdminViewModel(
             _errorFormulario.value = null
             try {
                 val precio = ClavesPrecio.deMembresia(tipo, plan, paqueteId, preciosActuales())
-                val comprobanteUrl = comprobanteUri?.let { uri ->
-                    val referencia = FirebaseStorage.getInstance().reference
-                        .child("comprobantes_membresias/${UUID.randomUUID()}.jpg")
-                    referencia.putFile(uri).await()
-                    referencia.downloadUrl.await().toString()
-                }
+                // Igual que las fotos de perfil: se comprime y se guarda como data URI, sin Firebase Storage.
+                val comprobanteUrl = if (comprobanteUri != null && resolver != null) {
+                    val jpeg = withContext(Dispatchers.IO) { comprimirComprobanteRenovacion(resolver, comprobanteUri) }
+                        ?: error(Textos.get("renewal_proof_compress_failed"))
+                    "data:image/jpeg;base64," + Base64.encodeToString(jpeg, Base64.NO_WRAP)
+                } else null
                 _registroReciente.value = repositorio.registrar(
                     tipo,
                     plan,

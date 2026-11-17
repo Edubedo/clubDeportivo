@@ -172,6 +172,13 @@ class FirebaseReservaRepository(
         val carrilGanado = carril != null && anteriores.any { it.reserva.carril == carril }
         if (!sinCupo && !carrilGanado) return
 
+        android.util.Log.w(
+            "VerificarCupo",
+            "Reserva $reservaId cancelada: sinCupo=$sinCupo carrilGanado=$carrilGanado capacidad=$capacidad " +
+                "area=$areaId fecha=$fecha $horaInicio-$horaFin personas=${orden[posicion].reserva.personas} carril=$carril " +
+                "anteriores=" + anteriores.joinToString { "${it.id}[${it.reserva.estado} ${it.reserva.horaInicio}-${it.reserva.horaFin} p=${it.reserva.personas} c=${it.reserva.carril}]" }
+        )
+
         reservas.document(reservaId).update(
             mapOf(
                 "estado" to EstadoReserva.CANCELADA.name,

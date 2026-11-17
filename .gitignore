@@ -20,3 +20,12 @@ app/build/
 app/google-services.json
 
 
+
+# Configuración local de Android Studio
+local.properties
+
+# Emuladores de Firebase y secretos locales
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+functions/.secret.local

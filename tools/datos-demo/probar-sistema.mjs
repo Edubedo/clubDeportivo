@@ -7,7 +7,15 @@ const { initializeApp, deleteApp } = require('firebase/app');
 const { getAuth, connectAuthEmulator, signInWithEmailAndPassword } = require('firebase/auth');
 const { getFirestore, connectFirestoreEmulator, doc, getDoc, setDoc, updateDoc, addDoc, collection, getDocs, query, where, deleteDoc } = require('firebase/firestore');
 
+// El SDK de administrador (limpieza) debe apuntar siempre al emulador, nunca al proyecto real.
+process.env.FIRESTORE_EMULATOR_HOST ||= '127.0.0.1:8080';
+const requireAdmin = createRequire(new URL('../../functions/package.json', import.meta.url));
+const { initializeApp: initAdmin } = requireAdmin('firebase-admin/app');
+const { getFirestore: getAdminDb } = requireAdmin('firebase-admin/firestore');
+
 const PROYECTO = 'clubdeportivoudc';
+initAdmin({ projectId: PROYECTO });
+const adminDb = getAdminDb();
 const hoy = new Date();
 const pad = (n) => String(n).padStart(2, '0');
 const dia = (o = 0) => { const d = new Date(); d.setDate(d.getDate() + o); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
@@ -93,7 +101,8 @@ await setDoc(doc(mariana.db, 'solicitudes_renovacion', solicitudId), { id: solic
 prueba('socio envía su solicitud de renovación', true);
 const paraAdmin = await esperar(async () => { const n = await miNotifs(admin); return n.length > adminAntes ? n : null; });
 prueba('el ADMIN recibe la notificación "Nueva solicitud de renovación"', !!paraAdmin && paraAdmin.some((n) => n.titulo === 'Nueva solicitud de renovación' && n.mensaje.includes('Mariana López Ruiz') && n.tipo === 'RENOVACION' && n.leida === false), JSON.stringify(paraAdmin?.slice(-1)));
-prueba('el encargado NO recibe esa notificación (solo administradores)', (await miNotifs(encTenis)).length === 0);
+// Las solicitudes de renovación se avisan a todo el personal (ROLES_DE_PERSONAL en functions/index.js): también al encargado.
+prueba('el encargado (personal) también recibe esa notificación', (await miNotifs(encTenis)).some((n) => n.titulo === 'Nueva solicitud de renovación' && n.tipo === 'RENOVACION'));
 prueba('Diego (otro socio) NO la recibe', (await miNotifs(diego)).length === 0);
 const marianaAntes = (await miNotifs(mariana)).length;
 await updateDoc(doc(admin.db, 'solicitudes_renovacion', solicitudId), { status: 'RECHAZADO', motivoRechazo: 'Comprobante ilegible', reviewedBy: admin.uid, reviewedAt: new Date() });
@@ -112,7 +121,10 @@ const docNotif = (await getDocs(query(collection(mariana.db, 'notificaciones'), 
 prueba('la socia marca su notificación como leída', await permitido(() => updateDoc(docNotif.ref, { leida: true, leidaEn: Date.now() })));
 prueba('Diego NO puede marcar leída la de Mariana', !(await permitido(() => updateDoc(doc(diego.db, 'notificaciones', docNotif.id), { leida: true }))));
 // Limpieza de lo creado por la prueba
-for (const n of [...(await getDocs(query(collection(admin.db, 'notificaciones'), where('usuarioId', 'in', [admin.uid, mariana.uid])))).docs]) await deleteDoc(n.ref);
+// Los clientes no pueden borrar notificaciones (regla), así que la limpieza va por el SDK de administrador.
+for (const s of [admin, mariana, encTenis]) {
+  for (const n of (await adminDb.collection('notificaciones').where('usuarioId', '==', s.uid).get()).docs) await n.ref.delete();
+}
 
 console.log('\n=== 5. Avisos del club (insumo de las notificaciones locales) ===');
 const aviso = { titulo: 'Prueba: cancha de tenis en mantenimiento', mensaje: 'Aviso de prueba generado por la batería funcional.', destinatario: 'SOCIOS', autorId: encTenis.uid, autorNombre: 'Miguel Ángel Cota', fechaMillis: Date.now(), imagenUrl: '', vigencia: dia(1) };
