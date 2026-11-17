@@ -298,7 +298,12 @@ fun MiembroHomeScreen(
         }
         MemberBookingCard(reserva = reservasProximas.firstOrNull(), onClick = onReservar)
         Spacer(Modifier.height(14.dp))
-        OutlinedButton(onClick = onMembresia, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+        Button(
+            onClick = onMembresia,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Marca, contentColor = Color.White)
+        ) {
             Text(Textos.get("view_my_membership"))
         }
     }
