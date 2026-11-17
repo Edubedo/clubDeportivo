@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -151,9 +152,9 @@ fun TorneosScreen(viewModel: TorneosViewModel = viewModel()) {
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when {
                 cargando && torneos.isEmpty() -> FullScreenLoading(modifier = Modifier.fillMaxSize())
-                torneos.isEmpty() && !esAdministrador -> EmptyState(
-                    mensaje = Textos.get("there_are_no_tournaments_available"),
-                    icono = Icons.Filled.EmojiEvents
+                torneos.isEmpty() && !cargando && !esAdministrador -> EmptyState(
+                    mensaje = Textos.get("tournaments_empty_title"),
+                    icono = Icons.Outlined.EmojiEvents
                 )
                 esAdministrador -> TorneosAdminContent(
                     torneos = torneos,

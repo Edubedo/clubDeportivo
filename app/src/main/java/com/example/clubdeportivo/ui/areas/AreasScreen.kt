@@ -193,6 +193,22 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                         contentPadding = PaddingValues(start = MargenPantalla, end = MargenPantalla, top = 8.dp, bottom = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        if (esEncargado) {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = "Área asignada",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "Gestiona la disponibilidad de tu instalación",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextoSecundario
+                                    )
+                                }
+                            }
+                        }
                         items(areasVisibles, key = { it.id }) { area ->
                             AreaCard(
                                 area = area,
@@ -217,26 +233,10 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
 
 
     areaSeleccionada?.let { area ->
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = {
-                areaSeleccionada = null
-            },
-            properties = androidx.compose.ui.window.DialogProperties(
-                usePlatformDefaultWidth = false
-            )
-        ) {
-            androidx.compose.material3.Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = FondoApp
-            ) {
-                AreaDetalleScreen(
-                    area = area,
-                    onVolver = {
-                        areaSeleccionada = null
-                    }
-                )
-            }
-        }
+        AreaDetalleScreen(
+            area = area,
+            onVolver = { areaSeleccionada = null }
+        )
     }
 
 

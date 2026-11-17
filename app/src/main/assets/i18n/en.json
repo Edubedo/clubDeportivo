@@ -827,6 +827,7 @@
   "tournament_name": "TOURNAMENT NAME",
   "tournament_updated": "Tournament updated: %1$s",
   "tournaments": "Tournaments",
+  "tournaments_empty_title": "No tournaments available yet",
   "under_maintenance": "Under maintenance",
   "under_maintenance_2": "%1$s under maintenance",
   "under_review": " (%1$s under review)",
