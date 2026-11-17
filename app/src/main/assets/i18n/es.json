@@ -1313,5 +1313,6 @@
   "the_family_member_could_not_be_removed": "No se pudo quitar al familiar. Revisa tu conexión e inténtalo de nuevo.",
   "remove_family_member": "Quitar del paquete",
   "remove_family_member_warning": "%1$s dejará de tener acceso al club y su cuenta quedará suspendida. Se liberará un lugar en tu paquete para registrar a otra persona. Se les avisará por correo.",
-  "remove": "Quitar"
+  "remove": "Quitar",
+  "plan_precio_catalogo_actual": "Precio actual del plan: %1$s"
 }

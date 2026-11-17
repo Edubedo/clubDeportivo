@@ -201,9 +201,14 @@ private fun PlanesTab(
                     val puedePedir = miPlan != null && plan != miPlan &&
                         ReglasMembresia.estadoEfectivo(miMembresia!!, Fechas.hoy()) == EstadoMembresia.ACTIVA &&
                         cambioUi.ultimaLista && cambioUi.ultima?.status != SolicitudCambioPlan.PENDIENTE
+                    val precioCatalogo = ClavesPrecio.de(clave, editados)
+                    // En "Tu plan" va lo que realmente pagas (el precio de tu membresía), no el del catálogo.
+                    val precioPagado = miMembresia?.precio?.takeIf { plan == miPlan }
                     TarjetaPlan(
                         titulo = titulo,
-                        precio = dinero(ClavesPrecio.de(clave, editados)),
+                        precio = dinero(precioPagado ?: precioCatalogo),
+                        precioNota = if (precioPagado != null && precioPagado != precioCatalogo)
+                            Textos.get("plan_precio_catalogo_actual", dinero(precioCatalogo)) else null,
                         periodo = Textos.get("per_month"),
                         incluye = Catalogos.beneficiosPlanIndividual(plan),
                         // Con plan propio, solo "Tu plan" lleva el realce: así se ve de un vistazo cuál es el tuyo.
@@ -442,6 +447,7 @@ private fun TarjetaPlan(
     precio: String,
     periodo: String,
     incluye: List<String>,
+    precioNota: String? = null,
     destacado: Boolean = false,
     onEditar: (() -> Unit)? = null,
     esTuPlan: Boolean = false,
@@ -511,6 +517,9 @@ private fun TarjetaPlan(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(precio, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = accentForeground, maxLines = 1)
                     Text(periodo, style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+                    precioNota?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+                    }
                 }
                 if (onEditar != null) {
                     IconButton(onClick = onEditar) {

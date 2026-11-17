@@ -1313,5 +1313,6 @@
   "the_family_member_could_not_be_removed": "The family member could not be removed. Check your connection and try again.",
   "remove_family_member": "Remove from package",
   "remove_family_member_warning": "%1$s will lose access to the club and their account will be suspended. A spot will free up in your package so you can register someone else. Both of you will be notified by email.",
-  "remove": "Remove"
+  "remove": "Remove",
+  "plan_precio_catalogo_actual": "Current plan price: %1$s"
 }
