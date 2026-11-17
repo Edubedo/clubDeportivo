@@ -1,6 +1,7 @@
 package com.example.clubdeportivo.notificaciones
 
 import android.content.Context
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -15,9 +16,13 @@ import java.util.concurrent.TimeUnit
 /** Tarea en segundo plano que revisa si hay algo que recordarle a la persona. */
 class RecordatoriosWorker(contexto: Context, parametros: WorkerParameters) : CoroutineWorker(contexto, parametros) {
     override suspend fun doWork(): Result {
-        // Un fallo (sin red, sesión cerrada...) no se reintenta con espera: la próxima revisión periódica lo vuelve a intentar.
-        runCatching { MotorRecordatorios.ejecutar(applicationContext) }
-        return Result.success()
+        return try {
+            MotorRecordatorios.ejecutar(applicationContext)
+            Result.success()
+        } catch (e: Exception) {
+            Log.e("RecordatoriosWorker", "Falló la revisión de recordatorios; se reintentará", e)
+            Result.retry()
+        }
     }
 }
 

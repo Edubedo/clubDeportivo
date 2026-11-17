@@ -140,6 +140,59 @@ await prueba('el personal NO edita avisos ajenos; el admin sí', async () => {
   await assertSucceeds(updateDoc(doc(admin, 'avisos/av1'), { titulo: 'ok' }));
 });
 
+// ---- notificaciones privadas por cuenta
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'notificaciones/notif-socio'), {
+    id: 'notif-socio', usuarioId: 'nuevo1', titulo: 'Reserva', mensaje: 'Confirmada',
+    tipo: 'RESERVA', leida: false, createdAt: Date.now(), ruta: 'reservas'
+  });
+  await setDoc(doc(db, 'notificaciones/notif-admin'), {
+    id: 'notif-admin', usuarioId: 'admin1', titulo: 'Solicitud', mensaje: 'Pendiente',
+    tipo: 'RENOVACION', leida: false, createdAt: Date.now(), ruta: 'membresia'
+  });
+});
+await prueba('la persona lee solo las notificaciones de su UID', async () => {
+  await assertSucceeds(getDoc(doc(nuevo1, 'notificaciones/notif-socio')));
+  await assertFails(getDoc(doc(nuevo1, 'notificaciones/notif-admin')));
+  await assertFails(getDoc(doc(admin, 'notificaciones/notif-socio')));
+});
+await prueba('una cuenta lista solo sus notificaciones con filtro por usuarioId', async () => {
+  const r = await assertSucceeds(getDocs(query(
+    collection(nuevo1, 'notificaciones'), where('usuarioId', '==', 'nuevo1')
+  )));
+  if (r.size !== 1) throw new Error('debe devolver únicamente la notificación de nuevo1');
+  await assertFails(getDocs(collection(admin, 'notificaciones')));
+});
+await prueba('una persona solo crea notificaciones para su propio UID', async () => {
+  await assertSucceeds(setDoc(doc(nuevo1, 'notificaciones/notif-propia'), {
+    id: 'notif-propia', usuarioId: 'nuevo1', titulo: 'Aviso', mensaje: 'Detalle',
+    tipo: 'MEMBRESIA', leida: false, createdAt: Date.now(), ruta: 'membresia'
+  }));
+  await assertFails(setDoc(doc(nuevo1, 'notificaciones/notif-ajena'), {
+    id: 'notif-ajena', usuarioId: 'admin1', titulo: 'Aviso', mensaje: 'Detalle',
+    tipo: 'MEMBRESIA', leida: false, createdAt: Date.now(), ruta: 'membresia'
+  }));
+});
+await prueba('solo se marca leída la notificación propia; no se edita ni borra', async () => {
+  await assertSucceeds(updateDoc(doc(nuevo1, 'notificaciones/notif-socio'), {
+    leida: true, leidaEn: Date.now()
+  }));
+  await assertFails(updateDoc(doc(nuevo1, 'notificaciones/notif-socio'), { titulo: 'Modificada' }));
+  await assertFails(deleteDoc(doc(nuevo1, 'notificaciones/notif-socio')));
+});
+await prueba('los tokens FCM solo los administra su cuenta y no son legibles', async () => {
+  const token = doc(nuevo1, 'fcmTokens/token-nuevo1');
+  await assertSucceeds(setDoc(token, {
+    usuarioId: 'nuevo1', token: 'token-secreto', updatedAt: new Date()
+  }));
+  await assertFails(getDoc(token));
+  await assertFails(setDoc(doc(nuevo1, 'fcmTokens/token-admin'), {
+    usuarioId: 'admin1', token: 'token-ajeno', updatedAt: new Date()
+  }));
+  await assertSucceeds(deleteDoc(token));
+});
+
 // ---- publicaciones del dashboard (independientes de avisos)
 await prueba('sin sesión NO se leen publicaciones', () => assertFails(getDocs(collection(anonimo, 'publicaciones'))));
 await env.withSecurityRulesDisabled(async ctx => {

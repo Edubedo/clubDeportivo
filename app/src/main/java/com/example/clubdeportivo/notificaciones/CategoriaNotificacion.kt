@@ -42,7 +42,7 @@ enum class CategoriaNotificacion(
     SOLICITUDES("notif_cat_solicitudes", "notif_cat_solicitudes_desc", NotificationManagerCompat.IMPORTANCE_HIGH, setOf(TipoUsuario.ENCARGADO, TipoUsuario.ADMINISTRADOR)),
     ASISTENCIA("notif_cat_asistencia", "notif_cat_asistencia_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ENCARGADO)),
     STOCK("notif_cat_stock", "notif_cat_stock_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ENCARGADO, TipoUsuario.ADMINISTRADOR)),
-    VENCIMIENTOS("notif_cat_vencimientos", "notif_cat_vencimientos_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ADMINISTRADOR)),
+    VENCIMIENTOS("notif_cat_vencimientos", "notif_cat_vencimientos_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, setOf(TipoUsuario.ENCARGADO, TipoUsuario.ADMINISTRADOR)),
 
     // ---- Todos
     TORNEO("notif_cat_torneo", "notif_cat_torneo_desc", NotificationManagerCompat.IMPORTANCE_DEFAULT, TipoUsuario.entries.toSet()),

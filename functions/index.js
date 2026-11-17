@@ -1,8 +1,10 @@
-sconst { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');n
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getMessaging } = require('firebase-admin/messaging');
 const { defineString, defineSecret } = require('firebase-functions/params');
 const { primerError } = require('./contrasena');
 const { crearTransporte, enviarBienvenida } = require('./bienvenida');
@@ -11,7 +13,7 @@ const Correos = require('./correos');
 initializeApp();
 
 const ROLES_ADMINISTRADOR = ['SUPERADMIN', 'ADMIN'];
-// Quienes revisan renovaciones y cambios de plan: los administradores y los supervisores.
+// Quienes revisan cambios de plan; las renovaciones también las pueden resolver encargados de área.
 const ROLES_REVISORES = ['SUPERADMIN', 'ADMIN', 'SUPERVISOR'];
 const ROLES_DE_PERSONAL = ['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'ADMIN_AREA', 'AYUDANTE_AREA'];
 
@@ -65,12 +67,12 @@ exports.cambiarContrasenaPersonal = onCall({ region: 'us-central1', maxInstances
   return { ok: true };
 });
 
-async function guardarNotificacion(usuarioId, id, titulo, mensaje, tipo) {
+async function guardarNotificacion(usuarioId, id, titulo, mensaje, tipo, ruta = 'membresia') {
   const db = getFirestore();
   const referencia = db.collection('notificaciones').doc(id);
-  await db.runTransaction(async (tx) => {
+  const creada = await db.runTransaction(async (tx) => {
     const existente = await tx.get(referencia);
-    if (existente.exists) return;
+    if (existente.exists) return false;
     tx.create(referencia, {
       id,
       usuarioId,
@@ -79,9 +81,59 @@ async function guardarNotificacion(usuarioId, id, titulo, mensaje, tipo) {
       tipo,
       leida: false,
       createdAt: Date.now(),
-      ruta: 'membresia'
+      ruta
     });
+    return true;
   });
+  if (creada) await enviarPush(usuarioId, { id, titulo, mensaje, tipo, ruta });
+}
+
+async function enviarPush(usuarioId, notificacion) {
+  const db = getFirestore();
+  const [perfil, tokens] = await Promise.all([
+    db.doc(`usuarios/${usuarioId}`).get(),
+    db.collection('fcmTokens').where('usuarioId', '==', usuarioId).get()
+  ]);
+  if (!perfil.exists || (perfil.get('estado') || 'ACTIVO') === 'INACTIVO') return;
+  if (tokens.empty) {
+    console.warn('No hay token FCM registrado para el destinatario', usuarioId, notificacion.id);
+    return;
+  }
+
+  const rol = perfil.get('rol');
+  const categoria = notificacion.tipo === 'RESERVA'
+    ? 'SOLICITUDES'
+    : notificacion.tipo === 'RESERVA_RESPUESTA'
+      ? 'RESERVA_RESPUESTA'
+      : notificacion.tipo === 'VENCIMIENTOS'
+        ? 'VENCIMIENTOS'
+        : notificacion.tipo === 'MEMBRESIA'
+          ? 'MEMBRESIA'
+      : ['RENOVACION', 'CAMBIO_PLAN'].includes(notificacion.tipo)
+        ? (['SOCIO', 'VISITANTE_EXTERNO'].includes(rol) ? 'MEMBRESIA' : 'SOLICITUDES')
+        : 'AVISOS';
+  await Promise.all(tokens.docs.map(async (tokenDoc) => {
+    try {
+      await getMessaging().send({
+        token: tokenDoc.get('token'),
+        data: {
+          notificacionId: notificacion.id,
+          usuarioId,
+          titulo: notificacion.titulo,
+          mensaje: notificacion.mensaje,
+          tipo: notificacion.tipo,
+          categoria,
+          ruta: notificacion.ruta
+        },
+        android: { priority: 'high' }
+      });
+    } catch (e) {
+      console.error('No se pudo enviar push', usuarioId, notificacion.id, e.code || e.message);
+      if (['messaging/invalid-registration-token', 'messaging/registration-token-not-registered'].includes(e.code)) {
+        await tokenDoc.ref.delete();
+      }
+    }
+  }));
 }
 
 // ---------- Parámetros del correo (SMTP) ----------
@@ -127,13 +179,127 @@ async function correoAlMiembro({ event, tipo, uid, codigo, datos }) {
 const OPCIONES = { region: 'us-central1', maxInstances: 5, secrets: [SMTP_PASS] };
 const NIVELES = ['NINO', 'NORMAL', 'DELUXE'];
 
-async function notificarARevisores(prefijoId, solicitudId, titulo, mensaje, tipo) {
+async function notificarARevisores(
+  prefijoId, solicitudId, titulo, mensaje, tipo, roles = ROLES_REVISORES
+) {
   const db = getFirestore();
-  const revisores = await db.collection('usuarios').where('rol', 'in', ROLES_REVISORES).get();
+  const revisores = await db.collection('usuarios').where('rol', 'in', roles).get();
   await Promise.all(revisores.docs
     .filter((u) => (u.get('estado') || 'ACTIVO') !== 'INACTIVO')
     .map((u) => guardarNotificacion(u.id, `${prefijoId}_${solicitudId}_${u.id}`, titulo, mensaje, tipo)));
 }
+
+// Las cuentas del área reciben solicitudes; si no hay ninguna activa, el administrador es el respaldo.
+exports.notificarNuevaReserva = onDocumentCreated(
+  { ...OPCIONES, document: 'reservas/{reservaId}' },
+  async (event) => {
+    const reserva = event.data?.data();
+    if (!reserva || reserva.estado !== 'PENDIENTE_APROBACION') return;
+
+    const db = getFirestore();
+    const encargados = await db.collection('usuarios')
+      .where('rol', 'in', ['ADMIN_AREA', 'AYUDANTE_AREA'])
+      .get();
+    const area = String(reserva.deporte || '').trim().toLowerCase();
+    const asignados = encargados.docs.filter((usuario) =>
+      (usuario.get('estado') || 'ACTIVO') !== 'INACTIVO' &&
+      String(usuario.get('areaTrabajo') || '').trim().toLowerCase() === area
+    );
+    const destinatarios = asignados.length > 0
+      ? asignados
+      : (await db.collection('usuarios').where('rol', 'in', ROLES_ADMINISTRADOR).get())
+        .docs.filter((usuario) => (usuario.get('estado') || 'ACTIVO') !== 'INACTIVO');
+
+    await Promise.all(destinatarios.map((usuario) =>
+      guardarNotificacion(
+        usuario.id,
+        `reserva_${event.params.reservaId}_nueva_${usuario.id}`,
+        'Nueva solicitud de cancha',
+        `${reserva.usuarioNombre || 'Un socio'} solicita ${reserva.areaNombre || reserva.deporte || 'una cancha'} para el ${reserva.fecha || ''} a las ${reserva.horaInicio || ''}.`,
+        'RESERVA',
+        'reservas'
+      )
+    ));
+  }
+);
+
+exports.notificarResolucionReserva = onDocumentUpdated(
+  { ...OPCIONES, document: 'reservas/{reservaId}' },
+  async (event) => {
+    const anterior = event.data?.before.data();
+    const reserva = event.data?.after.data();
+    if (!anterior || !reserva || anterior.estado !== 'PENDIENTE_APROBACION' ||
+        !['CONFIRMADA', 'RECHAZADA'].includes(reserva.estado) || !reserva.usuarioId) return;
+
+    const aprobada = reserva.estado === 'CONFIRMADA';
+    await guardarNotificacion(
+      reserva.usuarioId,
+      `reserva_${event.params.reservaId}_resuelta_${reserva.estado.toLowerCase()}_${reserva.usuarioId}`,
+      aprobada ? 'Reserva confirmada' : 'Reserva rechazada',
+      aprobada
+        ? `Tu reserva de ${reserva.areaNombre || reserva.deporte || 'cancha'} para el ${reserva.fecha || ''} a las ${reserva.horaInicio || ''} fue confirmada.`
+        : `Tu solicitud de reserva de ${reserva.areaNombre || reserva.deporte || 'cancha'} para el ${reserva.fecha || ''} a las ${reserva.horaInicio || ''} fue rechazada.`,
+      'RESERVA_RESPUESTA',
+      'reservas'
+    );
+  }
+);
+
+exports.notificarMembresiasPorVencer = onSchedule(
+  { schedule: '0 8 * * *', timeZone: 'America/Mexico_City', region: 'us-central1', maxInstances: 1 },
+  async () => {
+    const db = getFirestore();
+    const partesFecha = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date()).reduce((partes, parte) => {
+      partes[parte.type] = parte.value;
+      return partes;
+    }, {});
+    const hoy = `${partesFecha.year}-${partesFecha.month}-${partesFecha.day}`;
+    const fechaLimite = new Date(Date.parse(`${hoy}T00:00:00Z`) + 3 * 24 * 60 * 60 * 1000)
+      .toISOString().slice(0, 10);
+    const [membresias, personal] = await Promise.all([
+      db.collection('membresias').where('estado', '==', 'ACTIVA').get(),
+      db.collection('usuarios').where('rol', 'in', ROLES_DE_PERSONAL).get()
+    ]);
+
+    for (const membresia of membresias.docs) {
+      const vence = membresia.get('fechaVencimiento');
+      if (typeof vence !== 'string' || vence < hoy || vence > fechaLimite) continue;
+
+      const dias = Math.round((Date.parse(`${vence}T12:00:00Z`) - Date.parse(`${hoy}T12:00:00Z`)) / 86400000);
+      const idsSocios = new Set([membresia.get('usuarioId')].filter(Boolean));
+      const miembros = await db.collection('miembros').where('membresiaId', '==', membresia.id).get();
+      miembros.docs.forEach((miembro) => {
+        const uid = miembro.get('usuarioId');
+        if (typeof uid === 'string' && uid) idsSocios.add(uid);
+      });
+
+      const venceMensaje = dias === 0 ? 'vence hoy' : `vence en ${dias} día${dias === 1 ? '' : 's'}`;
+      const nombre = membresia.get('titularNombre') || 'Tu membresía';
+      await Promise.all([
+        ...[...idsSocios].map((uid) => guardarNotificacion(
+          uid,
+          `vencimiento_${membresia.id}_${vence}_${uid}`,
+          dias === 0 ? 'Tu membresía vence hoy' : 'Tu membresía está por vencer',
+          `${nombre}: tu paquete ${venceMensaje} (${vence}).`,
+          'MEMBRESIA',
+          'membresia'
+        )),
+        ...personal.docs
+          .filter((usuario) => (usuario.get('estado') || 'ACTIVO') !== 'INACTIVO')
+          .map((usuario) => guardarNotificacion(
+            usuario.id,
+            `vencimiento_${membresia.id}_${vence}_${usuario.id}`,
+            'Membresía próxima a vencer',
+            `El paquete de ${nombre} ${venceMensaje} (${vence}).`,
+            'VENCIMIENTOS',
+            'membresia'
+          ))
+      ]);
+    }
+  }
+);
 
 exports.notificarNuevaRenovacion = onDocumentCreated(
   { ...OPCIONES, document: 'solicitudes_renovacion/{solicitudId}' },
@@ -143,7 +309,7 @@ exports.notificarNuevaRenovacion = onDocumentCreated(
     await notificarARevisores(
       'renovacion', event.params.solicitudId, 'Nueva solicitud de renovación',
       `${solicitud.socioNombre || 'Un socio'} envió una renovación por $${Number(solicitud.monto || 0).toFixed(2)}. Revisa la pestaña Renovaciones.`,
-      'RENOVACION'
+      'RENOVACION', ROLES_DE_PERSONAL
     );
     // Acuse de recibo por correo al miembro.
     if (solicitud.socioId) {

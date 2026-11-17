@@ -74,6 +74,7 @@ import com.example.clubdeportivo.data.GuardianSesion
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.notificaciones.Notificador
+import com.example.clubdeportivo.notificaciones.GestorTokenFCM
 import com.example.clubdeportivo.notificaciones.PreferenciasNotificaciones
 import com.example.clubdeportivo.notificaciones.ProgramadorRecordatorios
 import com.example.clubdeportivo.data.model.esAdministrador
@@ -167,6 +168,11 @@ fun ClubDeportivoApp(
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(usuario?.id) { avisos.cargar() }
     LaunchedEffect(usuario?.id) { publicaciones.cargar() }
+    LaunchedEffect(usuario?.id) {
+        val uid = usuario?.id ?: return@LaunchedEffect
+        runCatching { GestorTokenFCM.registrar(uid) }
+            .onFailure { android.util.Log.e("ClubDeportivoApp", "No se pudo asociar FCM a la cuenta $uid", it) }
+    }
 
     // Recordatorios: con sesión se pide (una vez) el permiso de notificaciones y se revisa si hay algo que avisar.
     val contexto = LocalContext.current

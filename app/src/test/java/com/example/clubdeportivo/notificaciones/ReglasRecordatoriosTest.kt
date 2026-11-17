@@ -42,7 +42,8 @@ class ReglasRecordatoriosTest {
         assertTrue(CategoriaNotificacion.RESERVA_PROXIMA in cliente && CategoriaNotificacion.MEMBRESIA in cliente)
         assertFalse(CategoriaNotificacion.SOLICITUDES in cliente || CategoriaNotificacion.STOCK in cliente)
         assertTrue(CategoriaNotificacion.ASISTENCIA in encargado && CategoriaNotificacion.SOLICITUDES in encargado)
-        assertFalse(CategoriaNotificacion.VENCIMIENTOS in encargado || CategoriaNotificacion.MEMBRESIA in encargado)
+        assertTrue(CategoriaNotificacion.VENCIMIENTOS in encargado)
+        assertFalse(CategoriaNotificacion.MEMBRESIA in encargado)
         assertTrue(CategoriaNotificacion.VENCIMIENTOS in admin && CategoriaNotificacion.SOLICITUDES in admin)
         assertFalse(CategoriaNotificacion.ASISTENCIA in admin || CategoriaNotificacion.RESERVA_PROXIMA in admin)
         listOf(cliente, encargado, admin).forEach { assertTrue(CategoriaNotificacion.AVISOS in it && CategoriaNotificacion.TORNEO in it) }
