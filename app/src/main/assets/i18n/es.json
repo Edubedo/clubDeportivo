@@ -827,6 +827,7 @@
   "tournament_name": "NOMBRE DEL TORNEO",
   "tournament_updated": "Torneo actualizado: %1$s",
   "tournaments": "Torneos",
+  "tournaments_empty_title": "Aún no hay torneos disponibles",
   "under_maintenance": "En mantenimiento",
   "under_maintenance_2": "%1$s en mantenimiento",
   "under_review": " (%1$s en revisión)",

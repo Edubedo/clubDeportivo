@@ -52,7 +52,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clubdeportivo.data.Deportes
+import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.ArticuloInventario
+import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.ui.components.BotonIcono
 import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.BurbujaTexto
@@ -98,6 +100,7 @@ fun InventarioScreen(
     } else {
         articulos.filter { it.deporte == filtroDeporte }
     }
+    val esEncargado = SesionManager.usuarioActual?.rol?.esEncargado() == true
 
     var articuloAEliminar by remember { mutableStateOf<ArticuloInventario?>(null) }
     val deportes by viewModel.deportes.observeAsState(viewModel.obtenerDeportes())
@@ -128,6 +131,28 @@ fun InventarioScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            if (esEncargado) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = MargenPantalla)
+                        .padding(top = 8.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = "Inventario de mi área",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextoPrincipal,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Controla el stock y equipamiento disponible en tu instalación",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextoSecundario
+                    )
+                }
+            }
+
             // Un encargado solo tiene el deporte de su área: no hay nada que filtrar.
             if (deportes.size > 1) {
                 PestanasPildora(

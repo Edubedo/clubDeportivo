@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -93,13 +94,15 @@ fun ReservasEncargadoScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
     Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         EncabezadoPantalla(
             titulo = Textos.get("bookings_in_my_area"),
             subtitulo = etiquetaDeporte(areaTrabajo).ifBlank { Textos.get("no_area_assigned") },
-            modifier = Modifier.padding(horizontal = MargenPantalla)
+            modifier = Modifier.padding(horizontal = MargenPantalla),
+            topPadding = 8.dp
         )
         PestanasPildora(
             opciones = listOf(Textos.get("requests"), Textos.get("bookings"), Textos.get("schedules")),

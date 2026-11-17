@@ -180,9 +180,10 @@ val MargenPantalla = 16.dp
 fun EncabezadoPantalla(
     titulo: String,
     modifier: Modifier = Modifier,
-    subtitulo: String? = null
+    subtitulo: String? = null,
+    topPadding: Dp = 16.dp
 ) {
-    Column(modifier = modifier.padding(top = 16.dp, bottom = 12.dp)) {
+    Column(modifier = modifier.padding(top = topPadding, bottom = 12.dp)) {
         Text(
             text = titulo,
             style = MaterialTheme.typography.headlineMedium,
