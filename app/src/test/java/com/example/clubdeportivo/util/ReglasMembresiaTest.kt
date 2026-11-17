@@ -113,8 +113,9 @@ class ReglasMembresiaTest {
 
     @Test
     fun `los paquetes limitan cuantas personas cubren`() {
-        assertEquals(5, ReglasMembresia.maxPersonas(TipoMembresia.FAMILIAR, 1))
+        assertEquals(4, ReglasMembresia.maxPersonas(TipoMembresia.FAMILIAR, 1))
         assertEquals(2, ReglasMembresia.maxPersonas(TipoMembresia.FAMILIAR, 2))
+        assertEquals(4, ReglasMembresia.maxPersonas(TipoMembresia.FAMILIAR, 3))
         assertEquals(1, ReglasMembresia.maxPersonas(TipoMembresia.INDIVIDUAL, null))
     }
 

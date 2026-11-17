@@ -61,7 +61,7 @@ service cloud.firestore {
     }
     // Máximo de personas de cada paquete familiar (titular incluido). Mantener igual que Catalogos.paquetesFamiliares.
     function topePaquete(paqueteId) {
-      return paqueteId == 1 ? 5 : (paqueteId == 2 ? 2 : 3);
+      return paqueteId == 1 ? 4 : (paqueteId == 2 ? 2 : 4);
     }
     // El titular agrega UNA persona a su paquete familiar: el miembro nuevo y el contador de la membresía suben juntos
     // (mismo lote), y el contador nunca pasa del tope del paquete.

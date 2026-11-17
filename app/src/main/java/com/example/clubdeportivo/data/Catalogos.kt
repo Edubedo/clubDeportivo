@@ -53,7 +53,7 @@ object Catalogos {
             id = 1,
             nombre = Textos.get("family"),
             descripcion = Textos.get("includes_2_adults_and_3_children"),
-            maxIntegrantes = 5,
+            maxIntegrantes = 4,
             precioMensual = 7000.0
         ),
         PaqueteFamiliar(
@@ -67,7 +67,7 @@ object Catalogos {
             id = 3,
             nombre = Textos.get("kids"),
             descripcion = Textos.get("package_for_siblings_access_to_all"),
-            maxIntegrantes = 3,
+            maxIntegrantes = 4,
             precioMensual = 2800.0
         )
     )
