@@ -25,7 +25,11 @@ test('cada compositor trae asunto, texto y html con el nombre y los datos', () =
     renovacionAprobada: { nombre: 'Mariana López', hasta: '2026-12-17' },
     renovacionRechazada: { nombre: 'Mariana López', motivo: 'Comprobante ilegible' },
     membresiaSuspendida: { nombre: 'Mariana López', motivo: 'Falta de pago' },
-    membresiaReactivada: { nombre: 'Mariana López', hasta: '2026-12-17' }
+    membresiaReactivada: { nombre: 'Mariana López', hasta: '2026-12-17' },
+    reservaCanceladaMantenimiento: {
+      nombre: 'Mariana López', area: 'Cancha de tenis 1', fecha: '2026-12-10', horaInicio: '18:00', horaFin: '19:00',
+      desde: '2026-12-08', hasta: '2026-12-12', motivo: 'Cambio de superficie'
+    }
   };
   for (const [tipo, datos] of Object.entries(casos)) {
     const c = C.compositores[tipo](datos);
@@ -36,6 +40,16 @@ test('cada compositor trae asunto, texto y html con el nombre y los datos', () =
   assert.match(C.compositores.cambioPlanRechazado(casos.cambioPlanRechazado).texto, /Adeudo pendiente/);
   assert.match(C.compositores.renovacionAprobada(casos.renovacionAprobada).texto, /17 de diciembre de 2026/);
   assert.match(C.compositores.cambioPlanAprobado(casos.cambioPlanAprobado).texto, /\$3,500/);
+  const mant = C.compositores.reservaCanceladaMantenimiento(casos.reservaCanceladaMantenimiento).texto;
+  assert.match(mant, /Cancha de tenis 1 estará en mantenimiento del 8 de diciembre de 2026 al 12 de diciembre de 2026/);
+  assert.match(mant, /Cambio de superficie/);
+  assert.match(mant, /reagendarla/);
+});
+
+test('los correos usan el azul de la app, no el naranja', () => {
+  const html = C.compositores.membresiaReactivada({ nombre: 'Ana' }).html;
+  assert.match(html, /#052659/);
+  assert.doesNotMatch(html, /#e8590c|#fff4ec/i);
 });
 
 test('el html escapa lo que escribe el personal (motivos)', () => {

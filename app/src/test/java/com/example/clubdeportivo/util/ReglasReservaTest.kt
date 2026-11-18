@@ -3,6 +3,7 @@ package com.example.clubdeportivo.util
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.data.model.ModificacionReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.Torneo
 import org.junit.Assert.assertEquals
@@ -318,5 +319,103 @@ class ReglasReservaTest {
         assertNotNull(ReglasReserva.validarReserva(cancha, enRevision, emptyList(), fecha, "09:00", "10:00", 1))
         val rechazada = listOf(reserva(9, personas = 4, estado = EstadoReserva.RECHAZADA))
         assertNull(ReglasReserva.validarReserva(cancha, rechazada, emptyList(), fecha, "09:00", "10:00", 1))
+    }
+
+    // ---- mantenimiento por periodo
+
+    private val canchaEnMantenimiento = cancha.copy(
+        disponibilidad = DisponibilidadArea.MANTENIMIENTO, mantenimientoDesde = "2026-10-12", mantenimientoHasta = "2026-10-14"
+    )
+
+    @Test
+    fun `un mantenimiento con periodo solo bloquea esos dias`() {
+        assertTrue(canchaEnMantenimiento.enMantenimientoEl("2026-10-12"))
+        assertTrue(canchaEnMantenimiento.enMantenimientoEl("2026-10-14"))
+        assertFalse(canchaEnMantenimiento.enMantenimientoEl("2026-10-11"))
+        assertFalse(canchaEnMantenimiento.enMantenimientoEl("2026-10-15"))
+        assertNull(ReglasReserva.validarReserva(canchaEnMantenimiento, emptyList(), emptyList(), "2026-10-15", "06:00", "07:00", 1))
+        val motivo = ReglasReserva.validarReserva(canchaEnMantenimiento, emptyList(), emptyList(), "2026-10-13", "06:00", "07:00", 1)
+        assertNotNull(motivo)
+        assertTrue(motivo!!.contains("mantenimiento"))
+    }
+
+    @Test
+    fun `un mantenimiento sin periodo bloquea todos los dias`() {
+        val sinPeriodo = cancha.copy(disponibilidad = DisponibilidadArea.MANTENIMIENTO)
+        assertTrue(sinPeriodo.enMantenimientoEl("2030-01-01"))
+    }
+
+    @Test
+    fun `las horas de un dia en mantenimiento no estan disponibles`() {
+        val estado = ReglasReserva.estadoDeHora(canchaEnMantenimiento, emptyList(), emptyList(), "2026-10-13", 8)
+        assertTrue(estado.mantenimiento)
+        assertFalse(estado.disponible)
+        assertTrue(ReglasReserva.estadoDeHora(canchaEnMantenimiento, emptyList(), emptyList(), "2026-10-20", 8).disponible)
+    }
+
+    @Test
+    fun `un torneo no se puede crear sobre el periodo de mantenimiento`() {
+        assertNotNull(ReglasReserva.validarTorneo(canchaEnMantenimiento, emptyList(), emptyList(), null, "2026-10-13", "2026-10-13", "10:00", "12:00"))
+        assertNotNull(ReglasReserva.validarTorneo(canchaEnMantenimiento, emptyList(), emptyList(), null, "2026-10-10", "2026-10-12", "10:00", "12:00"))
+        assertNull(ReglasReserva.validarTorneo(canchaEnMantenimiento, emptyList(), emptyList(), null, "2026-10-20", "2026-10-21", "10:00", "12:00"))
+    }
+
+    // ---- una persona no puede tener dos reservas a la misma hora
+
+    @Test
+    fun `detecta la reserva propia que choca en horario aunque sea de otra area`() {
+        val propia = reserva(hora = 18, areaId = "otra")
+        assertEquals(propia, ReglasReserva.reservaDelMiembroEnConflicto("u", listOf(propia), fecha, "18:00", "19:00"))
+        assertEquals(propia, ReglasReserva.reservaDelMiembroEnConflicto("u", listOf(propia), fecha, "17:00", "19:00"))
+        assertNull(ReglasReserva.reservaDelMiembroEnConflicto("u", listOf(propia), fecha, "19:00", "20:00"))
+        assertNull(ReglasReserva.reservaDelMiembroEnConflicto("u", listOf(propia), "2026-10-11", "18:00", "19:00"))
+        assertNull(ReglasReserva.reservaDelMiembroEnConflicto("otro", listOf(propia), fecha, "18:00", "19:00"))
+        assertNull(ReglasReserva.reservaDelMiembroEnConflicto("u", listOf(reserva(hora = 18, estado = EstadoReserva.CANCELADA)), fecha, "18:00", "19:00"))
+        assertNull(ReglasReserva.reservaDelMiembroEnConflicto("u", listOf(propia), fecha, "18:00", "19:00", excluirId = propia.id))
+    }
+
+    // ---- cambio de una reserva (lo valida el administrador)
+
+    private val ahora: Date = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ROOT).parse("2026-10-09 08:00")!!
+    private val actual = reserva(hora = 18)
+
+    private fun cambio(dia: String = fecha, hora: Int = 19, personas: Int = 1) =
+        ModificacionReserva(dia, "%02d:00".format(hora), "%02d:00".format(hora + 1), personas)
+
+    private fun validarCambio(
+        cambio: ModificacionReserva,
+        delArea: List<Reserva> = listOf(actual),
+        delMiembro: List<Reserva> = listOf(actual),
+        area: Area = cancha,
+        anticipacion: Int = 1
+    ) = ReglasReserva.validarModificacion(area, actual, cambio, delArea, delMiembro, emptyList(), anticipacion, ahora)
+
+    @Test
+    fun `un cambio a una hora libre es valido y la propia reserva no cuenta como choque`() {
+        assertNull(validarCambio(cambio(hora = 19)))
+        // Correr una hora la misma reserva (18-19 -> 18-20 se solapa con ella misma).
+        assertNull(validarCambio(ModificacionReserva(fecha, "18:00", "20:00", 1)))
+    }
+
+    @Test
+    fun `un cambio igual a la reserva actual se rechaza`() {
+        assertNotNull(validarCambio(cambio(hora = 18)))
+    }
+
+    @Test
+    fun `un cambio no puede chocar con otra reserva del mismo miembro`() {
+        val otra = reserva(hora = 20, areaId = "otra")
+        assertNotNull(validarCambio(cambio(hora = 20), delMiembro = listOf(actual, otra)))
+    }
+
+    @Test
+    fun `un cambio respeta el cupo y el mantenimiento y la anticipacion`() {
+        val llenas = (1..4).map { reserva(hora = 19, areaId = cancha.id).copy(id = "x$it", usuarioId = "otro$it") }
+        assertNotNull(validarCambio(cambio(hora = 19), delArea = listOf(actual) + llenas))
+        assertNotNull(validarCambio(cambio(dia = "2026-10-13", hora = 9), area = canchaEnMantenimiento))
+        assertNotNull(validarCambio(ModificacionReserva("2026-10-09", "08:30", "09:30", 1)))
+        // Quien aprueba solo exige que el nuevo horario no haya empezado.
+        assertNull(validarCambio(ModificacionReserva("2026-10-09", "08:30", "09:30", 1), anticipacion = 0))
+        assertNotNull(validarCambio(ModificacionReserva("2026-10-09", "07:00", "08:00", 1), anticipacion = 0))
     }
 }

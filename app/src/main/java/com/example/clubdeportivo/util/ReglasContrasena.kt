@@ -32,5 +32,14 @@ object ReglasContrasena {
         }
     }
 
+    /** Primer problema al cambiar la contraseña desde el perfil (actual vacía, nueva débil, igual a la actual o sin confirmar), o null. */
+    fun errorAlCambiar(actual: String, nueva: String, confirmacion: String): String? = when {
+        actual.isEmpty() -> Textos.get("password_current_empty")
+        else -> primerError(nueva)
+            ?: if (nueva == actual) Textos.get("password_same_as_current")
+            else if (nueva != confirmacion) Textos.get("password_mismatch")
+            else null
+    }
+
     private fun esEspecial(c: Char): Boolean = !c.isLetterOrDigit() && !c.isWhitespace()
 }

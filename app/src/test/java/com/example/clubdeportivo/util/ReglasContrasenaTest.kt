@@ -42,4 +42,19 @@ class ReglasContrasenaTest {
         assertFalse(ReglasContrasena.esValida(""))
         assertTrue(ReglasContrasena.requisitos("").none { it.cumple })
     }
+
+    @Test
+    fun cambiarContrasenaPideLaActualUnaNuevaValidaDistintaYConfirmada() {
+        assertNotNull(ReglasContrasena.errorAlCambiar("", "Club#2026", "Club#2026"))
+        assertNotNull(ReglasContrasena.errorAlCambiar("Vieja#2025", "corta", "corta"))
+        assertEquals(
+            "La contraseña nueva debe ser distinta de la actual.",
+            ReglasContrasena.errorAlCambiar("Club#2026", "Club#2026", "Club#2026")
+        )
+        assertEquals(
+            "Las contraseñas nuevas no coinciden.",
+            ReglasContrasena.errorAlCambiar("Vieja#2025", "Club#2026", "Club#2027")
+        )
+        assertNull(ReglasContrasena.errorAlCambiar("Vieja#2025", "Club#2026", "Club#2026"))
+    }
 }

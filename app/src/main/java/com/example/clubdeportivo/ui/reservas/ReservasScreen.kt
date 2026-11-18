@@ -100,6 +100,7 @@ import com.example.clubdeportivo.ui.theme.UnavailableContainer
 import com.example.clubdeportivo.ui.theme.UnavailableForeground
 import com.example.clubdeportivo.ui.torneos.TorneosScreen
 import com.example.clubdeportivo.util.Fechas
+import com.example.clubdeportivo.util.ReglasReserva
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esEncargado
 import com.example.clubdeportivo.data.model.esCliente
@@ -143,7 +144,7 @@ fun ReservasScreen(initialTab: Int = 0) {
             0 -> ReservarEspacioScreen()
             1 -> TorneosScreen()
             2 -> when {
-                esCliente -> MisReservasScreen()
+                esCliente -> MisReservasScreen(onIrAReservar = { pestana = 0 })
                 esAdmin -> ReservasAdministradorScreen()
                 puedeAprobar -> PorAprobarScreen()
                 else -> TorneosScreen()
@@ -356,14 +357,19 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         areasDelDeporte.forEach { area ->
-                            val bloqueada = area.disponibilidad == DisponibilidadArea.MANTENIMIENTO ||
+                            // Con periodo de mantenimiento el área se puede abrir: solo esos días están bloqueados.
+                            val cerradaPorMantenimiento = area.disponibilidad == DisponibilidadArea.MANTENIMIENTO &&
+                                !area.tienePeriodoDeMantenimiento
+                            val bloqueada = cerradaPorMantenimiento ||
                                     (viewModel.esVisitanteExterno && !area.permiteExternos)
                             Box(modifier = Modifier.fillMaxWidth(0.48f)) {
                                 TarjetaOpcion(
                                     emoji = Deportes.emojiDe(area.tipo, area.emoji),
                                     titulo = etiquetaArea(area.nombre),
                                     detalle = when {
-                                        area.disponibilidad == DisponibilidadArea.MANTENIMIENTO -> Textos.get("under_maintenance")
+                                        cerradaPorMantenimiento -> Textos.get("under_maintenance")
+                                        area.disponibilidad == DisponibilidadArea.MANTENIMIENTO ->
+                                            Textos.get("under_maintenance") + " · " + ReglasReserva.textoMantenimiento(area)
                                         bloqueada -> Textos.get("doesn_t_admit_visitors")
                                         else -> Textos.get("capacity", area.capacidad)
                                     },
@@ -411,7 +417,16 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     reservas.forEach { reserva ->
-                        TarjetaReservaCliente(reserva = reserva, onCancelar = { viewModel.cancelar(reserva) })
+                        TarjetaReservaCliente(
+                            reserva = reserva,
+                            onCancelar = { viewModel.cancelar(reserva) },
+                            fechas = viewModel.fechas,
+                            onSolicitarCambio = { fecha, desde, horas, personas ->
+                                viewModel.solicitarModificacion(reserva, fecha, desde, horas, personas)
+                            },
+                            onRetirarCambio = { viewModel.retirarModificacion(reserva) },
+                            onReagendar = { viewModel.reagendar(reserva) }
+                        )
                     }
                 }
             }
@@ -638,6 +653,17 @@ private fun SeccionHorario(ui: ReservaEspacioUi, area: Area, viewModel: Reservas
                 modifier = Modifier.padding(top = 14.dp)
             )
 
+            // Si ese día el área está en mantenimiento se explica por qué no hay horas y hasta cuándo.
+            ReglasReserva.motivoMantenimiento(area.copy(nombre = etiquetaArea(area.nombre)), ui.fecha)?.let { motivo ->
+                Text(
+                    motivo,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Alerta,
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -811,7 +837,7 @@ private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel
 @Composable
 private fun CeldaHora(celda: HoraUi, elegida: Boolean, permiteEspera: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val estado = celda.estado
-    val ocupada = estado.lleno || estado.torneo != null
+    val ocupada = estado.lleno || estado.torneo != null || estado.mantenimiento
     // Una hora llena también se puede tocar (socios y visitantes): ofrece entrar a la lista de espera.
     val habilitada = (celda.seleccionable && !ocupada) || (permiteEspera && celda.esperable)
     val pocosLugares = !celda.pasada && estado.pocosLugares

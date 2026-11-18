@@ -29,6 +29,12 @@ interface AuthRepository {
 
     /** Envía al correo un enlace para elegir una contraseña nueva. */
     suspend fun enviarRestablecimiento(correo: String): Resultado<Unit>
+
+    /**
+     * Cambia la contraseña de la persona que tiene la sesión abierta. Pide la [actual] para confirmar que es ella (Firebase
+     * lo exige para una operación así de sensible) y deja la [nueva]. La sesión sigue abierta.
+     */
+    suspend fun cambiarContrasena(actual: String, nueva: String): Resultado<Unit>
 }
 
 /**
@@ -87,4 +93,6 @@ class FakeAuthRepository : AuthRepository {
     override fun cerrarSesion() = Unit
 
     override suspend fun enviarRestablecimiento(correo: String): Resultado<Unit> = Resultado.Exito(Unit)
+
+    override suspend fun cambiarContrasena(actual: String, nueva: String): Resultado<Unit> = Resultado.Exito(Unit)
 }

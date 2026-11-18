@@ -9,6 +9,7 @@ import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.data.repository.AreaRepository
 import com.example.clubdeportivo.data.repository.ReservaRepository
@@ -37,6 +38,12 @@ class AreasViewModel(
 
     private val _mensaje = MutableLiveData<String?>()
     val mensaje: LiveData<String?> = _mensaje
+
+    /** Reservas vigentes que caen en el periodo de mantenimiento que se está eligiendo (null mientras se calcula). */
+    private val _afectadas = MutableLiveData<Int?>(null)
+    val afectadas: LiveData<Int?> = _afectadas
+
+    private var calculoAfectadas: kotlinx.coroutines.Job? = null
 
     init {
         cargarAreas()
@@ -122,6 +129,71 @@ class AreasViewModel(
                 cargarAreas()
             } catch (e: Exception) {
                 _mensaje.value = Textos.get("the_area_could_not_be_saved")
+            }
+        }
+    }
+
+    /** Reservas vigentes de [areaId] que todavía no terminan y caen entre [desde] y [hasta]: las que se cancelarían. */
+    private suspend fun reservasEnPeriodo(areaId: String, desde: String, hasta: String): List<Reserva> =
+        reservaRepository.obtenerReservasDeArea(areaId).filter {
+            it.fecha in desde..hasta && Fechas.horasDesdeAhora(it.fecha, it.horaFin) > 0
+        }
+
+    /** Cuenta cuántas reservas se cancelarían con ese periodo, para avisarlo antes de confirmar. */
+    fun calcularAfectadas(areaId: String, desde: String, hasta: String) {
+        calculoAfectadas?.cancel()
+        _afectadas.value = null
+        calculoAfectadas = viewModelScope.launch {
+            _afectadas.value = try {
+                reservasEnPeriodo(areaId, desde, hasta).size
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                0
+            }
+        }
+    }
+
+    fun limpiarAfectadas() {
+        calculoAfectadas?.cancel()
+        _afectadas.value = null
+    }
+
+    /**
+     * Pone el área en mantenimiento solo entre [desde] y [hasta]: bloquea esos días para reservar y cancela (sin penalización)
+     * las reservas que ya había en ellos. A cada persona se le avisa en la app y por correo (lo hace el servidor al ver la
+     * cancelación) y puede reagendar desde "Mis reservas".
+     */
+    fun ponerEnMantenimiento(areaId: String, desde: String, hasta: String, motivo: String) {
+        if (hasta < desde) {
+            _mensaje.value = Textos.get("maintenance_end_before_start")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                // Siempre sobre la versión guardada: el formulario pudo haber cambiado otros datos justo antes.
+                val area = areaRepository.obtenerAreaPorId(areaId) ?: run {
+                    _mensaje.value = Textos.get("the_area_status_could_not_be")
+                    return@launch
+                }
+                val afectadas = reservasEnPeriodo(area.id, desde, hasta)
+                areaRepository.actualizarArea(
+                    area.copy(
+                        disponibilidad = DisponibilidadArea.MANTENIMIENTO,
+                        mantenimientoDesde = desde,
+                        mantenimientoHasta = hasta,
+                        mantenimientoMotivo = motivo
+                    )
+                )
+                if (afectadas.isNotEmpty()) {
+                    reservaRepository.cancelarPorMantenimiento(afectadas, desde, hasta, motivo)
+                }
+                _mensaje.value = Textos.get(
+                    "maintenance_scheduled", etiquetaArea(area.nombre), Fechas.legible(desde), Fechas.legible(hasta), afectadas.size
+                )
+                cargarAreas()
+            } catch (e: Exception) {
+                _mensaje.value = Textos.get("the_area_status_could_not_be")
             }
         }
     }

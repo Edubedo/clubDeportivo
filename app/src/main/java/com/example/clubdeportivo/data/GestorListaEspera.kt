@@ -1,6 +1,5 @@
 package com.example.clubdeportivo.data
 
-import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoEspera
 import com.example.clubdeportivo.util.ReglasListaEspera
 import com.example.clubdeportivo.util.ReglasReserva
@@ -20,7 +19,7 @@ object GestorListaEspera {
         if (horasEsperando.isEmpty()) return
 
         val area = AppContainer.areaRepository.obtenerAreaPorId(areaId) ?: return
-        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return
+        if (area.enMantenimientoEl(fecha)) return
         val reservas = AppContainer.reservaRepository.obtenerReservasDeArea(areaId)
         val torneos = AppContainer.torneoRepository.obtenerTorneos()
 

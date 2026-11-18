@@ -103,7 +103,15 @@ fun DisponibilidadScreen(viewModel: DisponibilidadViewModel = viewModel()) {
                 ) {
                     if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) {
                         item {
-                            Insignia(texto = Textos.get("is_under_maintenance_it_doesn_t", etiquetaArea(area.nombre)), tipo = TipoInsignia.MANTENIMIENTO)
+                            Insignia(
+                                texto = if (area.tienePeriodoDeMantenimiento) {
+                                    Textos.get("is_under_maintenance", etiquetaArea(area.nombre)) + " " +
+                                        com.example.clubdeportivo.util.ReglasReserva.textoMantenimiento(area)
+                                } else {
+                                    Textos.get("is_under_maintenance_it_doesn_t", etiquetaArea(area.nombre))
+                                },
+                                tipo = TipoInsignia.MANTENIMIENTO
+                            )
                         }
                     }
                     items(viewModel.filas, key = { it.hora }) { fila -> FilaHoraCard(fila, area.capacidad) }
@@ -130,6 +138,7 @@ private fun FilaHoraCard(fila: FilaDisponibilidad, capacidad: Int) {
                 )
                 Text(
                     text = when {
+                        estado.mantenimiento -> Textos.get("under_maintenance")
                         estado.torneo != null -> Textos.get("tournament", estado.torneo.nombre)
                         else -> Textos.get("of_spots_taken", estado.ocupadas, capacidad) +
                             if (fila.enRevision > 0) Textos.get("under_review", fila.enRevision) else ""
@@ -139,6 +148,7 @@ private fun FilaHoraCard(fila: FilaDisponibilidad, capacidad: Int) {
                 )
             }
             when {
+                estado.mantenimiento -> Insignia(Textos.get("under_maintenance"), TipoInsignia.MANTENIMIENTO)
                 estado.torneo != null -> Insignia(Textos.get("occupied_tournament"), TipoInsignia.NO_DISPONIBLE)
                 estado.lleno -> Insignia(Textos.get("full_2"), TipoInsignia.NO_DISPONIBLE)
                 estado.pocosLugares -> Insignia(Textos.get("few_spots_free", estado.libres), TipoInsignia.ALERTA)

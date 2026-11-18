@@ -22,6 +22,7 @@ import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.Rol
 import com.example.clubdeportivo.data.model.EstadoMembresia
+import com.example.clubdeportivo.data.model.ModificacionReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.esCliente
 import com.example.clubdeportivo.data.model.esPersonal
@@ -51,7 +52,7 @@ data class HoraUi(
     val hora get() = estado.hora
     val seleccionable get() = estado.disponible && !pasada
     /** Llena por reservas (no por un torneo) y todavía no empieza: se puede pedir lugar en la lista de espera. */
-    val esperable get() = !pasada && estado.torneo == null && estado.lleno
+    val esperable get() = !pasada && estado.torneo == null && !estado.mantenimiento && estado.lleno
 }
 
 /** Una entrada de la lista de espera de la persona, lista para mostrar. */
@@ -106,7 +107,13 @@ data class ReservaListada(
     val deporte: String,
     val carril: Int?,
     val usuarioNombre: String,
-    val areaId: String = ""
+    val areaId: String = "",
+    /** Cambio de día u horario que ya pidió y espera validación; null si no hay. */
+    val modificacion: ModificacionReserva? = null,
+    /** El club la canceló porque el área entró en mantenimiento (con el periodo en [mantenimientoDesde]/[mantenimientoHasta]). */
+    val canceladaPorMantenimiento: Boolean = false,
+    val mantenimientoDesde: String = "",
+    val mantenimientoHasta: String = ""
 )
 
 class ReservasViewModel(
@@ -138,9 +145,15 @@ class ReservasViewModel(
     private val _mensaje = MutableLiveData<String?>()
     val mensaje: LiveData<String?> = _mensaje
 
+    private val _enviandoCambio = MutableLiveData(false)
+    val enviandoCambio: LiveData<Boolean> = _enviandoCambio
+
     /** Por qué la persona no puede reservar (membresía suspendida, vencida o inexistente); null si puede. */
     private val _restriccion = MutableLiveData<String?>()
     val restriccion: LiveData<String?> = _restriccion
+
+    /** Reserva cancelada por mantenimiento que la persona está reagendando; al reservar de nuevo se marca como atendida. */
+    private var reagendandoId: String? = null
 
     private val estado get() = _ui.value ?: ReservaEspacioUi()
     private val usuario get() = SesionManager.usuarioActual
@@ -288,6 +301,7 @@ class ReservasViewModel(
         if (!celda.seleccionable) {
             _mensaje.value = when {
                 celda.pasada -> Textos.get("that_hour_has_already_started")
+                celda.estado.mantenimiento -> estado.area?.let { ReglasReserva.motivoMantenimiento(it, actual.fecha) } ?: Textos.get("under_maintenance")
                 celda.estado.torneo != null -> Textos.get("at_that_time_the_area_is", celda.estado.torneo.nombre)
                 else -> Textos.get("that_hour_has_reached_its_capacity", celda.estado.capacidad)
             }
@@ -395,6 +409,11 @@ class ReservasViewModel(
                         // Miembros y visitantes quedan en revisión; el personal reserva sin pedir permiso.
                         requiereAprobacion = usuario.rol.esCliente()
                     )
+                    // Si venía de reagendar una reserva cancelada por mantenimiento, esa ya quedó atendida.
+                    reagendandoId?.let { id ->
+                        runCatching { reservaRepository.marcarReagendada(id) }
+                        reagendandoId = null
+                    }
                     // Quien estaba en la lista de espera de esas horas ya consiguió su lugar: sale de la fila.
                     if (usaListaEspera) {
                         runCatching { listaEsperaRepository.marcarAtendidas(usuario.id, area.id, actual.fecha, desde..hasta) }
@@ -445,9 +464,15 @@ class ReservasViewModel(
         }
 
         if (esVisitanteExterno && !area.permiteExternos) return Textos.get("this_area_doesn_t_accept_bookings")
-        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get("is_under_maintenance", etiquetaArea(area.nombre))
+        ReglasReserva.motivoMantenimiento(area.copy(nombre = etiquetaArea(area.nombre)), fecha)?.let { return it }
         if (Fechas.horasDesdeAhora(fecha, horaInicio) < Catalogos.ANTICIPACION_MINIMA_HORAS) {
             return Textos.get("minimum_booking_advance", Catalogos.ANTICIPACION_MINIMA_HORAS)
+        }
+
+        // Una persona no reserva dos veces a la misma hora: si quiere otro horario, edita la reserva que ya tiene.
+        if (usuario.rol.esCliente()) {
+            ReglasReserva.reservaDelMiembroEnConflicto(usuario.id, reservaRepository.obtenerReservasDeUsuario(usuario.id), fecha, horaInicio, horaFin)
+                ?.let { return Textos.get("you_already_have_booking_at_that_time", Fechas.legible(it.fecha), it.horaInicio, it.horaFin) }
         }
 
         if (!usuario.rol.esPersonal()) {
@@ -497,7 +522,10 @@ class ReservasViewModel(
             reservaRepository.obtenerReservasVigentes()
         } else {
             reservaRepository.obtenerReservasDeUsuario(usuario.id)
-                .filter { ReglasReserva.esVigente(it) || it.estado == EstadoReserva.RECHAZADA }
+                .filter {
+                    ReglasReserva.esVigente(it) || it.estado == EstadoReserva.RECHAZADA ||
+                        (it.canceladaPorMantenimiento && !it.reagendada)
+                }
         }
         val hasta = Fechas.sumarDias(2)
         val asistenciasRegistradas = if (usuario.rol.esPersonal()) {
@@ -532,7 +560,11 @@ class ReservasViewModel(
             deporte = area?.tipo ?: deporte,
             carril = carril,
             usuarioNombre = usuarioNombre,
-            areaId = areaId
+            areaId = areaId,
+            modificacion = modificacion,
+            canceladaPorMantenimiento = canceladaPorMantenimiento,
+            mantenimientoDesde = mantenimientoDesde,
+            mantenimientoHasta = mantenimientoHasta
         )
     }
 
@@ -644,6 +676,77 @@ class ReservasViewModel(
             abrirArea(area)
             tocarHora(espera.entrada.hora)
         }
+    }
+
+    /**
+     * El miembro pide mover su reserva confirmada a otro día u horario. No se aplica: queda anotado y el encargado o
+     * administrador lo valida; mientras tanto la reserva sigue igual.
+     */
+    fun solicitarModificacion(reserva: ReservaListada, fecha: String, desde: Int, horas: Int, personas: Int) {
+        if (_enviandoCambio.value == true) return
+        val usuario = usuario ?: return
+        val cambio = ModificacionReserva(
+            fecha = fecha,
+            horaInicio = String.format(java.util.Locale.ROOT, "%02d:00", desde),
+            horaFin = String.format(java.util.Locale.ROOT, "%02d:00", desde + horas),
+            personas = personas,
+            carril = reserva.carril
+        )
+        _enviandoCambio.value = true
+        viewModelScope.launch {
+            try {
+                val area = estado.areas.firstOrNull { it.id == reserva.areaId }
+                val actual = reservaRepository.obtenerReservasDeUsuario(usuario.id).firstOrNull { it.id == reserva.id }
+                val error = when {
+                    area == null || actual == null -> Textos.get("area_deleted_2")
+                    actual.estado != EstadoReserva.CONFIRMADA -> Textos.get("change_request_only_confirmed")
+                    Fechas.horasDesdeAhora(actual.fecha, actual.horaInicio) < Catalogos.ANTICIPACION_MINIMA_HORAS ->
+                        Textos.get("change_request_too_late")
+                    else -> motivoDeRestriccion() ?: ReglasReserva.validarModificacion(
+                        area = area,
+                        reserva = actual,
+                        cambio = cambio,
+                        reservasDelArea = reservaRepository.obtenerReservasDeArea(area.id),
+                        reservasDelMiembro = reservaRepository.obtenerReservasDeUsuario(usuario.id),
+                        torneos = torneoRepository.obtenerTorneos(),
+                        anticipacionMinimaHoras = Catalogos.ANTICIPACION_MINIMA_HORAS
+                    )
+                }
+                if (error != null) {
+                    _mensaje.value = error
+                } else {
+                    reservaRepository.solicitarModificacion(reserva.id, cambio)
+                    _mensaje.value = Textos.get("change_request_sent")
+                    cargarLista(estado.areas)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _mensaje.value = Textos.get("change_request_failed")
+            }
+            _enviandoCambio.value = false
+        }
+    }
+
+    fun retirarModificacion(reserva: ReservaListada) {
+        viewModelScope.launch {
+            try {
+                reservaRepository.retirarModificacion(reserva.id)
+                _mensaje.value = Textos.get("change_request_withdrawn")
+                cargarLista(estado.areas)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _mensaje.value = Textos.get("change_request_failed")
+            }
+        }
+    }
+
+    /** Lleva a la persona a elegir otro día u otra cancha del mismo deporte para sustituir una reserva cancelada por mantenimiento. */
+    fun reagendar(reserva: ReservaListada) {
+        reagendandoId = reserva.id
+        elegirDeporte(reserva.deporte)
+        _mensaje.value = Textos.get("reschedule_hint")
     }
 
     fun cancelar(reserva: ReservaListada) {

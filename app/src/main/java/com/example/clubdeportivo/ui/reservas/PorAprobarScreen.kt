@@ -60,7 +60,9 @@ import com.example.clubdeportivo.util.Textos
 @Composable
 fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
     val pendientes = viewModel.pendientes
+    val cambios = viewModel.cambios.orEmpty()
     var aRechazar by remember { mutableStateOf<Reserva?>(null) }
+    var cambioARechazar by remember { mutableStateOf<Reserva?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(viewModel.mensaje) {
@@ -82,7 +84,7 @@ fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
         ) {
             when {
                 pendientes == null -> FullScreenLoading()
-                pendientes.isEmpty() -> EmptyState(
+                pendientes.isEmpty() && cambios.isEmpty() -> EmptyState(
                     mensaje = Textos.get("there_are_no_booking_requests_under"),
                     icono = Icons.Outlined.TaskAlt
                 )
@@ -91,6 +93,14 @@ fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
                     contentPadding = PaddingValues(start = MargenPantalla, end = MargenPantalla, top = 8.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    items(cambios, key = { "cambio_" + it.id }) { reserva ->
+                        TarjetaCambioPorAprobar(
+                            reserva = reserva,
+                            ocupada = reserva.id in viewModel.enProceso,
+                            onAprobar = { viewModel.aprobarCambio(reserva) },
+                            onRechazar = { cambioARechazar = reserva }
+                        )
+                    }
                     items(pendientes, key = { it.id }) { reserva ->
                         TarjetaPorAprobar(
                             reserva = reserva,
@@ -117,6 +127,86 @@ fun PorAprobarScreen(viewModel: AprobacionesViewModel = viewModel()) {
             },
             onCancelar = { aRechazar = null }
         )
+    }
+
+    cambioARechazar?.let { reserva ->
+        DialogoConfirmacion(
+            titulo = Textos.get("reject_change_request"),
+            mensaje = Textos.get("reject_change_request_message", reserva.usuarioNombre.ifBlank { Textos.get("this_person") }),
+            textoConfirmar = Textos.get("reject"),
+            textoCancelar = Textos.get("back"),
+            onConfirmar = {
+                viewModel.rechazarCambio(reserva)
+                cambioARechazar = null
+            },
+            onCancelar = { cambioARechazar = null }
+        )
+    }
+}
+
+/** Un miembro pidió mover su reserva confirmada: se ve lo que tiene ahora y lo que pide, para aprobarlo o rechazarlo. */
+@Composable
+internal fun TarjetaCambioPorAprobar(reserva: Reserva, ocupada: Boolean, onAprobar: () -> Unit, onRechazar: () -> Unit) {
+    val cambio = reserva.modificacion ?: return
+    TarjetaClub(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                BurbujaTexto(texto = Deportes.emojiDe(reserva.deporte), tamano = 48.dp, tamanoTexto = 24)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = reserva.usuarioNombre.ifBlank { Textos.get("member") },
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TextoPrincipal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = Deportes.titulo(reserva.deporte, reserva.areaNombre),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Insignia(texto = Textos.get("change_request_badge"), tipo = TipoInsignia.ALERTA)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = Textos.get("change_request_now", Fechas.legible(reserva.fecha), reserva.horaInicio, reserva.horaFin, reserva.personas),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextoSecundario
+            )
+            Text(
+                text = Textos.get("change_request_wants", Fechas.legible(cambio.fecha), cambio.horaInicio, cambio.horaFin, cambio.personas),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextoPrincipal
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                BotonTonal(
+                    texto = Textos.get("approve"),
+                    icono = Icons.Filled.Check,
+                    fondo = ExitoSuave,
+                    color = Exito,
+                    onClick = { if (!ocupada) onAprobar() },
+                    modifier = Modifier.weight(1f),
+                    conReflejo = false
+                )
+                BotonTonal(
+                    texto = Textos.get("reject"),
+                    icono = Icons.Filled.Close,
+                    fondo = PeligroSuave,
+                    color = Peligro,
+                    onClick = { if (!ocupada) onRechazar() },
+                    modifier = Modifier.weight(1f),
+                    conReflejo = false
+                )
+            }
+        }
     }
 }
 

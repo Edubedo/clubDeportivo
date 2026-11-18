@@ -153,6 +153,35 @@ class ReservasSupervisorViewModel : ViewModel() {
         }
     }
 
+    /** Aprueba (si el nuevo horario sigue libre) o rechaza el cambio de día u horario que pidió un miembro. */
+    fun resolverCambio(reserva: Reserva, aprobar: Boolean) {
+        if (!esSupervisor()) return
+        viewModelScope.launch {
+            _cargando.value = true
+            _error.value = null
+            try {
+                if (aprobar) {
+                    val motivo = ResolucionCambios.aprobar(reserva)
+                    if (motivo != null) {
+                        _error.value = Textos.get("change_cannot_be_applied", motivo)
+                        return@launch
+                    }
+                    _mensaje.value = Textos.get("change_approved")
+                } else {
+                    ResolucionCambios.rechazar(reserva)
+                    _mensaje.value = Textos.get("change_rejected")
+                }
+                _reservas.value = repository.obtenerReservasVigentes()
+                    .sortedWith(compareBy<Reserva> { it.fecha }.thenBy { it.horaInicio })
+            } catch (e: Exception) {
+                android.util.Log.e("RESERVAS_SUPERVISOR", "Error al resolver el cambio", e)
+                _error.value = Textos.get("the_action_could_not_be_completed_3")
+            } finally {
+                _cargando.value = false
+            }
+        }
+    }
+
     fun limpiarMensaje() {
         _mensaje.value = null
     }

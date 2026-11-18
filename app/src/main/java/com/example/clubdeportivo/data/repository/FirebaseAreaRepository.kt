@@ -2,6 +2,7 @@ package com.example.clubdeportivo.data.repository
 
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
+import com.example.clubdeportivo.util.Fechas
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -10,16 +11,27 @@ import kotlinx.coroutines.tasks.await
 /** Traduce un documento de la colección "areas" al mismo `Area` que ya usa toda la app. */
 private fun DocumentSnapshot.toArea(): Area? {
     val nombre = getString("nombre") ?: return null
+    val desde = getString("mantenimientoDesde") ?: ""
+    val hasta = getString("mantenimientoHasta") ?: ""
+    var disponibilidad = DisponibilidadArea.valueOf(getString("disponibilidad") ?: "DISPONIBLE")
+    // Un mantenimiento con periodo que ya terminó deja el área disponible sin que nadie tenga que volver a marcarla.
+    if (disponibilidad == DisponibilidadArea.MANTENIMIENTO && hasta.isNotBlank() && hasta < Fechas.hoy()) {
+        disponibilidad = DisponibilidadArea.DISPONIBLE
+    }
+    val enMantenimiento = disponibilidad == DisponibilidadArea.MANTENIMIENTO
     return Area(
         id = id,
         nombre = nombre,
         tipo = getString("tipo") ?: "",
         capacidad = (getLong("capacidad") ?: 0).toInt(),
-        disponibilidad = DisponibilidadArea.valueOf(getString("disponibilidad") ?: "DISPONIBLE"),
+        disponibilidad = disponibilidad,
         permiteExternos = getBoolean("permiteExternos") ?: false,
         emoji = getString("emoji") ?: "",
         carriles = (getLong("carriles") ?: 0L).toInt(),
-        imagenUrl = getString("imagenUrl") ?: ""
+        imagenUrl = getString("imagenUrl") ?: "",
+        mantenimientoDesde = if (enMantenimiento) desde else "",
+        mantenimientoHasta = if (enMantenimiento) hasta else "",
+        mantenimientoMotivo = if (enMantenimiento) getString("mantenimientoMotivo") ?: "" else ""
     )
 }
 
@@ -81,6 +93,10 @@ class FirebaseAreaRepository(
                 "emoji" to area.emoji,
                 "carriles" to area.carriles.toLong(),
                 "imagenUrl" to area.imagenUrl,
+                // Fuera de mantenimiento el periodo se borra; en mantenimiento se guarda el que se eligió.
+                "mantenimientoDesde" to if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) area.mantenimientoDesde else "",
+                "mantenimientoHasta" to if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) area.mantenimientoHasta else "",
+                "mantenimientoMotivo" to if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) area.mantenimientoMotivo else "",
                 "actualizadoEn" to FieldValue.serverTimestamp()
             )
         ).await()

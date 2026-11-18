@@ -102,6 +102,10 @@ fun PerfilScreen(
     val guardando by viewModel.guardando.observeAsState(false)
     val mensaje by viewModel.mensaje.observeAsState()
     val subiendoFoto by viewModel.subiendoFoto.observeAsState(false)
+    val cambiandoContrasena by viewModel.cambiandoContrasena.observeAsState(false)
+    val errorContrasena by viewModel.errorContrasena.observeAsState()
+    val contrasenaCambiada by viewModel.contrasenaCambiada.observeAsState(false)
+    var mostrarCambioContrasena by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val fotoPerfil = usuario?.fotoUrl
 
@@ -141,6 +145,14 @@ fun PerfilScreen(
     LaunchedEffect(usuario) {
         nombre = usuario?.nombre.orEmpty()
         correo = usuario?.correo.orEmpty()
+    }
+
+    // Al cambiarse la contraseña se cierra el formulario (el aviso sale en el snackbar).
+    LaunchedEffect(contrasenaCambiada) {
+        if (contrasenaCambiada) {
+            mostrarCambioContrasena = false
+            viewModel.onContrasenaCambiadaMostrada()
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -244,6 +256,32 @@ fun PerfilScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             TarjetaClub(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = tr("password_change_title"),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextoPrincipal
+                    )
+                    Text(
+                        text = tr("password_change_desc"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    BotonSecundario(
+                        texto = tr("password_change_button"),
+                        onClick = {
+                            viewModel.limpiarErrorContrasena()
+                            mostrarCambioContrasena = true
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TarjetaClub(modifier = Modifier.fillMaxWidth()) {
                 val contexto = LocalContext.current
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
@@ -317,6 +355,15 @@ fun PerfilScreen(
                 }
             }
         }
+    }
+
+    if (mostrarCambioContrasena) {
+        DialogoCambiarContrasena(
+            cambiando = cambiandoContrasena,
+            error = errorContrasena,
+            onCambiar = { actual, nueva, confirmacion -> viewModel.cambiarContrasena(actual, nueva, confirmacion) },
+            onCerrar = { if (!cambiandoContrasena) mostrarCambioContrasena = false }
+        )
     }
 
     if (showImageSourceOptions) {

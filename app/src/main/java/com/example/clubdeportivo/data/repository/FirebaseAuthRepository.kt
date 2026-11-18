@@ -9,6 +9,7 @@ import com.example.clubdeportivo.util.Textos
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.FirebaseTooManyRequestsException
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -299,6 +300,27 @@ class FirebaseAuthRepository(
             Resultado.Exito(Unit)
         } catch (e: FirebaseAuthInvalidUserException) {
             Resultado.Error(Textos.get("there_is_no_account_with_that"))
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            // Un correo mal escrito: no es un problema de "contraseña incorrecta".
+            Resultado.Error(Textos.get("err_correo_invalido"))
+        } catch (e: Exception) {
+            Resultado.Error(traducirError(e))
+        }
+    }
+
+    override suspend fun cambiarContrasena(actual: String, nueva: String): Resultado<Unit> {
+        val cuenta = auth.currentUser
+        val correo = cuenta?.email
+        if (cuenta == null || correo.isNullOrBlank()) return Resultado.Error(Textos.get("password_change_no_session"))
+        return try {
+            // Firebase pide una sesión reciente para cambiar la contraseña: se confirma con la actual antes de cambiarla.
+            cuenta.reauthenticate(EmailAuthProvider.getCredential(correo, actual)).await()
+            cuenta.updatePassword(nueva).await()
+            Resultado.Exito(Unit)
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Resultado.Error(Textos.get("password_current_wrong"))
+        } catch (e: FirebaseAuthInvalidUserException) {
+            Resultado.Error(Textos.get("password_change_no_session"))
         } catch (e: Exception) {
             Resultado.Error(traducirError(e))
         }

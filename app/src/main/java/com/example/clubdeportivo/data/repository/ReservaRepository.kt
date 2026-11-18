@@ -3,6 +3,7 @@ package com.example.clubdeportivo.data.repository
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.MaterialAsignado
+import com.example.clubdeportivo.data.model.ModificacionReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.ReglasReserva
@@ -54,6 +55,29 @@ interface ReservaRepository {
     )
     suspend fun estaBloqueadoPorInasistencias(usuarioId: String): Boolean
 
+    /** El miembro pide mover su reserva CONFIRMADA a otro día u horario; la reserva sigue igual hasta que el encargado lo valide. */
+    suspend fun solicitarModificacion(reservaId: String, modificacion: ModificacionReserva)
+
+    /** El miembro retira su solicitud de cambio. */
+    suspend fun retirarModificacion(reservaId: String)
+
+    /**
+     * Aplica a la reserva el cambio [esperada] (el que quien aprueba validó y vio). Si el miembro lo retiró o lo cambió
+     * mientras tanto, no se aplica nada. El servidor avisa al miembro.
+     */
+    suspend fun aprobarModificacion(reservaId: String, esperada: ModificacionReserva)
+
+    /** Descarta el cambio solicitado: la reserva se queda como estaba. */
+    suspend fun rechazarModificacion(reservaId: String, motivo: String = "")
+
+    /**
+     * Cancela, sin penalización, las [reservas] que caen en el periodo de mantenimiento de un área y deja anotado el
+     * periodo para que el miembro sepa por qué y pueda reagendar.
+     */
+    suspend fun cancelarPorMantenimiento(reservas: List<Reserva>, desde: String, hasta: String, motivo: String)
+
+    /** El miembro ya reagendó una reserva que el club canceló por mantenimiento: deja de mostrarse el aviso. */
+    suspend fun marcarReagendada(reservaId: String)
 }
 
 /**
@@ -236,5 +260,33 @@ class FakeReservaRepository : ReservaRepository {
         return System.currentTimeMillis() - ultimaFalta <= bloqueoMs
     }
 
+    override suspend fun solicitarModificacion(reservaId: String, modificacion: ModificacionReserva) {
+        reservas.replaceAll { if (it.id == reservaId) it.copy(modificacion = modificacion) else it }
+    }
 
+    override suspend fun retirarModificacion(reservaId: String) {
+        reservas.replaceAll { if (it.id == reservaId) it.copy(modificacion = null) else it }
+    }
+
+    override suspend fun aprobarModificacion(reservaId: String, esperada: ModificacionReserva) {
+        reservas.replaceAll {
+            val m = it.modificacion
+            if (it.id == reservaId && m == esperada) {
+                it.copy(fecha = m.fecha, horaInicio = m.horaInicio, horaFin = m.horaFin, personas = m.personas, carril = m.carril, modificacion = null)
+            } else it
+        }
+    }
+
+    override suspend fun rechazarModificacion(reservaId: String, motivo: String) = retirarModificacion(reservaId)
+
+    override suspend fun cancelarPorMantenimiento(reservas: List<Reserva>, desde: String, hasta: String, motivo: String) {
+        val ids = reservas.map { it.id }.toSet()
+        this.reservas.replaceAll {
+            if (it.id in ids) it.copy(estado = EstadoReserva.CANCELADA, canceladaPorMantenimiento = true, mantenimientoDesde = desde, mantenimientoHasta = hasta) else it
+        }
+    }
+
+    override suspend fun marcarReagendada(reservaId: String) {
+        reservas.replaceAll { if (it.id == reservaId) it.copy(reagendada = true) else it }
+    }
 }

@@ -189,6 +189,23 @@ async function notificarARevisores(
     .map((u) => guardarNotificacion(u.id, `${prefijoId}_${solicitudId}_${u.id}`, titulo, mensaje, tipo)));
 }
 
+/** Cuentas que atienden las reservas de un deporte: sus encargados activos; si no hay, los administradores. */
+async function destinatariosDeReserva(deporte) {
+  const db = getFirestore();
+  const encargados = await db.collection('usuarios')
+    .where('rol', 'in', ['ADMIN_AREA', 'AYUDANTE_AREA'])
+    .get();
+  const area = String(deporte || '').trim().toLowerCase();
+  const asignados = encargados.docs.filter((usuario) =>
+    (usuario.get('estado') || 'ACTIVO') !== 'INACTIVO' &&
+    String(usuario.get('areaTrabajo') || '').trim().toLowerCase() === area
+  );
+  return asignados.length > 0
+    ? asignados
+    : (await db.collection('usuarios').where('rol', 'in', ROLES_ADMINISTRADOR).get())
+      .docs.filter((usuario) => (usuario.get('estado') || 'ACTIVO') !== 'INACTIVO');
+}
+
 // Las cuentas del área reciben solicitudes; si no hay ninguna activa, el administrador es el respaldo.
 exports.notificarNuevaReserva = onDocumentCreated(
   { ...OPCIONES, document: 'reservas/{reservaId}' },
@@ -196,19 +213,7 @@ exports.notificarNuevaReserva = onDocumentCreated(
     const reserva = event.data?.data();
     if (!reserva || reserva.estado !== 'PENDIENTE_APROBACION') return;
 
-    const db = getFirestore();
-    const encargados = await db.collection('usuarios')
-      .where('rol', 'in', ['ADMIN_AREA', 'AYUDANTE_AREA'])
-      .get();
-    const area = String(reserva.deporte || '').trim().toLowerCase();
-    const asignados = encargados.docs.filter((usuario) =>
-      (usuario.get('estado') || 'ACTIVO') !== 'INACTIVO' &&
-      String(usuario.get('areaTrabajo') || '').trim().toLowerCase() === area
-    );
-    const destinatarios = asignados.length > 0
-      ? asignados
-      : (await db.collection('usuarios').where('rol', 'in', ROLES_ADMINISTRADOR).get())
-        .docs.filter((usuario) => (usuario.get('estado') || 'ACTIVO') !== 'INACTIVO');
+    const destinatarios = await destinatariosDeReserva(reserva.deporte);
 
     await Promise.all(destinatarios.map((usuario) =>
       guardarNotificacion(
@@ -242,6 +247,93 @@ exports.notificarResolucionReserva = onDocumentUpdated(
       'RESERVA_RESPUESTA',
       'reservas'
     );
+  }
+);
+
+// El miembro pidió cambiar el día u horario de una reserva confirmada: le toca al encargado del área validarlo.
+exports.notificarModificacionReserva = onDocumentUpdated(
+  { ...OPCIONES, document: 'reservas/{reservaId}' },
+  async (event) => {
+    const antes = event.data?.before.data();
+    const reserva = event.data?.after.data();
+    const mod = reserva?.modificacion;
+    if (!antes || !mod || reserva.estado !== 'CONFIRMADA') return;
+    if (JSON.stringify(antes.modificacion || null) === JSON.stringify(mod)) return;
+
+    const destinatarios = await destinatariosDeReserva(reserva.deporte);
+    await Promise.all(destinatarios.map((usuario) =>
+      guardarNotificacion(
+        usuario.id,
+        `reserva_${event.params.reservaId}_cambio_${event.id}_${usuario.id}`,
+        'Solicitud de cambio de reserva',
+        `${reserva.usuarioNombre || 'Un socio'} quiere cambiar su reserva de ${reserva.areaNombre || reserva.deporte || 'cancha'} ` +
+          `del ${reserva.fecha || ''} a las ${reserva.horaInicio || ''} al ${mod.fecha || ''} a las ${mod.horaInicio || ''}.`,
+        'RESERVA',
+        'reservas'
+      )
+    ));
+  }
+);
+
+// El encargado aprobó o rechazó el cambio: se le avisa al miembro (la app deja `resolucionModificacion` al resolver).
+exports.notificarResolucionModificacionReserva = onDocumentUpdated(
+  { ...OPCIONES, document: 'reservas/{reservaId}' },
+  async (event) => {
+    const antes = event.data?.before.data();
+    const reserva = event.data?.after.data();
+    const res = reserva?.resolucionModificacion;
+    if (!antes || !res || !reserva.usuarioId) return;
+    if (JSON.stringify(antes.resolucionModificacion || null) === JSON.stringify(res)) return;
+
+    const aprobada = res.resultado === 'APROBADA';
+    const lugar = reserva.areaNombre || reserva.deporte || 'cancha';
+    await guardarNotificacion(
+      reserva.usuarioId,
+      `reserva_${event.params.reservaId}_cambio_resuelto_${event.id}`,
+      aprobada ? 'Cambio de reserva aprobado' : 'Cambio de reserva rechazado',
+      aprobada
+        ? `Aprobamos el cambio de tu reserva de ${lugar}: ahora es el ${reserva.fecha || ''} de ${reserva.horaInicio || ''} a ${reserva.horaFin || ''}.`
+        : `No pudimos aprobar el cambio de tu reserva de ${lugar}. Se mantiene el ${reserva.fecha || ''} a las ${reserva.horaInicio || ''}.`,
+      'RESERVA_RESPUESTA',
+      'reservas'
+    );
+  }
+);
+
+// El área entró en mantenimiento y la app canceló las reservas de ese periodo: aviso en la app y por correo al miembro.
+exports.notificarReservaCanceladaPorMantenimiento = onDocumentUpdated(
+  { ...OPCIONES, document: 'reservas/{reservaId}' },
+  async (event) => {
+    const antes = event.data?.before.data();
+    const reserva = event.data?.after.data();
+    if (!antes || !reserva || !reserva.canceladaPorMantenimiento || antes.canceladaPorMantenimiento ||
+        reserva.estado !== 'CANCELADA' || !reserva.usuarioId) return;
+
+    const lugar = reserva.areaNombre || reserva.deporte || 'La cancha';
+    const periodo = reserva.mantenimientoDesde && reserva.mantenimientoHasta
+      ? ` del ${Correos.fechaLegible(reserva.mantenimientoDesde)} al ${Correos.fechaLegible(reserva.mantenimientoHasta)}`
+      : '';
+    await guardarNotificacion(
+      reserva.usuarioId,
+      `reserva_${event.params.reservaId}_mantenimiento_${reserva.usuarioId}`,
+      'Reserva cancelada por mantenimiento',
+      `${lugar} estará en mantenimiento${periodo}. Cancelamos tu reserva del ${reserva.fecha || ''} a las ${reserva.horaInicio || ''}; ` +
+        'puedes reagendarla desde Mis reservas.',
+      'RESERVA_RESPUESTA',
+      'reservas'
+    );
+    try {
+      await correoAlMiembro({
+        event, tipo: 'reservaCanceladaMantenimiento', uid: reserva.usuarioId,
+        datos: {
+          nombre: reserva.usuarioNombre, area: reserva.areaNombre, fecha: reserva.fecha,
+          horaInicio: reserva.horaInicio, horaFin: reserva.horaFin,
+          desde: reserva.mantenimientoDesde, hasta: reserva.mantenimientoHasta, motivo: reserva.mantenimientoMotivo
+        }
+      });
+    } catch (e) {
+      console.error('No se pudo mandar el correo de mantenimiento', event.params.reservaId, e.message);
+    }
   }
 );
 

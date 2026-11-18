@@ -391,7 +391,22 @@ service cloud.firestore {
                         && request.resource.data.usuarioId == resource.data.usuarioId
                         && request.resource.data.estado == 'CANCELADA'
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['estado', 'canceladaEn', 'sinPenalizacion', 'actualizadoEn']));
+                             .hasOnly(['estado', 'canceladaEn', 'sinPenalizacion', 'modificacion', 'actualizadoEn']))
+                    // Pedir (o retirar) el cambio de día u horario de una reserva CONFIRMADA: la reserva no cambia, solo se
+                    // anota la solicitud en `modificacion` y el encargado la valida.
+                    || (firmado() && resource.data.usuarioId == request.auth.uid
+                        && request.resource.data.usuarioId == resource.data.usuarioId
+                        && resource.data.estado == 'CONFIRMADA'
+                        && request.resource.data.estado == 'CONFIRMADA'
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['modificacion', 'actualizadoEn']))
+                    // Quien reservó marca como reagendada la reserva que el club canceló por mantenimiento.
+                    || (firmado() && resource.data.usuarioId == request.auth.uid
+                        && request.resource.data.usuarioId == resource.data.usuarioId
+                        && resource.data.get('canceladaPorMantenimiento', false) == true
+                        && request.resource.data.estado == resource.data.estado
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['reagendada', 'actualizadoEn']));
       allow delete: if esPersonal();
     }
 

@@ -3,6 +3,7 @@ package com.example.clubdeportivo.data.repository
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.data.model.MaterialAsignado
+import com.example.clubdeportivo.data.model.ModificacionReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.puedeVerDeporte
 import com.example.clubdeportivo.util.Fechas
@@ -34,7 +35,21 @@ private fun DocumentSnapshot.toReserva(): Reserva? {
 
         usuarioNombre = getString("usuarioNombre") ?: "",
         areaNombre = getString("areaNombre") ?: "",
-        deporte = getString("deporte") ?: ""
+        deporte = getString("deporte") ?: "",
+        modificacion = (get("modificacion") as? Map<*, *>)?.let { m ->
+            val fecha = m["fecha"] as? String ?: return@let null
+            ModificacionReserva(
+                fecha = fecha,
+                horaInicio = m["horaInicio"] as? String ?: "",
+                horaFin = m["horaFin"] as? String ?: "",
+                personas = (m["personas"] as? Number)?.toInt()?.coerceAtLeast(1) ?: 1,
+                carril = (m["carril"] as? Number)?.toInt()
+            )
+        },
+        canceladaPorMantenimiento = getBoolean("canceladaPorMantenimiento") ?: false,
+        mantenimientoDesde = getString("mantenimientoDesde") ?: "",
+        mantenimientoHasta = getString("mantenimientoHasta") ?: "",
+        reagendada = getBoolean("reagendada") ?: false
     )
 }
 
@@ -351,6 +366,8 @@ class FirebaseReservaRepository(
                 "estado" to EstadoReserva.CANCELADA.name,
                 "canceladaEn" to FieldValue.serverTimestamp(),
                 "sinPenalizacion" to sinPenalizacion,
+                // Si había un cambio pedido, ya no tiene sentido.
+                "modificacion" to FieldValue.delete(),
                 "actualizadoEn" to FieldValue.serverTimestamp()
             )
         ).await()
@@ -380,5 +397,124 @@ class FirebaseReservaRepository(
         val ultimaFalta = recientes.max()
         val bloqueoMs = Catalogos.DIAS_BLOQUEO_POR_INASISTENCIAS * 24L * 60 * 60 * 1000
         return System.currentTimeMillis() - ultimaFalta <= bloqueoMs
+    }
+
+    override suspend fun solicitarModificacion(reservaId: String, modificacion: ModificacionReserva) {
+        reservas.document(reservaId).update(
+            mapOf(
+                "modificacion" to mapOf(
+                    "fecha" to modificacion.fecha,
+                    "horaInicio" to modificacion.horaInicio,
+                    "horaFin" to modificacion.horaFin,
+                    "personas" to modificacion.personas.toLong(),
+                    "carril" to modificacion.carril?.toLong(),
+                    "solicitadaEn" to FieldValue.serverTimestamp()
+                ),
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        ).await()
+    }
+
+    override suspend fun retirarModificacion(reservaId: String) {
+        reservas.document(reservaId).update(
+            mapOf("modificacion" to FieldValue.delete(), "actualizadoEn" to FieldValue.serverTimestamp())
+        ).await()
+    }
+
+    /** Lee una reserva con un cambio por resolver y comprueba que quien responde puede hacerlo (el encargado, solo en su área). */
+    private suspend fun reservaConCambioPorResolver(reservaId: String): Pair<Reserva, ModificacionReserva> {
+        val reserva = reservas.document(reservaId).get().await().toReserva() ?: error(Textos.get("the_booking_no_longer_exists"))
+        if (!com.example.clubdeportivo.data.SesionManager.usuarioActual.puedeVerDeporte(reserva.deporte)) {
+            error(Textos.get("this_booking_belongs_to_another_area"))
+        }
+        val cambio = reserva.modificacion
+        if (reserva.estado != EstadoReserva.CONFIRMADA || cambio == null) error(Textos.get("cambio_reserva_ya_resuelto"))
+        return reserva to cambio
+    }
+
+    override suspend fun aprobarModificacion(reservaId: String, esperada: ModificacionReserva) {
+        val (reserva, cambio) = reservaConCambioPorResolver(reservaId)
+        // El miembro pudo retirar o cambiar su solicitud después de que quien aprueba la vio.
+        if (cambio != esperada) error(Textos.get("cambio_reserva_ya_resuelto"))
+        val horas = ((ReglasReserva.aMinutos(cambio.horaFin) ?: 0) - (ReglasReserva.aMinutos(cambio.horaInicio) ?: 0)) / 60
+        reservas.document(reservaId).update(
+            mapOf(
+                "fecha" to cambio.fecha,
+                "horaInicio" to cambio.horaInicio,
+                "horaFin" to cambio.horaFin,
+                "duracionHoras" to horas.toLong(),
+                "personas" to cambio.personas.toLong(),
+                "carril" to (cambio.carril ?: reserva.carril)?.toLong(),
+                "modificacion" to FieldValue.delete(),
+                "resolucionModificacion" to mapOf(
+                    "resultado" to "APROBADA",
+                    "resueltaPor" to (com.example.clubdeportivo.data.SesionManager.usuarioActual?.id ?: ""),
+                    "resueltaEn" to FieldValue.serverTimestamp()
+                ),
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        ).await()
+        // El material apartado sigue a la reserva a su nuevo día.
+        val asignado = materialAsignado.whereEqualTo("reservaId", reservaId).get().await()
+        if (!asignado.isEmpty) {
+            val batch = db.batch()
+            asignado.documents.forEach { batch.update(it.reference, "fecha", cambio.fecha) }
+            batch.commit().await()
+        }
+    }
+
+    override suspend fun rechazarModificacion(reservaId: String, motivo: String) {
+        reservaConCambioPorResolver(reservaId)
+        reservas.document(reservaId).update(
+            mapOf(
+                "modificacion" to FieldValue.delete(),
+                "resolucionModificacion" to mapOf(
+                    "resultado" to "RECHAZADA",
+                    "motivo" to motivo.trim(),
+                    "resueltaPor" to (com.example.clubdeportivo.data.SesionManager.usuarioActual?.id ?: ""),
+                    "resueltaEn" to FieldValue.serverTimestamp()
+                ),
+                "actualizadoEn" to FieldValue.serverTimestamp()
+            )
+        ).await()
+    }
+
+    override suspend fun cancelarPorMantenimiento(reservas: List<Reserva>, desde: String, hasta: String, motivo: String) {
+        // Firestore admite 500 operaciones por lote: se parte en tandas.
+        reservas.chunked(200).forEach { tanda ->
+            val batch = db.batch()
+            tanda.forEach { reserva ->
+                batch.update(
+                    this.reservas.document(reserva.id),
+                    mapOf(
+                        "estado" to EstadoReserva.CANCELADA.name,
+                        "canceladaEn" to FieldValue.serverTimestamp(),
+                        "sinPenalizacion" to true,
+                        "canceladaPorMantenimiento" to true,
+                        "mantenimientoDesde" to desde,
+                        "mantenimientoHasta" to hasta,
+                        "mantenimientoMotivo" to motivo.trim(),
+                        "modificacion" to FieldValue.delete(),
+                        "actualizadoEn" to FieldValue.serverTimestamp()
+                    )
+                )
+            }
+            batch.commit().await()
+            // El material que se había apartado ya no hace falta.
+            tanda.forEach { reserva ->
+                val asignado = materialAsignado.whereEqualTo("reservaId", reserva.id).get().await()
+                if (!asignado.isEmpty) {
+                    val lote = db.batch()
+                    asignado.documents.forEach { lote.update(it.reference, "estado", "CANCELADO") }
+                    lote.commit().await()
+                }
+            }
+        }
+    }
+
+    override suspend fun marcarReagendada(reservaId: String) {
+        reservas.document(reservaId).update(
+            mapOf("reagendada" to true, "actualizadoEn" to FieldValue.serverTimestamp())
+        ).await()
     }
 }

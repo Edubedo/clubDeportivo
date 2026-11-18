@@ -25,6 +25,9 @@ class AprobacionesViewModel : ViewModel() {
 
     var pendientes by mutableStateOf<List<Reserva>?>(null)
         private set
+    /** Reservas confirmadas cuyo miembro pidió moverlas a otro día u horario; se aprueban o rechazan aquí. */
+    var cambios by mutableStateOf<List<Reserva>?>(null)
+        private set
     var mensaje by mutableStateOf<String?>(null)
         private set
     /** Reservas con una acción en curso (para no permitir tocar dos veces el mismo botón). */
@@ -44,8 +47,13 @@ class AprobacionesViewModel : ViewModel() {
                     .filter { it.estado == EstadoReserva.PENDIENTE_APROBACION && it.fecha >= hoy }
                     .filter { usuario.puedeVerDeporte(it.deporte) }
                     .sortedWith(compareBy({ it.fecha }, { it.horaInicio }))
+                cambios = repositorio.obtenerReservasVigentes()
+                    .filter { it.estado == EstadoReserva.CONFIRMADA && it.modificacion != null && it.fecha >= hoy }
+                    .filter { usuario.puedeVerDeporte(it.deporte) }
+                    .sortedWith(compareBy({ it.fecha }, { it.horaInicio }))
             } catch (e: Exception) {
                 pendientes = pendientes ?: emptyList()
+                cambios = cambios ?: emptyList()
                 mensaje = Textos.get("the_bookings_pending_approval_could_no")
             }
         }
@@ -57,6 +65,41 @@ class AprobacionesViewModel : ViewModel() {
         repositorio.rechazarReserva(reserva.id)
         // El lugar que ocupaba la solicitud se aparta para el primero de la lista de espera de esas horas.
         runCatching { GestorListaEspera.promover(reserva.areaId, reserva.fecha) }
+    }
+
+    fun aprobarCambio(reserva: Reserva) = resolverCambio(reserva) {
+        val motivo = ResolucionCambios.aprobar(reserva)
+        if (motivo != null) {
+            // Si no cabe, se explica por qué y la solicitud sigue ahí para rechazarla.
+            mensaje = Textos.get("change_cannot_be_applied", motivo)
+            false
+        } else {
+            mensaje = Textos.get("change_approved")
+            true
+        }
+    }
+
+    fun rechazarCambio(reserva: Reserva) = resolverCambio(reserva) {
+        ResolucionCambios.rechazar(reserva)
+        mensaje = Textos.get("change_rejected")
+        true
+    }
+
+    /** [accion] devuelve true si la solicitud quedó resuelta (sale de la lista). */
+    private fun resolverCambio(reserva: Reserva, accion: suspend () -> Boolean) {
+        if (reserva.id in enProceso) return
+        viewModelScope.launch {
+            enProceso = enProceso + reserva.id
+            try {
+                if (accion()) cambios = cambios?.filterNot { it.id == reserva.id }
+            } catch (e: IllegalStateException) {
+                mensaje = e.message ?: Textos.get("the_action_could_not_be_completed_2")
+                cargar()
+            } catch (e: Exception) {
+                mensaje = Textos.get("the_action_could_not_be_completed_3")
+            }
+            enProceso = enProceso - reserva.id
+        }
     }
 
     private fun resolver(reserva: Reserva, exito: String, accion: suspend () -> Unit) {

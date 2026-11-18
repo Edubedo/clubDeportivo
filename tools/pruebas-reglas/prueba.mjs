@@ -312,6 +312,34 @@ await prueba('el encargado del área (Fútbol) aprueba', () => assertSucceeds(up
 await prueba('el encargado del área (Fútbol) rechaza', () => assertSucceeds(updateDoc(doc(ayudante, 'reservas/rB'), { estado: 'RECHAZADA' })));
 await prueba('el administrador aprueba cualquier reserva', () => assertSucceeds(updateDoc(doc(admin, 'reservas/rC'), { estado: 'CONFIRMADA' })));
 
+// ---- cambio de horario de una reserva confirmada: el miembro lo solicita, el encargado lo resuelve
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'reservas/rM1'), { usuarioId: 'miembroX', areaId: 'a1', deporte: 'Fútbol', estado: 'CONFIRMADA', fecha: '2030-01-10', horaInicio: '18:00', horaFin: '19:00' });
+  await setDoc(doc(db, 'reservas/rM2'), { usuarioId: 'miembroX', areaId: 'a1', deporte: 'Fútbol', estado: 'PENDIENTE_APROBACION', fecha: '2030-01-10', horaInicio: '18:00', horaFin: '19:00' });
+  await setDoc(doc(db, 'reservas/rM3'), { usuarioId: 'miembroX', areaId: 'a1', deporte: 'Fútbol', estado: 'CANCELADA', canceladaPorMantenimiento: true, fecha: '2030-01-10' });
+  await setDoc(doc(db, 'reservas/rM4'), { usuarioId: 'miembroX', areaId: 'a1', deporte: 'Fútbol', estado: 'CANCELADA', fecha: '2030-01-10' });
+});
+const solicitud = { fecha: '2030-01-11', horaInicio: '19:00', horaFin: '20:00', personas: 1 };
+await prueba('el miembro SÍ solicita el cambio de horario de su reserva confirmada', () =>
+  assertSucceeds(updateDoc(doc(miembroX, 'reservas/rM1'), { modificacion: solicitud, actualizadoEn: new Date() })));
+await prueba('el miembro NO cambia directamente el horario de su reserva', () =>
+  assertFails(updateDoc(doc(miembroX, 'reservas/rM1'), { fecha: '2030-01-11', horaInicio: '19:00', horaFin: '20:00' })));
+await prueba('el miembro NO solicita cambio de una reserva que sigue en revisión', () =>
+  assertFails(updateDoc(doc(miembroX, 'reservas/rM2'), { modificacion: solicitud })));
+await prueba('el miembro NO aprueba su propio cambio', () =>
+  assertFails(updateDoc(doc(miembroX, 'reservas/rM1'), { fecha: '2030-01-11', modificacion: deleteField() })));
+await prueba('el miembro retira su solicitud de cambio', () =>
+  assertSucceeds(updateDoc(doc(miembroX, 'reservas/rM1'), { modificacion: deleteField() })));
+await prueba('el encargado del área aplica el cambio y deja constancia de la resolución', () =>
+  assertSucceeds(updateDoc(doc(ayudante, 'reservas/rM1'), { fecha: '2030-01-11', modificacion: deleteField(), resolucionModificacion: { resultado: 'APROBADA' } })));
+await prueba('el miembro marca como reagendada una reserva cancelada por mantenimiento', () =>
+  assertSucceeds(updateDoc(doc(miembroX, 'reservas/rM3'), { reagendada: true, actualizadoEn: new Date() })));
+await prueba('el miembro NO marca como reagendada una cancelación común', () =>
+  assertFails(updateDoc(doc(miembroX, 'reservas/rM4'), { reagendada: true })));
+await prueba('el encargado cancela por mantenimiento reservas de su área', () =>
+  assertSucceeds(updateDoc(doc(ayudante, 'reservas/rM2'), { estado: 'CANCELADA', canceladaPorMantenimiento: true, mantenimientoDesde: '2030-01-08', mantenimientoHasta: '2030-01-12' })));
+
 // ---- supervisor: opera todas las áreas y registra miembros, pero no administra personal ni precios
 await prueba('el supervisor aprueba una reserva de cualquier área (Tenis)', () =>
   assertSucceeds(updateDoc(doc(supervisor, 'reservas/rS1'), { estado: 'CONFIRMADA' })));

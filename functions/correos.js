@@ -40,16 +40,16 @@ function plantilla({ club = 'Athletic Club', nombre, titulo, parrafos, destacado
   const saludo = primer ? `Hola ${primer}` : 'Hola';
   const texto = [`${saludo},`, '', ...parrafos, ...(destacado ? ['', destacado] : []), ...(nota ? ['', nota] : []), '', `— ${club}`].join('\n');
   const html = `<!doctype html>
-<html lang="es"><body style="margin:0;padding:24px;background:#f5f3f0;font-family:Arial,Helvetica,sans-serif;color:#2b2622">
+<html lang="es"><body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0b1220">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;padding:28px">
 <tr><td>
-<h1 style="margin:0 0 12px;font-size:22px;color:#e8590c">${escapar(club)}</h1>
+<h1 style="margin:0 0 12px;font-size:22px;color:#052659">${escapar(club)}</h1>
 <h2 style="margin:0 0 16px;font-size:18px">${escapar(titulo)}</h2>
 <p style="margin:0 0 14px;font-size:16px">${escapar(saludo)},</p>
 ${parrafos.map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.45">${escapar(p)}</p>`).join('\n')}
-${destacado ? `<p style="margin:0 0 14px;padding:14px;background:#fff4ec;border-radius:8px;font-size:17px;font-weight:bold">${escapar(destacado)}</p>` : ''}
-${nota ? `<p style="margin:16px 0 0;font-size:12px;color:#9a9188">${escapar(nota)}</p>` : ''}
+${destacado ? `<p style="margin:0 0 14px;padding:14px;background:#dbeafe;border-radius:8px;font-size:17px;font-weight:bold">${escapar(destacado)}</p>` : ''}
+${nota ? `<p style="margin:16px 0 0;font-size:12px;color:#64748b">${escapar(nota)}</p>` : ''}
 </td></tr></table></td></tr></table></body></html>`;
   return { texto, html };
 }
@@ -164,6 +164,18 @@ const compositores = {
         `Motivo: ${motivo || 'Sin motivo indicado.'}`,
         'Si crees que es un error, comunícate con el personal del club.'
       ], nota: PIE
+    })
+  }),
+  reservaCanceladaMantenimiento: ({ nombre, area, fecha, horaInicio, horaFin, desde, hasta, motivo }) => ({
+    asunto: `Tu reserva del ${fechaLegible(fecha)} se canceló por mantenimiento`,
+    ...plantilla({
+      nombre, titulo: 'Reserva cancelada por mantenimiento',
+      parrafos: [
+        `${area || 'El área'} estará en mantenimiento ${desde && hasta ? `del ${fechaLegible(desde)} al ${fechaLegible(hasta)}` : 'por tiempo indefinido'}` +
+          `${motivo ? ` (${motivo})` : ''}, por lo que tuvimos que cancelar tu reserva. No se te penaliza.`,
+        'Puedes reagendarla desde la app, en Reservas > Mis reservas, tocando "Reagendar": elige otro día fuera del mantenimiento u otra cancha del mismo deporte.'
+      ],
+      destacado: `Reserva cancelada: ${fechaLegible(fecha)}, ${horaInicio || ''}–${horaFin || ''}`, nota: PIE
     })
   }),
   membresiaReactivada: ({ nombre, hasta }) => ({

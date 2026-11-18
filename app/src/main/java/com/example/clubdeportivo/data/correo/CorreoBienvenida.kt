@@ -77,11 +77,11 @@ object CorreoBienvenida {
             "El código sirve una sola vez, para crear tu cuenta. Después entras con tu correo y contraseña.\n\n" +
             "Si no esperabas este correo, ignóralo."
         val html = """<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#2b2622">""" +
-            """<h1 style="color:#e8590c;font-size:22px">Athletic Club</h1>""" +
+            """<h1 style="color:#052659;font-size:22px">Athletic Club</h1>""" +
             """<p>${html(saludo)}, te damos la bienvenida. Ya eres socio.</p>""" +
             """<p style="margin:0;color:#6b625a;font-size:14px">Tu código de acceso</p>""" +
             """<p style="font:bold 28px Menlo,Consolas,monospace;letter-spacing:3px;margin:4px 0 20px">${html(codigo)}</p>""" +
-            """<p><a href="${html(enlace)}" style="background:#e8590c;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px;display:inline-block">Crear mi cuenta</a></p>""" +
+            """<p><a href="${html(enlace)}" style="background:#052659;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px;display:inline-block">Crear mi cuenta</a></p>""" +
             """<p style="color:#6b625a;font-size:13px">Ábrelo desde tu teléfono Android con la app instalada. Si no abre la app, entra a <b>Regístrate con tu código</b> y escribe el código a mano. El código sirve una sola vez.</p>""" +
             """<p style="color:#9a9188;font-size:12px">Si el botón no funciona, copia este enlace: ${html(enlace)}<br>Si no esperabas este correo, ignóralo.</p></div>"""
         return """{"from":${json(de)},"to":[${json(correo)}],"subject":${json(asunto)},"text":${json(texto)},"html":${json(html)}}"""

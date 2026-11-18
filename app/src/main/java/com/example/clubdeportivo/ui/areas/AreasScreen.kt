@@ -1,6 +1,7 @@
 package com.example.clubdeportivo.ui.areas
 
 import com.example.clubdeportivo.util.tr
+import com.example.clubdeportivo.util.ReglasReserva
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -131,6 +132,8 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
     var areaSeleccionada by remember { mutableStateOf<Area?>(null) }
     var mostrarFormulario by remember { mutableStateOf(false) }
     var areaAEliminar by remember { mutableStateOf<Area?>(null) }
+    var areaParaMantenimiento by remember { mutableStateOf<Area?>(null) }
+    val afectadas by viewModel.afectadas.observeAsState()
     var filtroDeporte by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     // Un encargado solo ve su área: puede ponerla en mantenimiento, pero no crear, editar ni borrar áreas.
@@ -221,7 +224,11 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
                                     areaEnEdicion = area
                                     mostrarFormulario = true
                                 },
-                                onCambiarEstatus = { viewModel.cambiarDisponibilidad(area, it) },
+                                onCambiarEstatus = { nueva ->
+                                    // Poner en mantenimiento pide el periodo; volver a disponible es directo.
+                                    if (nueva == DisponibilidadArea.MANTENIMIENTO) areaParaMantenimiento = area
+                                    else viewModel.cambiarDisponibilidad(area, nueva)
+                                },
                                 onEliminar = { areaAEliminar = area }
                             )
                         }
@@ -248,17 +255,39 @@ fun AreasScreen(viewModel: AreasViewModel = viewModel()) {
             nombreRepetido = { nombre, tipo -> viewModel.nombreRepetido(nombre, tipo, areaEnEdicion?.id) },
             onCerrar = { mostrarFormulario = false },
             onGuardar = { nombre, tipo, capacidad, emoji, disponibilidad, carriles, imagenUrl ->
+                // Pasar a mantenimiento necesita un periodo: se guarda lo demás y enseguida se pregunta por las fechas.
+                val editada = areaEnEdicion
+                val pidePeriodo = disponibilidad == DisponibilidadArea.MANTENIMIENTO &&
+                    editada != null && editada.disponibilidad != DisponibilidadArea.MANTENIMIENTO
                 viewModel.guardarArea(
-                    areaEnEdicion,
+                    editada,
                     nombre,
                     tipo,
                     capacidad,
                     emoji,
-                    disponibilidad,
+                    if (pidePeriodo) editada!!.disponibilidad else disponibilidad,
                     carriles,
                     imagenUrl
                 )
+                if (pidePeriodo) areaParaMantenimiento = editada
                 mostrarFormulario = false
+            }
+        )
+    }
+
+    areaParaMantenimiento?.let { area ->
+        DialogoMantenimiento(
+            area = area,
+            afectadas = afectadas,
+            onPeriodoElegido = { desde, hasta -> viewModel.calcularAfectadas(area.id, desde, hasta) },
+            onConfirmar = { desde, hasta, motivo ->
+                viewModel.ponerEnMantenimiento(area.id, desde, hasta, motivo)
+                viewModel.limpiarAfectadas()
+                areaParaMantenimiento = null
+            },
+            onCerrar = {
+                viewModel.limpiarAfectadas()
+                areaParaMantenimiento = null
             }
         )
     }
@@ -337,12 +366,22 @@ private fun AreaCard(
                     modifier = Modifier.padding(top = 2.dp)
                 )
                 when (area.disponibilidad) {
-                    DisponibilidadArea.MANTENIMIENTO -> Insignia(
-                        texto = Textos.get("under_maintenance"),
-                        tipo = TipoInsignia.MANTENIMIENTO,
-                        icono = Icons.Default.Warning,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
+                    DisponibilidadArea.MANTENIMIENTO -> {
+                        Insignia(
+                            texto = Textos.get("under_maintenance"),
+                            tipo = TipoInsignia.MANTENIMIENTO,
+                            icono = Icons.Default.Warning,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                        if (area.tienePeriodoDeMantenimiento) {
+                            Text(
+                                text = ReglasReserva.textoMantenimiento(area),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextoSecundario,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
                     DisponibilidadArea.OCUPADA -> Insignia(
                         texto = Textos.get("occupied"),
                         tipo = TipoInsignia.NO_DISPONIBLE,
@@ -606,8 +645,14 @@ private fun AreaFormDialog(
             margenHorizontal = 0.dp
         )
         Text(
-            text = if (enMantenimiento) Textos.get("no_new_bookings_are_accepted_in")
-            else Textos.get("the_area_accepts_bookings_as_usual"),
+            text = when {
+                enMantenimiento && areaExistente?.disponibilidad == DisponibilidadArea.MANTENIMIENTO ->
+                    Textos.get("no_new_bookings_are_accepted_in")
+                // Al guardar se pregunta el periodo: solo esos días se bloquean.
+                enMantenimiento && esEdicion -> Textos.get("maintenance_form_hint")
+                enMantenimiento -> Textos.get("no_new_bookings_are_accepted_in")
+                else -> Textos.get("the_area_accepts_bookings_as_usual")
+            },
             style = MaterialTheme.typography.bodySmall,
             color = TextoSecundario
         )

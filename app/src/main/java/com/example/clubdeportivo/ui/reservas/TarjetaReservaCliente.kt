@@ -28,18 +28,32 @@ import com.example.clubdeportivo.ui.components.Insignia
 import com.example.clubdeportivo.ui.components.TarjetaClub
 import com.example.clubdeportivo.ui.components.TipoInsignia
 import com.example.clubdeportivo.ui.components.modifierReflejo
+import com.example.clubdeportivo.ui.theme.Marca
 import com.example.clubdeportivo.ui.theme.Peligro
 import com.example.clubdeportivo.ui.theme.TextoPrincipal
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.Fechas
 import com.example.clubdeportivo.util.Textos
 
-/** Reserva vigente con su estado y la opción de cancelarla (siempre pide confirmación antes). */
+/**
+ * Reserva con su estado y lo que se puede hacer con ella: cancelarla (siempre pide confirmación), pedir un cambio de día u
+ * horario (lo valida el administrador) o, si el club la canceló por mantenimiento, reagendarla.
+ */
 @Composable
-internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Unit) {
+internal fun TarjetaReservaCliente(
+    reserva: ReservaListada,
+    onCancelar: () -> Unit,
+    fechas: List<Pair<String, String>> = emptyList(),
+    onSolicitarCambio: (fecha: String, desde: Int, horas: Int, personas: Int) -> Unit = { _, _, _, _ -> },
+    onRetirarCambio: () -> Unit = {},
+    onReagendar: () -> Unit = {}
+) {
     val pendiente = reserva.estado == EstadoReserva.PENDIENTE_APROBACION
     val rechazada = reserva.estado == EstadoReserva.RECHAZADA
+    val porMantenimiento = reserva.canceladaPorMantenimiento && reserva.estado == EstadoReserva.CANCELADA
+    val confirmada = reserva.estado == EstadoReserva.CONFIRMADA
     var confirmando by remember { mutableStateOf(false) }
+    var editando by remember { mutableStateOf(false) }
 
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 4.dp)) {
@@ -72,11 +86,13 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                 }
                 Insignia(
                     texto = when {
+                        porMantenimiento -> Textos.get("cancelled_by_maintenance")
                         pendiente -> Textos.get("under_review_2")
                         rechazada -> Textos.get("rejected")
                         else -> Textos.get("confirmed_2")
                     },
                     tipo = when {
+                        porMantenimiento -> TipoInsignia.MANTENIMIENTO
                         pendiente -> TipoInsignia.ALERTA
                         rechazada -> TipoInsignia.PELIGRO
                         else -> TipoInsignia.EXITO
@@ -84,10 +100,46 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                 )
             }
 
-            if (rechazada) {
+            reserva.modificacion?.let { cambio ->
+                Text(
+                    text = Textos.get(
+                        "change_request_pending",
+                        Fechas.legible(cambio.fecha), cambio.horaInicio, cambio.horaFin
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario,
+                    modifier = Modifier.padding(top = 10.dp, end = 8.dp)
+                )
+            }
+
+            if (porMantenimiento) {
+                Text(
+                    text = Textos.get(
+                        "cancelled_by_maintenance_detail",
+                        Fechas.legible(reserva.mantenimientoDesde), Fechas.legible(reserva.mantenimientoHasta)
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSecundario,
+                    modifier = Modifier.padding(top = 10.dp, end = 8.dp)
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onReagendar) {
+                        Text(Textos.get("reschedule"), color = Marca, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            } else if (rechazada) {
                 Spacer(modifier = Modifier.height(12.dp))
             } else {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    if (confirmada && reserva.modificacion != null) {
+                        TextButton(onClick = onRetirarCambio) {
+                            Text(Textos.get("change_request_withdraw"), color = Marca, fontWeight = FontWeight.SemiBold)
+                        }
+                    } else if (confirmada) {
+                        TextButton(onClick = { editando = true }) {
+                            Text(Textos.get("request_change"), color = Marca, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                     TextButton(
                         onClick = { confirmando = true }
                     ) {
@@ -100,6 +152,18 @@ internal fun TarjetaReservaCliente(reserva: ReservaListada, onCancelar: () -> Un
                 }
             }
         }
+    }
+
+    if (editando) {
+        DialogoModificarReserva(
+            reserva = reserva,
+            fechas = fechas,
+            onEnviar = { fecha, desde, horas, personas ->
+                editando = false
+                onSolicitarCambio(fecha, desde, horas, personas)
+            },
+            onCerrar = { editando = false }
+        )
     }
 
     if (confirmando) {

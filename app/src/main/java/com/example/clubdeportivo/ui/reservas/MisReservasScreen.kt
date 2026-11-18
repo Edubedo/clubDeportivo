@@ -29,6 +29,8 @@ import com.example.clubdeportivo.util.Textos
 
 @Composable
 fun MisReservasScreen(
+    /** Lleva a la pestaña para reservar (al reagendar una reserva cancelada por mantenimiento). */
+    onIrAReservar: () -> Unit = {},
     viewModel: ReservasViewModel = viewModel()
 ) {
     val reservas by viewModel.reservas.observeAsState(emptyList())
@@ -65,7 +67,16 @@ fun MisReservasScreen(
                     items(reservas, key = { it.id }) { reserva ->
                         TarjetaReservaCliente(
                             reserva = reserva,
-                            onCancelar = { viewModel.cancelar(reserva) }
+                            onCancelar = { viewModel.cancelar(reserva) },
+                            fechas = viewModel.fechas,
+                            onSolicitarCambio = { fecha, desde, horas, personas ->
+                                viewModel.solicitarModificacion(reserva, fecha, desde, horas, personas)
+                            },
+                            onRetirarCambio = { viewModel.retirarModificacion(reserva) },
+                            onReagendar = {
+                                viewModel.reagendar(reserva)
+                                onIrAReservar()
+                            }
                         )
                     }
                 }

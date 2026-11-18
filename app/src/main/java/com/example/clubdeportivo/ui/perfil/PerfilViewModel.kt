@@ -9,10 +9,12 @@ import android.net.Uri
 import com.example.clubdeportivo.data.AppContainer
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Usuario
+import com.example.clubdeportivo.data.repository.AuthRepository
 import com.example.clubdeportivo.data.repository.FotoPerfilRepository
 import com.example.clubdeportivo.data.repository.UsuarioRepository
 import com.example.clubdeportivo.notificaciones.GestorTokenFCM
 import com.example.clubdeportivo.util.comprimirFotoPerfil
+import com.example.clubdeportivo.util.ReglasContrasena
 import com.example.clubdeportivo.util.Resultado
 import com.example.clubdeportivo.util.Textos
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +26,8 @@ class PerfilViewModel(
     private val usuarioRepository: UsuarioRepository =
         AppContainer.usuarioRepository,
     private val fotoPerfilRepository: FotoPerfilRepository =
-        AppContainer.fotoPerfilRepository
+        AppContainer.fotoPerfilRepository,
+    private val authRepository: AuthRepository = AppContainer.authRepository
 ) : ViewModel() {
 
     private val _usuario = MutableLiveData<Usuario?>()
@@ -38,6 +41,17 @@ class PerfilViewModel(
 
     private val _mensaje = MutableLiveData<String?>()
     val mensaje: LiveData<String?> = _mensaje
+
+    private val _cambiandoContrasena = MutableLiveData(false)
+    val cambiandoContrasena: LiveData<Boolean> = _cambiandoContrasena
+
+    /** true cuando la contraseña se cambió: la pantalla cierra el formulario. */
+    private val _contrasenaCambiada = MutableLiveData(false)
+    val contrasenaCambiada: LiveData<Boolean> = _contrasenaCambiada
+
+    /** Mensaje de error del formulario de contraseña (se muestra dentro del diálogo, no en el snackbar). */
+    private val _errorContrasena = MutableLiveData<String?>()
+    val errorContrasena: LiveData<String?> = _errorContrasena
 
     init {
         _usuario.value = SesionManager.usuarioActual
@@ -132,6 +146,37 @@ class PerfilViewModel(
         SesionManager.notificarCambioFoto()
     }
 
+    /** Cambia la contraseña de quien tiene la sesión abierta, después de validar lo escrito. */
+    fun cambiarContrasena(actual: String, nueva: String, confirmacion: String) {
+        if (_cambiandoContrasena.value == true) return
+        val error = ReglasContrasena.errorAlCambiar(actual, nueva, confirmacion)
+        if (error != null) {
+            _errorContrasena.value = error
+            return
+        }
+        _errorContrasena.value = null
+        viewModelScope.launch {
+            _cambiandoContrasena.value = true
+            when (val resultado = authRepository.cambiarContrasena(actual, nueva)) {
+                is Resultado.Exito -> {
+                    _contrasenaCambiada.value = true
+                    _mensaje.value = Textos.get("password_changed")
+                }
+                is Resultado.Error -> _errorContrasena.value = resultado.mensaje
+            }
+            _cambiandoContrasena.value = false
+        }
+    }
+
+    fun onContrasenaCambiadaMostrada() {
+        _contrasenaCambiada.value = false
+        _errorContrasena.value = null
+    }
+
+    fun limpiarErrorContrasena() {
+        _errorContrasena.value = null
+    }
+
     fun mostrarMensaje(texto: String) {
         _mensaje.value = texto
     }
@@ -147,7 +192,7 @@ class PerfilViewModel(
                 runCatching { withTimeout(3_000L) { GestorTokenFCM.eliminar(uid) } }
                     .onFailure { android.util.Log.e("PerfilViewModel", "No se pudo desvincular FCM de $uid", it) }
             }
-            AppContainer.authRepository.cerrarSesion()
+            authRepository.cerrarSesion()
             SesionManager.cerrarSesion()
         }
     }

@@ -281,6 +281,7 @@ fun ReservasSupervisorScreen(
                     onAprobar = {
                         viewModel.aprobarReserva(reserva.id)
                     },
+                    onResolverCambio = { aprobar -> viewModel.resolverCambio(reserva, aprobar) },
                     onRechazar = {
                         reservaARechazar = reserva
                         motivoRechazo = ""
@@ -389,7 +390,8 @@ private fun TarjetaReservaSupervisor(
     reserva: Reserva,
     habilitado: Boolean,
     onAprobar: () -> Unit,
-    onRechazar: () -> Unit
+    onRechazar: () -> Unit,
+    onResolverCambio: (aprobar: Boolean) -> Unit = {}
 ) {
     TarjetaClub(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -419,6 +421,29 @@ private fun TarjetaReservaSupervisor(
                 },
                 color = MaterialTheme.colorScheme.secondary
             )
+
+            val cambio = reserva.modificacion
+            if (reserva.estado == EstadoReserva.CONFIRMADA && cambio != null) {
+                Text(
+                    text = tr("change_request_wants", Fechas.legible(cambio.fecha), cambio.horaInicio, cambio.horaFin, cambio.personas),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(onClick = { onResolverCambio(false) }, enabled = habilitado, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Filled.Close, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(tr("reject"))
+                    }
+                    Button(onClick = { onResolverCambio(true) }, enabled = habilitado, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Filled.Check, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(tr("approve"))
+                    }
+                }
+            }
 
             if (reserva.estado == EstadoReserva.PENDIENTE_APROBACION) {
                 Row(

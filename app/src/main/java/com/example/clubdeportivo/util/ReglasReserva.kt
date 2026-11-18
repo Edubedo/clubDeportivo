@@ -2,8 +2,8 @@ package com.example.clubdeportivo.util
 
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.model.Area
-import com.example.clubdeportivo.data.model.DisponibilidadArea
 import com.example.clubdeportivo.data.model.EstadoReserva
+import com.example.clubdeportivo.data.model.ModificacionReserva
 import com.example.clubdeportivo.data.model.Reserva
 import com.example.clubdeportivo.data.model.Torneo
 import java.util.Date
@@ -88,12 +88,19 @@ object ReglasReserva {
     }
 
     /** Cómo está una hora concreta ("hora" = 6 significa 06:00 a 07:00) de un área en una fecha. */
-    data class EstadoHora(val hora: Int, val capacidad: Int, val ocupadas: Int, val torneo: Torneo?) {
+    data class EstadoHora(
+        val hora: Int,
+        val capacidad: Int,
+        val ocupadas: Int,
+        val torneo: Torneo?,
+        /** El área está en mantenimiento ese día: no se reserva. */
+        val mantenimiento: Boolean = false
+    ) {
         val libres get() = (capacidad - ocupadas).coerceAtLeast(0)
         val lleno get() = libres == 0
-        val disponible get() = torneo == null && !lleno
+        val disponible get() = torneo == null && !mantenimiento && !lleno
         val pocosLugares get() =
-            torneo == null && ocupadas > 0 && libres in 1..Catalogos.LUGARES_PARA_ALERTA_CUPO_BAJO
+            torneo == null && !mantenimiento && ocupadas > 0 && libres in 1..Catalogos.LUGARES_PARA_ALERTA_CUPO_BAJO
     }
 
     fun estadoDeHora(area: Area, reservas: List<Reserva>, torneos: List<Torneo>, fecha: String, hora: Int): EstadoHora {
@@ -103,7 +110,42 @@ object ReglasReserva {
         val ocupadas = reservas
             .filter { it.areaId == area.id && it.fecha == fecha && esVigente(it) && reservaSolapa(it, inicio, fin) }
             .sumOf { it.personas }
-        return EstadoHora(hora, area.capacidad, ocupadas, torneo)
+        return EstadoHora(hora, area.capacidad, ocupadas, torneo, mantenimiento = area.enMantenimientoEl(fecha))
+    }
+
+    /** Texto del periodo de mantenimiento de [area] ("del 5 de ... al 9 de ..."), o vacío si no tiene fechas. */
+    fun textoMantenimiento(area: Area): String =
+        if (area.tienePeriodoDeMantenimiento) {
+            Textos.get("maintenance_period", Fechas.legible(area.mantenimientoDesde), Fechas.legible(area.mantenimientoHasta))
+        } else {
+            ""
+        }
+
+    /** Por qué no se puede reservar [area] el [fecha] por mantenimiento (con el periodo si lo tiene), o null si no está en mantenimiento. */
+    fun motivoMantenimiento(area: Area, fecha: String): String? {
+        if (!area.enMantenimientoEl(fecha)) return null
+        val periodo = textoMantenimiento(area)
+        return Textos.get("is_under_maintenance", area.nombre) + if (periodo.isBlank()) "" else " $periodo"
+    }
+
+    /**
+     * La reserva vigente de [usuarioId] que choca con el horario [horaInicio]–[horaFin] de [fecha] (en cualquier área), o
+     * null. Una persona no puede estar en dos reservas a la misma hora: para cambiarla se edita la que ya tiene.
+     * [excluirId] deja fuera la reserva que se está modificando.
+     */
+    fun reservaDelMiembroEnConflicto(
+        usuarioId: String,
+        reservas: List<Reserva>,
+        fecha: String,
+        horaInicio: String,
+        horaFin: String,
+        excluirId: String? = null
+    ): Reserva? {
+        val inicio = aMinutos(horaInicio) ?: return null
+        val fin = aMinutos(horaFin) ?: return null
+        return reservas.firstOrNull {
+            it.usuarioId == usuarioId && it.id != excluirId && it.fecha == fecha && esVigente(it) && reservaSolapa(it, inicio, fin)
+        }
     }
 
     /** Lugares de [areaId] que esa hora están pedidos en solicitudes todavía "en revisión" (ya cuentan dentro del cupo ocupado). */
@@ -138,7 +180,7 @@ object ReglasReserva {
             return Textos.get("maximum_hours_per_booking", Catalogos.MAX_HORAS_POR_RESERVA)
         }
         if (personas < 1) return Textos.get("enter_at_least_1_person")
-        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get("is_under_maintenance", area.nombre)
+        motivoMantenimiento(area, fecha)?.let { return it }
         if (personas > area.capacidad) return Textos.get("has_capacity_for_people", area.nombre, area.capacidad)
 
         for (hora in horas) {
@@ -150,6 +192,49 @@ object ReglasReserva {
             }
         }
         return null
+    }
+
+    /**
+     * @return el motivo por el que [cambio] NO se puede aplicar a [reserva], o null si es válido. Lo usan quien pide el cambio
+     * (con [anticipacionMinimaHoras] = la de cualquier reserva) y quien lo aprueba (con 0: basta que el nuevo horario no
+     * haya empezado), así los dos aplican exactamente las mismas reglas.
+     *
+     * [reservasDelArea] y [reservasDelMiembro] pueden incluir la propia reserva: se descarta, porque se va a mover.
+     */
+    fun validarModificacion(
+        area: Area,
+        reserva: Reserva,
+        cambio: ModificacionReserva,
+        reservasDelArea: List<Reserva>,
+        reservasDelMiembro: List<Reserva>,
+        torneos: List<Torneo>,
+        anticipacionMinimaHoras: Int,
+        ahora: Date = Date()
+    ): String? {
+        val mismoHorario = cambio.fecha == reserva.fecha && cambio.horaInicio == reserva.horaInicio &&
+            cambio.horaFin == reserva.horaFin && cambio.personas == reserva.personas
+        if (mismoHorario) return Textos.get("change_request_no_changes")
+        if (Fechas.horasDesdeAhora(cambio.fecha, cambio.horaInicio, ahora) < anticipacionMinimaHoras ||
+            Fechas.horasDesdeAhora(cambio.fecha, cambio.horaInicio, ahora) <= 0
+        ) {
+            return Textos.get("minimum_booking_advance", anticipacionMinimaHoras.coerceAtLeast(0))
+        }
+
+        reservaDelMiembroEnConflicto(reserva.usuarioId, reservasDelMiembro, cambio.fecha, cambio.horaInicio, cambio.horaFin, reserva.id)?.let {
+            return Textos.get("you_already_have_booking_at_that_time", Fechas.legible(it.fecha), it.horaInicio, it.horaFin)
+        }
+
+        val otras = reservasDelArea.filter { it.id != reserva.id }
+        if (area.carriles > 0) {
+            val carril = cambio.carril ?: reserva.carril
+            if (carril != null) {
+                val ini = aMinutos(cambio.horaInicio) ?: return Textos.get("choose_a_time")
+                val fin = aMinutos(cambio.horaFin) ?: return Textos.get("choose_a_time")
+                val ocupado = otras.any { it.fecha == cambio.fecha && it.carril == carril && esVigente(it) && reservaSolapa(it, ini, fin) }
+                if (ocupado) return Textos.get("that_lane_has_just_been_taken")
+            }
+        }
+        return validarReserva(area, otras, torneos, cambio.fecha, cambio.horaInicio, cambio.horaFin, cambio.personas)
     }
 
     /**
@@ -170,7 +255,9 @@ object ReglasReserva {
         val fin = aMinutos(horaFin) ?: return Textos.get("enter_the_end_time")
         if (fin <= inicio) return Textos.get("the_end_time_must_be_after")
         if (fechaFin < fechaInicio) return Textos.get("the_end_date_can_t_be")
-        if (area.disponibilidad == DisponibilidadArea.MANTENIMIENTO) return Textos.get("is_under_maintenance", area.nombre)
+        if (area.enMantenimientoEntre(fechaInicio, fechaFin)) {
+            return Textos.get("is_under_maintenance", area.nombre) + textoMantenimiento(area).let { if (it.isBlank()) "" else " $it" }
+        }
 
         val otrosTorneos = torneos.filter { it.id != torneoIdExcluido }
         for (dia in Fechas.diasEntre(fechaInicio, fechaFin)) {

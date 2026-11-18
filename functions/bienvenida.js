@@ -45,18 +45,18 @@ function componerBienvenida({ nombre, codigo, enlace, club = 'Athletic Club' }) 
   ].join('\n');
 
   const html = `<!doctype html>
-<html lang="es"><body style="margin:0;padding:24px;background:#f5f3f0;font-family:Arial,Helvetica,sans-serif;color:#2b2622">
+<html lang="es"><body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0b1220">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;padding:28px">
 <tr><td>
-<h1 style="margin:0 0 12px;font-size:22px;color:#e8590c">${escapar(club)}</h1>
+<h1 style="margin:0 0 12px;font-size:22px;color:#052659">${escapar(club)}</h1>
 <p style="margin:0 0 16px;font-size:16px">${saludoHtml}, te damos la bienvenida. Ya eres socio.</p>
-<p style="margin:0 0 6px;font-size:14px;color:#6b625a">Tu código de acceso</p>
+<p style="margin:0 0 6px;font-size:14px;color:#475569">Tu código de acceso</p>
 <p style="margin:0 0 20px;font-size:28px;font-weight:bold;letter-spacing:3px;font-family:Consolas,Menlo,monospace">${escapar(codigo)}</p>
-<p style="margin:0 0 20px"><a href="${e}" style="display:inline-block;background:#e8590c;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px">Crear mi cuenta</a></p>
-<p style="margin:0 0 8px;font-size:13px;color:#6b625a">Ábrelo desde tu teléfono Android con la app instalada. Si no abre la app, entra a <b>Regístrate con tu código</b> y escribe el código a mano.</p>
-<p style="margin:0 0 8px;font-size:13px;color:#6b625a">El código sirve una sola vez, para crear tu cuenta. Después entras con tu correo y contraseña.</p>
-<p style="margin:16px 0 0;font-size:12px;color:#9a9188">Si el botón no funciona, copia este enlace: ${e}<br>Si no esperabas este correo, ignóralo.</p>
+<p style="margin:0 0 20px"><a href="${e}" style="display:inline-block;background:#052659;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px">Crear mi cuenta</a></p>
+<p style="margin:0 0 8px;font-size:13px;color:#475569">Ábrelo desde tu teléfono Android con la app instalada. Si no abre la app, entra a <b>Regístrate con tu código</b> y escribe el código a mano.</p>
+<p style="margin:0 0 8px;font-size:13px;color:#475569">El código sirve una sola vez, para crear tu cuenta. Después entras con tu correo y contraseña.</p>
+<p style="margin:16px 0 0;font-size:12px;color:#64748b">Si el botón no funciona, copia este enlace: ${e}<br>Si no esperabas este correo, ignóralo.</p>
 </td></tr></table></td></tr></table></body></html>`;
 
   return { asunto, texto, html };
