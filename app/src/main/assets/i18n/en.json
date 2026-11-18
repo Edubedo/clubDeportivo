@@ -24,6 +24,7 @@
   "espera_salir_ok": "You left the waitlist.",
   "espera_lugar_apartado": "At %1$s the spot that opened up is being held for the waitlist. Tap that hour to join the line.",
   "espera_leyenda": "On waitlist",
+  "my_booking_legend": "Your booking",
   "espera_pista": "Hour full? Tap it to join the waitlist.",
   "notif_cat_espera": "Waitlist",
   "notif_cat_espera_desc": "When a spot opens up in an hour you're waiting for.",

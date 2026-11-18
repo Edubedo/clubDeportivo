@@ -116,7 +116,7 @@ object ReglasReserva {
     /** Texto del periodo de mantenimiento de [area] ("del 5 de ... al 9 de ..."), o vacío si no tiene fechas. */
     fun textoMantenimiento(area: Area): String =
         if (area.tienePeriodoDeMantenimiento) {
-            Textos.get("maintenance_period", Fechas.legible(area.mantenimientoDesde), Fechas.legible(area.mantenimientoHasta))
+            Textos.get("maintenance_period", Fechas.legibleConDia(area.mantenimientoDesde), Fechas.legibleConDia(area.mantenimientoHasta))
         } else {
             ""
         }

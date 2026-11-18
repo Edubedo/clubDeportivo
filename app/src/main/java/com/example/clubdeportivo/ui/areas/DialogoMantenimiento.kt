@@ -89,13 +89,13 @@ fun DialogoMantenimiento(
                     Column(modifier = Modifier.weight(1f)) {
                         EtiquetaCampo(Textos.get("maintenance_from"))
                         OutlinedButton(onClick = { eligiendo = "desde" }, modifier = Modifier.fillMaxWidth()) {
-                            Text(Fechas.legible(desde), color = Marca, maxLines = 1)
+                            Text(Fechas.legibleConDia(desde), color = Marca, maxLines = 1)
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         EtiquetaCampo(Textos.get("maintenance_until"))
                         OutlinedButton(onClick = { eligiendo = "hasta" }, modifier = Modifier.fillMaxWidth()) {
-                            Text(Fechas.legible(hasta), color = Marca, maxLines = 1)
+                            Text(Fechas.legibleConDia(hasta), color = Marca, maxLines = 1)
                         }
                     }
                 }

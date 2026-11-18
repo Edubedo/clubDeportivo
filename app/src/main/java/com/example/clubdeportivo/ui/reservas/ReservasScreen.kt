@@ -66,6 +66,7 @@ import com.example.clubdeportivo.data.Deportes
 import com.example.clubdeportivo.data.SesionManager
 import com.example.clubdeportivo.data.model.Area
 import com.example.clubdeportivo.data.model.DisponibilidadArea
+import com.example.clubdeportivo.data.model.EstadoReserva
 import com.example.clubdeportivo.ui.components.BotonIcono
 import com.example.clubdeportivo.ui.components.BotonPrimario
 import com.example.clubdeportivo.ui.components.EncabezadoPantalla
@@ -838,11 +839,13 @@ private fun BarraConfirmacion(ui: ReservaEspacioUi, viewModel: ReservasViewModel
 private fun CeldaHora(celda: HoraUi, elegida: Boolean, permiteEspera: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val estado = celda.estado
     val ocupada = estado.lleno || estado.torneo != null || estado.mantenimiento
+    val mia = celda.miReserva != null && !elegida
     // Una hora llena también se puede tocar (socios y visitantes): ofrece entrar a la lista de espera.
     val habilitada = (celda.seleccionable && !ocupada) || (permiteEspera && celda.esperable)
     val pocosLugares = !celda.pasada && estado.pocosLugares
     val fondo = when {
         elegida -> Marca
+        mia -> AlertaSuave
         ocupada -> UnavailableContainer
         celda.pasada -> FondoApp
         pocosLugares -> AlertaSuave
@@ -850,6 +853,7 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, permiteEspera: Boolean, m
     }
     val texto = when {
         elegida -> SobreMarca
+        mia -> Alerta
         ocupada -> UnavailableForeground
         celda.pasada -> TextoTenue
         pocosLugares -> Alerta
@@ -866,7 +870,7 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, permiteEspera: Boolean, m
             if (elegida || celda.enEspera) 1.5.dp else 1.dp,
             when {
                 elegida -> Marca
-                celda.enEspera -> Alerta
+                celda.enEspera || mia -> Alerta
                 ocupada -> UnavailableBorder
                 celda.pasada -> Borde
                 pocosLugares -> StatusAmberBorder
@@ -876,7 +880,13 @@ private fun CeldaHora(celda: HoraUi, elegida: Boolean, permiteEspera: Boolean, m
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text(numero, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = texto, maxLines = 1)
-            Text(if (celda.enEspera) ICONO_ESPERA else sufijo, fontSize = 12.sp, color = texto, maxLines = 1)
+            Text(
+                when {
+                    mia -> if (celda.miReserva == EstadoReserva.PENDIENTE_APROBACION) ICONO_ESPERA else "✓"
+                    celda.enEspera -> ICONO_ESPERA
+                    else -> sufijo
+                }, fontSize = 12.sp, color = texto, maxLines = 1
+            )
         }
     }
 }
@@ -914,6 +924,7 @@ private fun Leyenda(mostrarEspera: Boolean) {
                 )
             }
         }
+        Text("$ICONO_ESPERA/✓ ${Textos.get("my_booking_legend")}", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
         if (mostrarEspera) {
             Text("$ICONO_ESPERA ${Textos.get("espera_leyenda")}", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
         }

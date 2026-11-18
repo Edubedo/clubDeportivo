@@ -47,12 +47,14 @@ data class HoraUi(
     /** El horario ya comenzó o terminó. */
     val pasada: Boolean,
     /** La persona está en la lista de espera de esta hora. */
-    val enEspera: Boolean = false
+    val enEspera: Boolean = false,
+    /** Estado de una reserva de la propia persona que abarca esta hora (en revisión o confirmada), o null. */
+    val miReserva: EstadoReserva? = null
 ) {
     val hora get() = estado.hora
-    val seleccionable get() = estado.disponible && !pasada
+    val seleccionable get() = estado.disponible && !pasada && miReserva == null
     /** Llena por reservas (no por un torneo) y todavía no empieza: se puede pedir lugar en la lista de espera. */
-    val esperable get() = !pasada && estado.torneo == null && !estado.mantenimiento && estado.lleno
+    val esperable get() = !pasada && miReserva == null && estado.torneo == null && !estado.mantenimiento && estado.lleno
 }
 
 /** Una entrada de la lista de espera de la persona, lista para mostrar. */
@@ -267,7 +269,10 @@ class ReservasViewModel(
                 HoraUi(
                     estado = base.copy(ocupadas = base.ocupadas + apartados),
                     pasada = Fechas.horasDesdeAhora(fecha, String.format(java.util.Locale.ROOT, "%02d:00", hora)) < Catalogos.ANTICIPACION_MINIMA_HORAS,
-                    enEspera = usuario?.let { ReglasListaEspera.posicion(it.id, fila) } != null
+                    enEspera = usuario?.let { ReglasListaEspera.posicion(it.id, fila) } != null,
+                    miReserva = usuario?.let { u ->
+                        ReglasReserva.reservaDelMiembroEnConflicto(u.id, reservas, fecha, String.format(java.util.Locale.ROOT, "%02d:00", hora), String.format(java.util.Locale.ROOT, "%02d:00", hora + 1))?.estado
+                    }
                 )
             }
             _ui.value = estado.copy(horas = horas, errorDisponibilidad = false)

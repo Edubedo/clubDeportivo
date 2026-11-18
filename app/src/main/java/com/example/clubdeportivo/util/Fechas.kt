@@ -95,6 +95,14 @@ object Fechas {
     fun legible(fecha: String): String {
         if (fecha == hoy()) return if (ingles) "Today" else "Hoy"
         if (fecha == sumarDias(1)) return if (ingles) "Tomorrow" else "Mañana"
+        return legibleConDia(fecha)
+    }
+
+    /**
+     * Como [legible] pero siempre con el día y el mes ("jue. 19 nov"), nunca "Hoy" ni "Mañana": para rangos como
+     * "del jue. 19 nov al vie. 20 nov", donde "del Mañana al…" suena mal.
+     */
+    fun legibleConDia(fecha: String): String {
         val base = runCatching { formatoFecha().parse(fecha) }.getOrNull() ?: return fecha
         val cal = Calendar.getInstance().apply { time = base }
         val dia = NOMBRES_DIA[cal.get(Calendar.DAY_OF_WEEK) - 1]

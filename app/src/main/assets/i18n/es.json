@@ -24,6 +24,7 @@
   "espera_salir_ok": "Saliste de la lista de espera.",
   "espera_lugar_apartado": "A las %1$s el lugar que se liberó está apartado para la lista de espera. Toca esa hora para entrar a la fila.",
   "espera_leyenda": "En lista de espera",
+  "my_booking_legend": "Tu reserva",
   "espera_pista": "¿Una hora llena? Tócala para entrar a la lista de espera.",
   "notif_cat_espera": "Lista de espera",
   "notif_cat_espera_desc": "Cuando se libera un lugar en una hora en la que estás esperando.",

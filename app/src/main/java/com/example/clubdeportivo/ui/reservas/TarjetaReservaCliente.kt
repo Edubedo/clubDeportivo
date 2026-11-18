@@ -7,6 +7,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -96,6 +101,12 @@ internal fun TarjetaReservaCliente(
                         pendiente -> TipoInsignia.ALERTA
                         rechazada -> TipoInsignia.PELIGRO
                         else -> TipoInsignia.EXITO
+                    },
+                    icono = when {
+                        porMantenimiento -> Icons.Filled.Build
+                        pendiente -> Icons.Filled.HourglassTop
+                        rechazada -> Icons.Filled.Cancel
+                        else -> Icons.Filled.CheckCircle
                     }
                 )
             }
@@ -116,7 +127,7 @@ internal fun TarjetaReservaCliente(
                 Text(
                     text = Textos.get(
                         "cancelled_by_maintenance_detail",
-                        Fechas.legible(reserva.mantenimientoDesde), Fechas.legible(reserva.mantenimientoHasta)
+                        Fechas.legibleConDia(reserva.mantenimientoDesde), Fechas.legibleConDia(reserva.mantenimientoHasta)
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSecundario,

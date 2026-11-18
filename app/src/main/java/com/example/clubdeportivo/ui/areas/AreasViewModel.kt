@@ -189,7 +189,7 @@ class AreasViewModel(
                     reservaRepository.cancelarPorMantenimiento(afectadas, desde, hasta, motivo)
                 }
                 _mensaje.value = Textos.get(
-                    "maintenance_scheduled", etiquetaArea(area.nombre), Fechas.legible(desde), Fechas.legible(hasta), afectadas.size
+                    "maintenance_scheduled", etiquetaArea(area.nombre), Fechas.legibleConDia(desde), Fechas.legibleConDia(hasta), afectadas.size
                 )
                 cargarAreas()
             } catch (e: Exception) {

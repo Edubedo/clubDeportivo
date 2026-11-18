@@ -370,7 +370,7 @@ private fun TarjetaMiembro(
                 Text(
                     titular?.nombre ?: Textos.get("no_name"),
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF0F172A),
+                    color = TextoPrincipal,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
