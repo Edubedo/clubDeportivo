@@ -309,9 +309,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                 deportes.forEach { deporte ->
                     val muestra = ui.areas.first { it.tipo == deporte }
 
-                    Box(
-                        modifier = Modifier.fillMaxWidth(0.48f)
-                    ) {
+                    Box(modifier = Modifier.fillMaxWidth(0.48f)) {
                         TarjetaOpcion(
                             emoji = Deportes.emojiDe(deporte, muestra.emoji),
                             titulo = etiquetaDeporte(deporte),
@@ -360,7 +358,7 @@ private fun ReservarEspacioScreen(viewModel: ReservasViewModel = viewModel()) {
                         areasDelDeporte.forEach { area ->
                             val bloqueada = area.disponibilidad == DisponibilidadArea.MANTENIMIENTO ||
                                     (viewModel.esVisitanteExterno && !area.permiteExternos)
-                            Box(modifier = Modifier.weight(1f)) {
+                            Box(modifier = Modifier.fillMaxWidth(0.48f)) {
                                 TarjetaOpcion(
                                     emoji = Deportes.emojiDe(area.tipo, area.emoji),
                                     titulo = etiquetaArea(area.nombre),
@@ -550,6 +548,7 @@ private fun TarjetaOpcion(
                     style = MaterialTheme.typography.titleSmall,
                     color = if (habilitada) TextoPrincipal else TextoTenue,
                     maxLines = 2,
+                    minLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -561,6 +560,8 @@ private fun TarjetaOpcion(
                         text = detalle,
                         style = MaterialTheme.typography.bodySmall,
                         color = if (habilitada) TextoSecundario else TextoTenue,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                 }

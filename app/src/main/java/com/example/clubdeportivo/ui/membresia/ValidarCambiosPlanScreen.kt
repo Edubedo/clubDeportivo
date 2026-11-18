@@ -21,6 +21,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -33,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.widget.Toast
@@ -42,6 +45,7 @@ import com.example.clubdeportivo.data.model.SolicitudCambioPlan
 import com.example.clubdeportivo.data.model.esAdministrador
 import com.example.clubdeportivo.data.model.esSupervisor
 import com.example.clubdeportivo.ui.components.Insignia
+import com.example.clubdeportivo.ui.components.IconoCircular
 import com.example.clubdeportivo.ui.components.TipoInsignia
 import com.example.clubdeportivo.ui.theme.TextoSecundario
 import com.example.clubdeportivo.util.ReglasCambioPlan
@@ -69,7 +73,18 @@ fun ValidarCambiosPlanScreen(viewModel: CambioPlanViewModel = viewModel()) {
 
     if (ui.pendientes.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-            Text(Textos.get("cambio_plan_sin_pendientes"), style = MaterialTheme.typography.bodyMedium, color = TextoSecundario)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                IconoCircular(icono = Icons.Outlined.SwapHoriz, tamano = 64.dp)
+                Text(
+                    text = Textos.get("cambio_plan_sin_pendientes"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextoSecundario,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     } else {
         LazyColumn(

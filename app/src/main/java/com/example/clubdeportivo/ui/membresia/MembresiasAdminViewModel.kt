@@ -3,6 +3,7 @@ package com.example.clubdeportivo.ui.membresia
 import android.content.ContentResolver
 import android.net.Uri
 import android.util.Base64
+import android.util.Patterns
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -92,17 +93,27 @@ class MembresiasAdminViewModel(
             _errorFormulario.value = error
             return
         }
+        if (personas.any { !Patterns.EMAIL_ADDRESS.matcher(it.correo.trim()).matches() }) {
+            _errorFormulario.value = if (personas.any { it.correo.isBlank() }) {
+                Textos.get("email_required")
+            } else {
+                Textos.get("enter_a_valid_email")
+            }
+            return
+        }
+        if (comprobanteUri == null || resolver == null) {
+            _errorFormulario.value = Textos.get("receipt_required")
+            return
+        }
         viewModelScope.launch {
             _guardando.value = true
             _errorFormulario.value = null
             try {
                 val precio = ClavesPrecio.deMembresia(tipo, plan, paqueteId, preciosActuales())
                 // Igual que las fotos de perfil: se comprime y se guarda como data URI, sin Firebase Storage.
-                val comprobanteUrl = if (comprobanteUri != null && resolver != null) {
-                    val jpeg = withContext(Dispatchers.IO) { comprimirComprobanteRenovacion(resolver, comprobanteUri) }
-                        ?: error(Textos.get("renewal_proof_compress_failed"))
-                    "data:image/jpeg;base64," + Base64.encodeToString(jpeg, Base64.NO_WRAP)
-                } else null
+                val jpeg = withContext(Dispatchers.IO) { comprimirComprobanteRenovacion(resolver, comprobanteUri) }
+                    ?: error(Textos.get("renewal_proof_compress_failed"))
+                val comprobanteUrl = "data:image/jpeg;base64," + Base64.encodeToString(jpeg, Base64.NO_WRAP)
                 _registroReciente.value = repositorio.registrar(
                     tipo,
                     plan,

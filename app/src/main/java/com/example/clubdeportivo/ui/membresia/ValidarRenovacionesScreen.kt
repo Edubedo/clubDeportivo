@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
@@ -44,6 +45,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -54,6 +56,7 @@ import com.example.clubdeportivo.data.model.SolicitudRenovacion
 import com.example.clubdeportivo.data.model.esPersonal
 import com.example.clubdeportivo.data.Catalogos
 import com.example.clubdeportivo.data.model.PlanIndividual
+import com.example.clubdeportivo.ui.components.IconoCircular
 import com.example.clubdeportivo.ui.theme.DeepNavy
 import com.example.clubdeportivo.ui.theme.MembershipPro
 import com.example.clubdeportivo.ui.theme.Peligro
@@ -86,11 +89,18 @@ fun ValidarRenovacionesScreen(viewModel: RenovacionViewModel = viewModel()) {
             modifier = Modifier.fillMaxSize().padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                Textos.get("no_pending_renewals"),
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextoSecundario
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                IconoCircular(icono = Icons.Outlined.Autorenew, tamano = 64.dp)
+                Text(
+                    text = Textos.get("no_pending_renewals"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextoSecundario,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     } else {
         LazyColumn(

@@ -4,6 +4,7 @@ import com.example.clubdeportivo.data.model.etiquetaParentesco
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -560,6 +561,10 @@ private fun MembresiaFormDialog(
     val paqueteSeleccionado = if (tipo == TipoMembresia.FAMILIAR) paqueteId else null
     val precioVigente = ClavesPrecio.deMembresia(tipo, planSeleccionado, paqueteSeleccionado, precios)
     val maxPersonas = ReglasMembresia.maxPersonas(tipo, paqueteSeleccionado)
+    val registroCompleto = comprobanteUri != null && personas.all { persona ->
+        persona.nombre.trim().length >= 3 &&
+            Patterns.EMAIL_ADDRESS.matcher(persona.correo.trim()).matches()
+    }
 
     val suspendiendoAhora = esEdicion && estado == EstadoMembresia.SUSPENDIDA && membresia?.estado != EstadoMembresia.SUSPENDIDA
 
@@ -579,7 +584,8 @@ private fun MembresiaFormDialog(
             BotonPrimario(
                 texto = if (esEdicion) Textos.get("save_changes") else Textos.get("charge_and_register", dinero(precioVigente)),
                 cargando = guardando,
-                enabled = !suspendiendoAhora || motivoCompleto(motivo, detalleMotivo),
+                enabled = (!suspendiendoAhora || motivoCompleto(motivo, detalleMotivo)) &&
+                    (esEdicion || registroCompleto),
                 onClick = {
                     onGuardar(
                         tipo,
@@ -669,22 +675,25 @@ private fun MembresiaFormDialog(
             )
             EspacioCampos()
             EtiquetaCampo(Textos.get("payment_receipt"))
-            if (metodoPago == MetodoPago.EFECTIVO) {
-                Text(
-                    text = Textos.get("cash_receipt_optional"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextoSecundario,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            } else {
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+            Text(
+                text = Textos.get("receipt_required"),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextoSecundario,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             ComprobanteAdjunto(
                 uri = comprobanteUri,
                 onAdjuntar = { mostrarOpcionesComprobante = true },
                 onCambiar = { mostrarOpcionesComprobante = true },
                 onEliminar = { comprobanteUri = null }
             )
+            if (comprobanteUri == null) {
+                Text(
+                    text = Textos.get("attach_receipt_to_continue"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Peligro
+                )
+            }
         }
 
         EspacioCampos()
@@ -704,6 +713,7 @@ private fun MembresiaFormDialog(
                     titulo = if (indice == 0) Textos.get("lbl_titular") else Textos.get("member_2", indice),
                     persona = persona,
                     conParentesco = indice > 0,
+                    correoObligatorio = !esEdicion,
                     cuentaCreada = registrada?.cuentaCreada,
                     onCambio = { personas[indice] = it },
                     onQuitar = if (indice > 0) ({ personas.removeAt(indice) }) else null,
@@ -903,6 +913,7 @@ private fun CamposPersona(
     titulo: String,
     persona: PersonaForm,
     conParentesco: Boolean,
+    correoObligatorio: Boolean,
     /** null = persona nueva (aún sin código); true/false = ya tiene código y se sabe si creó su cuenta. */
     cuentaCreada: Boolean?,
     onCambio: (PersonaForm) -> Unit,
@@ -957,6 +968,14 @@ private fun CamposPersona(
         onValueChange = { onCambio(persona.copy(correo = it)) },
         placeholder = Textos.get("email_optional_2"),
         tipoTeclado = KeyboardType.Email,
+        isError = correoObligatorio && !Patterns.EMAIL_ADDRESS.matcher(persona.correo.trim()).matches(),
+        mensajeError = if (correoObligatorio) {
+            when {
+                persona.correo.isBlank() -> Textos.get("email_required")
+                !Patterns.EMAIL_ADDRESS.matcher(persona.correo.trim()).matches() -> Textos.get("enter_a_valid_email")
+                else -> null
+            }
+        } else null,
         imeAction = if (conParentesco) ImeAction.Next else ImeAction.Done
     )
     if (conParentesco) {
