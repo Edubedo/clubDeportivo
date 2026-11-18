@@ -267,7 +267,7 @@ exports.notificarModificacionReserva = onDocumentUpdated(
         `reserva_${event.params.reservaId}_cambio_${event.id}_${usuario.id}`,
         'Solicitud de cambio de reserva',
         `${reserva.usuarioNombre || 'Un socio'} quiere cambiar su reserva de ${reserva.areaNombre || reserva.deporte || 'cancha'} ` +
-          `del ${reserva.fecha || ''} a las ${reserva.horaInicio || ''} al ${mod.fecha || ''} a las ${mod.horaInicio || ''}.`,
+          `del ${Correos.fechaLegible(reserva.fecha)} a las ${reserva.horaInicio || ''} al ${Correos.fechaLegible(mod.fecha)} a las ${mod.horaInicio || ''}.`,
         'RESERVA',
         'reservas'
       )
@@ -292,8 +292,8 @@ exports.notificarResolucionModificacionReserva = onDocumentUpdated(
       `reserva_${event.params.reservaId}_cambio_resuelto_${event.id}`,
       aprobada ? 'Cambio de reserva aprobado' : 'Cambio de reserva rechazado',
       aprobada
-        ? `Aprobamos el cambio de tu reserva de ${lugar}: ahora es el ${reserva.fecha || ''} de ${reserva.horaInicio || ''} a ${reserva.horaFin || ''}.`
-        : `No pudimos aprobar el cambio de tu reserva de ${lugar}. Se mantiene el ${reserva.fecha || ''} a las ${reserva.horaInicio || ''}.`,
+        ? `Aprobamos el cambio de tu reserva de ${lugar}: ahora es el ${Correos.fechaLegible(reserva.fecha)} de ${reserva.horaInicio || ''} a ${reserva.horaFin || ''}.`
+        : `No pudimos aprobar el cambio de tu reserva de ${lugar}. Se mantiene el ${Correos.fechaLegible(reserva.fecha)} a las ${reserva.horaInicio || ''}.`,
       'RESERVA_RESPUESTA',
       'reservas'
     );
@@ -317,7 +317,7 @@ exports.notificarReservaCanceladaPorMantenimiento = onDocumentUpdated(
       reserva.usuarioId,
       `reserva_${event.params.reservaId}_mantenimiento_${reserva.usuarioId}`,
       'Reserva cancelada por mantenimiento',
-      `${lugar} estará en mantenimiento${periodo}. Cancelamos tu reserva del ${reserva.fecha || ''} a las ${reserva.horaInicio || ''}; ` +
+      `${lugar} estará en mantenimiento${periodo}. Cancelamos tu reserva del ${Correos.fechaLegible(reserva.fecha)} a las ${reserva.horaInicio || ''}; ` +
         'puedes reagendarla desde Mis reservas.',
       'RESERVA_RESPUESTA',
       'reservas'
