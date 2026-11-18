@@ -537,7 +537,8 @@ class ReservasViewModel(
             reservas = visibles,
             asistenciasRegistradas = asistenciasRegistradas,
             hasta = hasta
-        ).map { it.aLista(areas) }
+        ).filter { it.fecha >= hoy } // solo próximas: nada de días pasados
+            .map { it.aLista(areas) }
 
         _reservas.value = visibles
             .filter { it.fecha >= hoy }
